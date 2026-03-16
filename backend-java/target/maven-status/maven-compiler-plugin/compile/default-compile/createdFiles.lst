@@ -1,0 +1,8 @@
+com/energia/backend/controller/HelloController.class
+com/energia/backend/BackendApplication.class
+com/energia/backend/repository/ConcessionariaRepository.class
+com/energia/backend/model/Concessionaria.class
+com/energia/backend/controller/ConcessionariaController.class
+com/energia/backend/repository/IndicadorRepository.class
+com/energia/backend/controller/IndicadorController.class
+com/energia/backend/model/Indicador.class
