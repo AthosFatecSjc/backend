@@ -1,0 +1,8 @@
+/home/garm/Projects/backend/backend-java/src/main/java/com/energia/backend/model/Indicador.java
+/home/garm/Projects/backend/backend-java/src/main/java/com/energia/backend/repository/IndicadorRepository.java
+/home/garm/Projects/backend/backend-java/src/main/java/com/energia/backend/repository/ConcessionariaRepository.java
+/home/garm/Projects/backend/backend-java/src/main/java/com/energia/backend/controller/HelloController.java
+/home/garm/Projects/backend/backend-java/src/main/java/com/energia/backend/controller/IndicadorController.java
+/home/garm/Projects/backend/backend-java/src/main/java/com/energia/backend/controller/ConcessionariaController.java
+/home/garm/Projects/backend/backend-java/src/main/java/com/energia/backend/BackendApplication.java
+/home/garm/Projects/backend/backend-java/src/main/java/com/energia/backend/model/Concessionaria.java
