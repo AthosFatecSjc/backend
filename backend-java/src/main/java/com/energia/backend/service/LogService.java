@@ -32,17 +32,6 @@ public class LogService {
         return logRepository.findById(id);
     }
 
-    public Logger updateLog(Long id, Logger newLog){
-        return logRepository.findById(id).map(log -> {
-            log.setActorRef(newLog.getActorRef());
-            log.setIsAuditavel(newLog.getIsAuditavel());
-            log.setLevel(newLog.getLevel());
-            log.setConteudo(newLog.getConteudo());
-            log.setDateTime(newLog.getDateTime());
-            return logRepository.save(log);
-        }).orElseThrow(() -> new RuntimeException("Log não encontrado"));
-    }
-
     public void deleteLog(Long id){
         logRepository.deleteById(id);
     }
