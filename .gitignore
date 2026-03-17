@@ -1,0 +1,21 @@
+# Python virtual environments
+venv/
+venv*/
+.venv/
+.venv*/
+env/
+env*/
+
+# Environment files
+.env
+.env.*
+
+# IDE files
+.idea/
+
+# Java/Maven build output
+target/
+
+# Python cache
+__pycache__/
+*.pyc
