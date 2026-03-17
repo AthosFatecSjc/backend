@@ -27,5 +27,4 @@ public class Logger {
     private LogLevel level;
     private String conteudo;
 
-
 }
