@@ -2,6 +2,8 @@ package com.energia.backend.model;
 
 import java.time.LocalDateTime;
 
+import org.hibernate.annotations.CreationTimestamp;
+
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -19,7 +21,9 @@ public class Logger {
 
     private String actorRef;
     private Boolean isAuditavel;
-    private LocalDateTime dateTime = LocalDateTime.now();
+    @CreationTimestamp
+    private LocalDateTime dateTime;
+    @Enumerated(EnumType.STRING)
     private LogLevel level;
     private String conteudo;
 
