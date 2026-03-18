@@ -1,12 +1,12 @@
 #!/bin/bash
 
-echo "Iniciando ambiente de desenvolvimentoS"
+# echo "Iniciando ambiente de desenvolvimentoS"
 
-echo "Iniciando containers Docker..."
-docker-compose up -d
+# echo "Iniciando containers Docker..."
+# docker-compose up -d
 
-echo "Aguardando bancos de dados..."
-sleep 10
+# echo "Aguardando bancos de dados..."
+# sleep 10
 
 echo "☕ Iniciando backend Java..."
 cd backend-java
