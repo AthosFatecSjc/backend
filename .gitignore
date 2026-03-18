@@ -19,6 +19,7 @@ target/
 # Python cache
 __pycache__/
 *.pyc
+
 # Compilados Java
 *.class
 
@@ -26,7 +27,6 @@ __pycache__/
 *.log
 
 # Maven
-target/
 pom.xml.tag
 pom.xml.releaseBackup
 pom.xml.versionsBackup
@@ -38,7 +38,6 @@ release.properties
 build/
 
 # IDEs
-.idea/
 *.iml
 .vscode/
 
@@ -46,6 +45,6 @@ build/
 .DS_Store
 Thumbs.db
 
-# Arquivos temporários
+# Arquivos temporarios
 *.tmp
 *.swp
