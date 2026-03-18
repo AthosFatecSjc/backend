@@ -20,7 +20,7 @@ public class SystemLog  {
     private Long id;
 
     @CreationTimestamp
-    private LocalDateTime timestamp;
+    private LocalDateTime createdAt;
 
     private String actorRef;
 
