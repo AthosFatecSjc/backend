@@ -1,30 +1,37 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-# echo "Iniciando ambiente de desenvolvimentoS"
+set -euo pipefail
 
-# echo "Iniciando containers Docker..."
-# docker-compose up -d
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$ROOT_DIR"
 
-# echo "Aguardando bancos de dados..."
-# sleep 10
+if ! command -v docker >/dev/null 2>&1; then
+  echo "Docker nao encontrado no PATH."
+  exit 1
+fi
 
-echo "☕ Iniciando backend Java..."
-cd backend-java
-mvn spring-boot:run &
-cd ..
+if ! docker compose version >/dev/null 2>&1; then
+  echo "Docker Compose nao esta disponivel."
+  exit 1
+fi
 
-echo "Iniciando backend Python..."
-cd backend-python
-source venv/bin/activate
-pip install -r requirements.txt
+PROFILE_ARGS=()
+if [[ "${1:-}" == "--tools" ]]; then
+  PROFILE_ARGS=(--profile tools)
+fi
 
-uvicorn app.main:app --reload --port 8000 
+echo "Iniciando ambiente Docker..."
+docker compose "${PROFILE_ARGS[@]}" up -d --build
 
-echo "Ambiente inicializado!"
-echo "==================================="
-echo "Adminer (PostgreSQL): http://localhost:8080"
-echo "Mongo Express: http://localhost:8081"
-echo "Frontend Vue: http://localhost:3000"
-echo "Backend Java: http://localhost:8181"  
-echo "Backend Python: http://localhost:8000"
-echo "Documentação Python API: http://localhost:8000/docs"
+echo
+echo "Ambiente inicializado."
+echo "Backend Java: http://localhost:8181/hello"
+echo "Backend Python: http://localhost:8000/health"
+echo "Documentacao Python: http://localhost:8000/docs"
+
+if [[ "${#PROFILE_ARGS[@]}" -gt 0 ]]; then
+  echo "pgAdmin: http://localhost:8080"
+  echo "Mongo Express: http://localhost:8081"
+else
+  echo "Ferramentas opcionais desativadas. Use ./start.sh --tools para subir pgAdmin e Mongo Express."
+fi
