@@ -50,7 +50,7 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-devtools</artifactId>
-            <version>3.0.0</version>
+            <version>${spring-boot.version}</version>
             <scope>runtime</scope>
         </dependency>
     </dependencies>
