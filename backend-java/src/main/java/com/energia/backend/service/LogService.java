@@ -11,8 +11,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
-import com.energia.backend.model.LogLevel;
-import com.energia.backend.model.Logger;
+import com.energia.backend.dto.LogRequest;
+import com.energia.backend.model.SystemLog;
 import com.energia.backend.repository.LogRepository;
 
 /**
@@ -47,10 +47,10 @@ public class LogService {
     /**
      * Salva um log no banco de dados.
      *
-     * @param log objeto Logger a ser persistido
+     * @param log objeto SystemLog a ser persistido
      * @return log salvo com ID gerado
      */
-    public Logger saveLog(Logger log){
+    public SystemLog saveLog(SystemLog log){
         try {
             return logRepository.save(log);
         } catch (Exception e) {
@@ -64,7 +64,7 @@ public class LogService {
      * @param logs lista de logs a serem persistidos
      * @return lista de logs salvos
      */
-    public List<Logger> saveLogs(List<Logger> logs){
+    public List<SystemLog> saveLogs(List<SystemLog> logs){
         try {
             return logRepository.saveAll(logs);
         } catch (Exception e) {
@@ -78,7 +78,7 @@ public class LogService {
      * @param pageable Pageable opcional
      * @return página de logs
      */
-    public Page<Logger> getAllLogs(Pageable pageable) {
+    public Page<SystemLog> getAllLogs(Pageable pageable) {
         try {
             return logRepository.findAll(defaultPageable(pageable));
         } catch (Exception e) {
@@ -92,7 +92,7 @@ public class LogService {
      * @param id ID do log
      * @return Optional contendo o log encontrado ou vazio
      */
-    public Optional<Logger> getLogById(Long id){
+    public Optional<SystemLog> getLogById(Long id){
         try {
             return logRepository.findById(id);
         } catch (Exception e) {
@@ -108,64 +108,37 @@ public class LogService {
      */
     public void deleteLog(Long id){
         try {
-            Logger log = logRepository.findById(id)
+            logRepository.findById(id)
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Log não encontrado"));
 
-            if (Boolean.TRUE.equals(log.getIsAuditavel())) {
-                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Logs auditáveis não podem ser deletados");
-            }
-
             logRepository.deleteById(id);
+
         } catch (ResponseStatusException e) {
-            throw e; // já trata NOT_FOUND e FORBIDDEN
+            throw e;
         } catch (Exception e) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Erro ao deletar log", e);
         }
     }
 
     /**
-     * Retorna logs marcados como auditáveis com paginação.
+     * Registra um log estruturado no sistema a partir de um objeto padronizado.
      *
-     * @param pageable Pageable opcional
-     * @return página de logs auditáveis
-     */
-    public Page<Logger> getAuditaveis(Pageable pageable){
-        try {
-            return logRepository.findByIsAuditavelTrue(defaultPageable(pageable));
-        } catch (Exception e) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Erro ao buscar logs auditáveis", e);
-        }
-    }
-
-    /**
-     * Retorna logs que NÃO são auditáveis com paginação.
+     * O uso de LogRequest garante consistência na estrutura dos eventos,
+     * evitando variações e erros de uso entre diferentes partes do sistema.
      *
-     * @param pageable Pageable opcional
-     * @return página de logs não auditáveis
+     * @param request objeto contendo todos os dados do log
      */
-    public Page<Logger> getNaoAuditaveis(Pageable pageable){
+    public void log(LogRequest request) {
         try {
-            return logRepository.findByIsAuditavelFalse(defaultPageable(pageable));
-        } catch (Exception e) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Erro ao buscar logs não auditáveis", e);
-        }
-    }
-
-    /**
-     * Registra um log programaticamente.
-     *
-     * @param actor ator que realizou a ação
-     * @param auditavel se o log deve ser auditável
-     * @param level nível do log
-     * @param conteudo conteúdo do log
-     */
-    public void log(String actor, Boolean auditavel, LogLevel level, String conteudo){
-        try {
-            Logger log = new Logger();
-            log.setActorRef(actor);
-            log.setIsAuditavel(auditavel);
-            log.setLevel(level);
-            log.setConteudo(conteudo);
+            SystemLog log = new SystemLog();
+            log.setActorRef(request.getActor());
+            log.setSourceType(request.getSourceType());
+            log.setEvent(request.getEvent());
+            log.setResult(request.getResult());
+            log.setDescription(request.getDescription());
+            log.setMetadata(request.getMetadata());
+            log.setTargetRef(request.getTargetRef());
+            log.setCreatedByModule(request.getModule());
 
             logRepository.save(log);
         } catch (Exception e) {

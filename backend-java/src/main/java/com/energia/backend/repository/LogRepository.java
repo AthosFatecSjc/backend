@@ -1,15 +1,10 @@
 package com.energia.backend.repository;
 
-import com.energia.backend.model.Logger;
-
-
+import com.energia.backend.model.SystemLog;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 
-public interface LogRepository extends JpaRepository<Logger, Long> {
+public interface LogRepository extends JpaRepository<SystemLog, Long> {
     
-    Page<Logger> findByIsAuditavelTrue(Pageable pageable);
-    Page<Logger> findByIsAuditavelFalse(Pageable pageable);
+
 }
