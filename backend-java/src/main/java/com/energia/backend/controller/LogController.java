@@ -3,10 +3,16 @@ package com.energia.backend.controller;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.energia.backend.model.Logger;
 import com.energia.backend.service.LogService;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 /**
  * Controller responsável por gerenciar operações relacionadas aos logs do sistema.
@@ -52,9 +58,12 @@ public class LogController {
      * @return lista de logs
      */
     @GetMapping
-    public List<Logger> getAllLogs(){
-        return service.getAllLogs();
+    public Page<Logger> getLogs(@RequestParam(defaultValue = "0") int page,
+                                @RequestParam(defaultValue = "10") int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        return service.getAllLogs(pageable);
     }
+
 
     /**
      * Busca um log pelo seu ID.
@@ -66,7 +75,7 @@ public class LogController {
     @GetMapping("/{id}")
     public Logger getLogById(@PathVariable Long id){
         return service.getLogById(id)
-                .orElseThrow(() -> new RuntimeException("Log não encontrado"));
+                            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Log não encontrado"));
     }
 
     /**
@@ -85,8 +94,10 @@ public class LogController {
      * @return lista de logs auditáveis
      */
     @GetMapping("/auditaveis")
-    public List<Logger> getAuditaveis(){
-        return service.getAuditaveis();
+    public Page<Logger> getAuditaveis(@RequestParam(defaultValue = "0") int page,
+                                      @RequestParam(defaultValue = "10") int size){
+        Pageable pageable = PageRequest.of(page, size);
+        return service.getAuditaveis(pageable);
     }
 
     /**
@@ -95,7 +106,9 @@ public class LogController {
      * @return lista de logs não auditáveis
      */
     @GetMapping("/nao-auditaveis")
-    public List<Logger> getNaoAuditaveis(){
-        return service.getNaoAuditaveis();
+    public Page<Logger> getNaoAuditaveis(@RequestParam(defaultValue = "0") int page,
+                                      @RequestParam(defaultValue = "10") int size){
+        Pageable pageable = PageRequest.of(page, size);
+        return service.getNaoAuditaveis(pageable);
     }
 }

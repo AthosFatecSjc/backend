@@ -4,6 +4,9 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import com.energia.backend.model.LogLevel;
@@ -16,6 +19,13 @@ public class LogService {
     @Autowired
     private LogRepository logRepository;
 
+    private static final int DEFAULT_PAGE = 0;
+    private static final int DEFAULT_SIZE = 10;
+
+    private Pageable defaultPageable(Pageable pageable) {
+        return pageable != null ? pageable : PageRequest.of(DEFAULT_PAGE, DEFAULT_SIZE);
+    }
+
     public Logger saveLog(Logger log){
         return logRepository.save(log);
     }
@@ -24,8 +34,8 @@ public class LogService {
         return logRepository.saveAll(logs);
     }
 
-    public List<Logger> getAllLogs(){
-        return logRepository.findAll();
+    public Page<Logger> getAllLogs(Pageable pageable) {
+        return logRepository.findAll(defaultPageable(pageable));
     }
 
     public Optional<Logger> getLogById(Long id){
@@ -36,12 +46,12 @@ public class LogService {
         logRepository.deleteById(id);
     }
 
-    public List<Logger> getAuditaveis(){
-    return logRepository.findByIsAuditavelTrue();
+    public Page<Logger> getAuditaveis(Pageable pageable){
+        return logRepository.findByIsAuditavelTrue(defaultPageable(pageable));
     }
 
-    public List<Logger> getNaoAuditaveis(){
-        return logRepository.findByIsAuditavelFalse();
+    public Page<Logger> getNaoAuditaveis(Pageable pageable){
+        return logRepository.findByIsAuditavelFalse(defaultPageable(pageable));
     }
 
     public void log(String actor, Boolean auditavel, LogLevel level, String conteudo){
