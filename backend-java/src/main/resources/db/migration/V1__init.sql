@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS energia.indicadores (
 
 -- Table: Status
 CREATE TABLE status (
-    id serial  NOT NULL,
+    id UUID  NOT NULL DEFAULT gen_random_uuid(),
     name varchar(50)  NOT NULL,
     CONSTRAINT uq_status_name UNIQUE (name) NOT DEFERRABLE  INITIALLY IMMEDIATE,
     CONSTRAINT pk_status_id PRIMARY KEY (id)
@@ -30,7 +30,7 @@ CREATE TABLE status (
 
 -- Table: Role
 CREATE TABLE role (
-    id serial  NOT NULL,
+    id UUID  NOT NULL DEFAULT gen_random_uuid(),
     name varchar(50)  NOT NULL,
     CONSTRAINT uq_role_name UNIQUE (name) NOT DEFERRABLE  INITIALLY IMMEDIATE,
     CONSTRAINT role_pk PRIMARY KEY (id)
@@ -38,15 +38,15 @@ CREATE TABLE role (
 
 -- Table: TermType
 CREATE TABLE term_type (
-    id serial  NOT NULL,
+    id UUID  NOT NULL DEFAULT gen_random_uuid(),
     name varchar(50)  NOT NULL,
     CONSTRAINT term_type_pk PRIMARY KEY (id)
 );
 
 -- Table: Terms
 CREATE TABLE terms (
-    id serial  NOT NULL,
-    term_type_id int  NOT NULL,
+    id UUID  NOT NULL DEFAULT gen_random_uuid(),
+    term_type_id UUID  NOT NULL,
     version int  NOT NULL,
     created_at timestamp  NOT NULL,
     effectivity_start_at timestamp  NOT NULL,
@@ -58,7 +58,7 @@ CREATE TABLE terms (
 
 -- Table: User
 CREATE TABLE app_user (
-    id serial  NOT NULL,
+    id UUID  NOT NULL DEFAULT gen_random_uuid(),
     name varchar(100)  NOT NULL,
     email varchar(50)  NOT NULL,
     password varchar(255) NOT NULL,
@@ -69,17 +69,17 @@ CREATE TABLE app_user (
 
 -- Table: UserRole
 CREATE TABLE user_role (
-    user_id INT NOT NULL,
-    role_id INT NOT NULL,
+    user_id UUID NULL,
+    role_id UUID NULL,
     PRIMARY KEY (user_id, role_id)
 );
 
 -- Table: UserStatus
 CREATE TABLE user_status (
-    id serial  NOT NULL,
-    status_id int  NOT NULL,
-    user_id int  NOT NULL,
-    assigned_by_user_id int  NULL,
+    id UUID  NOT NULL DEFAULT gen_random_uuid(),
+    status_id UUID  NOT NULL,
+    user_id UUID  NOT NULL,
+    assigned_by_user_id UUID  NULL,
     assigned_at timestamp  NOT NULL,
     rationale_for_rejection text  NULL,
     CONSTRAINT user_status_pk PRIMARY KEY (id)
@@ -87,9 +87,9 @@ CREATE TABLE user_status (
 
 -- Table: UserTerms
 CREATE TABLE user_terms (
-    id serial  NOT NULL,
-    user_id int  NOT NULL,
-    terms_id int  NOT NULL,
+    id UUID  NOT NULL DEFAULT gen_random_uuid(),
+    user_id UUID  NOT NULL,
+    terms_id UUID  NOT NULL,
     accepted_at timestamp  NOT NULL,
     accepted_from_ip varchar(45)  NOT NULL,
     revoked_at timestamp  NULL,

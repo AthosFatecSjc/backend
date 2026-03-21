@@ -8,6 +8,8 @@ import lombok.*;
 
 import java.time.LocalDateTime;
 
+import java.util.UUID;
+
 @Entity
 @Table(name = "user_terms")
 @Getter @Setter
@@ -16,8 +18,8 @@ import java.time.LocalDateTime;
 public class UserTermsEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
 
     // MANY → ONE (User)
     @ManyToOne(optional = false, fetch = FetchType.LAZY)

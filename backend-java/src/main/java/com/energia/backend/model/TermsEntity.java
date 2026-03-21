@@ -6,7 +6,9 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
+
 import java.util.List;
+import java.util.UUID;
 
 @Entity
 @Table(
@@ -21,8 +23,8 @@ import java.util.List;
 public class TermsEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
 
     // MANY TERMS → ONE TYPE
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
