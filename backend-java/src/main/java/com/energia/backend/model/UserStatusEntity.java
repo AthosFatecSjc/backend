@@ -36,4 +36,7 @@ public class UserStatusEntity {
 
     @Column(name = "assigned_at", nullable = false)
     private LocalDateTime assignedAt;
+
+    @Column(name = "rationale_for_rejection", nullable = true,  columnDefinition = "TEXT")
+    private String rationaleForRejection;
 }

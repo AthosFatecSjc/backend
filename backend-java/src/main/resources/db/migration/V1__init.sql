@@ -81,6 +81,7 @@ CREATE TABLE user_status (
     user_id int  NOT NULL,
     assigned_by_user_id int  NULL,
     assigned_at timestamp  NOT NULL,
+    rationale_for_rejection text  NULL,
     CONSTRAINT user_status_pk PRIMARY KEY (id)
 );
 
