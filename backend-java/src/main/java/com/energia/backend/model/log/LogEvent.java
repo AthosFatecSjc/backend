@@ -1,4 +1,4 @@
-package com.energia.backend.model;
+package com.energia.backend.model.log;
 
 import lombok.ToString;
 
