@@ -1,28 +1,55 @@
 CREATE SCHEMA IF NOT EXISTS energia;
 
-CREATE TABLE IF NOT EXISTS energia.concessionarias (
-    id SERIAL PRIMARY KEY,
-    nome VARCHAR(200) NOT NULL,
-    codigo_aneel VARCHAR(50) UNIQUE NOT NULL,
-    regiao VARCHAR(50),
-    data_cadastro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+-- Create users
+DO $$
+BEGIN
+   IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'energia_app') THEN
+      CREATE USER energia_app WITH PASSWORD 'app_password';
+   END IF;
+END
+$$;
 
-CREATE TABLE IF NOT EXISTS energia.indicadores (
-    id SERIAL PRIMARY KEY,
-    concessionaria_id INTEGER REFERENCES energia.concessionarias(id),
-    ano INTEGER NOT NULL,
-    mes INTEGER NOT NULL,
-    dec_anual DECIMAL(10,2), 
-    fec_anual DECIMAL(10,2), 
-    data_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(concessionaria_id, ano, mes)
-);
+DO $$
+BEGIN
+   IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'flyway_user') THEN
+      CREATE USER flyway_user WITH PASSWORD 'flyway_password';
+   END IF;
+END
+$$;
 
-CREATE USER energia_app WITH PASSWORD 'app_password';
-GRANT CONNECT ON DATABASE energia_db TO energia_app;
+-- [ENERGIA_APP] Schema access
 GRANT USAGE ON SCHEMA energia TO energia_app;
+
+-- [ENERGIA_APP] CRUD
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA energia TO energia_app;
+
+-- [ENERGIA_APP] Sequences
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA energia TO energia_app;
+
+-- [ENERGIA_APP] Future tables
+ALTER DEFAULT PRIVILEGES IN SCHEMA energia
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO energia_app;
+
+ALTER DEFAULT PRIVILEGES IN SCHEMA energia
+GRANT USAGE, SELECT ON SEQUENCES TO energia_app;
+
+-- [FLYWAY_USER] Schema access
+GRANT USAGE ON SCHEMA energia TO flyway_user;
+GRANT CREATE ON SCHEMA energia TO flyway_user;
+
+-- [FLYWAY_USER] Existing objects
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA energia TO flyway_user;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA energia TO flyway_user;
+
+-- [FLYWAY_USER] Future objects
+ALTER DEFAULT PRIVILEGES IN SCHEMA energia
+GRANT ALL ON TABLES TO flyway_user;
+
+ALTER DEFAULT PRIVILEGES IN SCHEMA energia
+GRANT ALL ON SEQUENCES TO flyway_user;
+
+-- [FLYWAY_USER] Ownership
+ALTER SCHEMA energia OWNER TO flyway_user;
 
 
 -- Logs
