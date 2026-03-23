@@ -5,7 +5,9 @@ import com.energia.backend.exception.EmailJaCadastradoException;
 import com.energia.backend.model.StatusUsuario;
 import com.energia.backend.model.Usuario;
 import com.energia.backend.repository.UsuarioCadastroRepository;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
@@ -28,6 +30,7 @@ public class UsuarioCadastroService {
         this.repository = repository;
     }
 
+    @Transactional
     public Usuario cadastrar(UsuarioCadastroRequest request) {
         validarRequest(request);
 
@@ -44,7 +47,11 @@ public class UsuarioCadastroService {
         usuario.setStatus(StatusUsuario.PENDENTE);
         usuario.setDataCadastro(LocalDateTime.now());
 
-        return repository.save(usuario);
+        try {
+            return repository.save(usuario);
+        } catch (DataIntegrityViolationException ex) {
+            throw new EmailJaCadastradoException("E-mail ja cadastrado.");
+        }
     }
 
     private void validarRequest(UsuarioCadastroRequest request) {
