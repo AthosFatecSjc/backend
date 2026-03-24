@@ -46,9 +46,7 @@ public class AppUserController {
 
     @GetMapping("/{id}")
     public ResponseEntity<AppUserResponseDTO> findById(@PathVariable UUID id) {
-
         AppUser user = service.findById(id);
-
         return ResponseEntity.ok(
                 AppUserResponseDTO.builder()
                         .id(user.getId())
