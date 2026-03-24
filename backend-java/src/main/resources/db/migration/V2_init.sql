@@ -3,7 +3,7 @@ CREATE TABLE energia.system_logs (
     id SERIAL PRIMARY KEY,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     actor_ref VARCHAR(100),
-    source_type VARCHAR(20) NOT NULL,
+    source_type VARCHAR(30) NOT NULL,
     event VARCHAR(50) NOT NULL,
     result VARCHAR(10) NOT NULL,
     log_category VARCHAR(50) NOT NULL,
