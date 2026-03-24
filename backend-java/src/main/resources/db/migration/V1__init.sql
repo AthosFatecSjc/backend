@@ -14,8 +14,8 @@ CREATE TABLE IF NOT EXISTS energia.indicadores (
     concessionaria_id INTEGER REFERENCES energia.concessionarias(id),
     ano INTEGER NOT NULL,
     mes INTEGER NOT NULL,
-    dec_anual DECIMAL(10,2), 
-    fec_anual DECIMAL(10,2), 
+    dec_anual DECIMAL(10,2),
+    fec_anual DECIMAL(10,2),
     data_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(concessionaria_id, ano, mes)
 );
@@ -100,64 +100,64 @@ CREATE TABLE user_terms (
 -- Reference: app_user (table: user_role)
 ALTER TABLE user_role ADD CONSTRAINT app_user_user_role
     FOREIGN KEY (user_id)
-    REFERENCES app_user (id)  
-    NOT DEFERRABLE 
+    REFERENCES app_user (id)
+    NOT DEFERRABLE
     INITIALLY IMMEDIATE
 ;
 
 -- Reference: terms (table: user_terms)
 ALTER TABLE user_terms ADD CONSTRAINT terms_user_terms
     FOREIGN KEY (terms_id)
-    REFERENCES terms (id)  
-    NOT DEFERRABLE 
+    REFERENCES terms (id)
+    NOT DEFERRABLE
     INITIALLY IMMEDIATE
 ;
 
 -- Reference: app_user (table: user_terms)
 ALTER TABLE user_terms ADD CONSTRAINT app_user_user_terms
     FOREIGN KEY (user_id)
-    REFERENCES app_user (id)  
-    NOT DEFERRABLE 
+    REFERENCES app_user (id)
+    NOT DEFERRABLE
     INITIALLY IMMEDIATE
 ;
 
 -- Reference: status (table: user_status)
 ALTER TABLE user_status ADD CONSTRAINT status_user_status
     FOREIGN KEY (status_id)
-    REFERENCES status (id)  
-    NOT DEFERRABLE 
+    REFERENCES status (id)
+    NOT DEFERRABLE
     INITIALLY IMMEDIATE
 ;
 
 -- Reference: term_type (table: terms)
 ALTER TABLE terms ADD CONSTRAINT term_type_terms
     FOREIGN KEY (term_type_id)
-    REFERENCES term_type (id)  
-    NOT DEFERRABLE 
+    REFERENCES term_type (id)
+    NOT DEFERRABLE
     INITIALLY IMMEDIATE
 ;
 
 -- Reference: role (table: user_role)
 ALTER TABLE user_role ADD CONSTRAINT role_user_role
     FOREIGN KEY (role_id)
-    REFERENCES role (id)  
-    NOT DEFERRABLE 
+    REFERENCES role (id)
+    NOT DEFERRABLE
     INITIALLY IMMEDIATE
 ;
 
 -- Reference: app_user (table: user_status)
 ALTER TABLE user_status ADD CONSTRAINT app_user_user_status_assigned_by_user_id
     FOREIGN KEY (assigned_by_user_id)
-    REFERENCES app_user (id)  
-    NOT DEFERRABLE 
+    REFERENCES app_user (id)
+    NOT DEFERRABLE
     INITIALLY IMMEDIATE
 ;
 
 -- Reference: app_user (table: user_status)
 ALTER TABLE user_status ADD CONSTRAINT app_user_user_status_user_id
     FOREIGN KEY (user_id)
-    REFERENCES app_user (id)  
-    NOT DEFERRABLE 
+    REFERENCES app_user (id)
+    NOT DEFERRABLE
     INITIALLY IMMEDIATE
 ;
 
@@ -181,46 +181,5 @@ CREATE INDEX idx_terms_type_version_desc ON terms(term_type_id, version DESC);
 
 -- Index for effectivity period in terms
 CREATE INDEX idx_terms_effectivity ON terms(effectivity_start_at, effectivity_end_at);
-
--- Logs
-CREATE TABLE energia.system_logs (
-    id SERIAL PRIMARY KEY,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    actor_ref VARCHAR(100),
-    source_type VARCHAR(20) NOT NULL,
-    event VARCHAR(50) NOT NULL,
-    result VARCHAR(10) NOT NULL,
-    log_category VARCHAR(50) NOT NULL,
-    description TEXT NOT NULL,
-    metadata TEXT,
-    target_ref VARCHAR(100),
-    created_by_module VARCHAR(100)
-);
-
-CREATE INDEX idx_logs_created_at 
-ON energia.system_logs (created_at);
-
-CREATE INDEX idx_logs_source_type 
-ON energia.system_logs (source_type);
-
-CREATE INDEX idx_logs_event 
-ON energia.system_logs (event);
-
-CREATE INDEX idx_logs_actor 
-ON energia.system_logs (actor_ref);
-
-CREATE INDEX idx_logs_result 
-ON energia.system_logs (result);
-
-CREATE INDEX idx_logs_event_created_at 
-ON energia.system_logs (event, created_at);
-
-CREATE INDEX idx_logs_failures 
-ON energia.system_logs (event)
-WHERE result = 'FAIL';
-
-ALTER TABLE energia.system_logs
-ADD CONSTRAINT chk_result
-CHECK (result IN ('SUCCESS', 'FAIL'));
 
 -- End of file.
