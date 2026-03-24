@@ -1,6 +1,5 @@
 package com.energia.backend.controller;
 
-
 import com.energia.backend.dto.AppUserRequestDTO;
 import com.energia.backend.dto.AppUserResponseDTO;
 import com.energia.backend.model.AppUser;
@@ -31,16 +30,18 @@ public class AppUserController {
                 .phone(dto.getPhone())
                 .build();
 
-        AppUser saved = service.create(user);
+        if (dto.isHasAcceptedTerms()) {
+            AppUser saved = service.create(user);
+            return ResponseEntity.ok(
+                    AppUserResponseDTO.builder()
+                            .id(saved.getId())
+                            .name(saved.getName())
+                            .email(saved.getEmail())
+                            .phone(saved.getPhone())
+                            .build());
 
-        return ResponseEntity.ok(
-                AppUserResponseDTO.builder()
-                        .id(saved.getId())
-                        .name(saved.getName())
-                        .email(saved.getEmail())
-                        .phone(saved.getPhone())
-                        .build()
-        );
+        }
+        return ResponseEntity.badRequest().build();
     }
 
     @GetMapping("/{id}")
@@ -54,7 +55,6 @@ public class AppUserController {
                         .name(user.getName())
                         .email(user.getEmail())
                         .phone(user.getPhone())
-                        .build()
-        );
+                        .build());
     }
 }

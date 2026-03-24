@@ -20,4 +20,6 @@ public class AppUserRequestDTO {
     private String password;
 
     private String phone;
+
+    private boolean hasAcceptedTerms;
 }
