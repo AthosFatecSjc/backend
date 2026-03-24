@@ -1,0 +1,24 @@
+package com.energia.backend.model.log;
+
+import lombok.ToString;
+
+@ToString
+public enum LogEvent {
+
+    LOGIN_ATTEMPT,
+    LOGIN_SUCCESS,
+    LOGIN_FAIL,
+
+    USER_REGISTER,
+    USER_APPROVED,
+    USER_REJECTED,
+    USER_EDITED,
+    USER_ANONYMIZED,
+
+    ADMIN_ROLE_GRANTED,
+    ADMIN_ROLE_REMOVED,
+
+    ANEEL_EXTRACTION_START,
+    ANEEL_EXTRACTION_SUCCESS,
+    ANEEL_EXTRACTION_FAIL
+}
