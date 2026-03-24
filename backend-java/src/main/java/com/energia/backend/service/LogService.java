@@ -13,8 +13,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * Serviço centralizado para registro de eventos e auditoria do sistema.
- * Substitui operações CRUD genéricas por um contrato de registro padronizado.
+ * Servico centralizado para registro de eventos e auditoria do sistema.
+ * Substitui operacoes CRUD genericas por um contrato de registro padronizado.
  */
 @Slf4j
 @Service
@@ -24,29 +24,44 @@ public class LogService {
 
     private final LogRepository logRepository;
 
-    /**
-     * Registra um evento de sistema de forma padronizada.
-     *
-     * @param request DTO contendo os dados do evento
-     */
     @Transactional
     public void log(@Valid LogRequest request) {
-        try {
-            SystemLog systemLog = SystemLog.builder()
-                    .actorRef(request.getActor())
-                    .sourceType(request.getSourceType())
-                    .event(request.getEvent())
-                    .result(request.getResult())
-                    .logCategory(request.getLogCategory())
-                    .description(request.getDescription())
-                    .metadata(request.getMetadata())
-                    .targetRef(request.getTargetRef())
-                    .createdByModule(request.getModule())
-                    .build();
+        SystemLog systemLog = SystemLog.builder()
+                .actorRef(normalizeOptional(request.getActor()))
+                .sourceType(request.getSourceType())
+                .event(request.getEvent())
+                .result(request.getResult())
+                .logCategory(request.getLogCategory())
+                .description(normalizeRequired(request.getDescription()))
+                .metadata(normalizeOptional(request.getMetadata()))
+                .targetRef(normalizeOptional(request.getTargetRef()))
+                .createdByModule(normalizeRequired(request.getModule()))
+                .build();
 
+        try {
             logRepository.save(systemLog);
         } catch (Exception e) {
-            log.error("Falha crítica ao persistir log de sistema: {}", e.getMessage());
+            log.error(
+                    "Falha ao persistir log de sistema. event={}, sourceType={}, result={}, category={}, module={}",
+                    request.getEvent(),
+                    request.getSourceType(),
+                    request.getResult(),
+                    request.getLogCategory(),
+                    request.getModule(),
+                    e);
         }
+    }
+
+    private String normalizeRequired(String value) {
+        return value == null ? null : value.trim();
+    }
+
+    private String normalizeOptional(String value) {
+        if (value == null) {
+            return null;
+        }
+
+        String normalized = value.trim();
+        return normalized.isEmpty() ? null : normalized;
     }
 }

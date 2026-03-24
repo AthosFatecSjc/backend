@@ -15,28 +15,32 @@ import lombok.Data;
 @Builder
 public class LogRequest {
 
+    @Size(max = 100, message = "O identificador do ator deve ter no maximo 100 caracteres")
     private String actor;
 
-    @NotNull(message = "O tipo de origem (sourceType) é obrigatório")
+    @NotNull(message = "O tipo de origem (sourceType) e obrigatorio")
     private SourceType sourceType;
 
-    @NotNull(message = "O evento (event) é obrigatório")
+    @NotNull(message = "O evento (event) e obrigatorio")
     private LogEvent event;
 
-    @NotNull(message = "O resultado (result) é obrigatório")
+    @NotNull(message = "O resultado (result) e obrigatorio")
     private ResultType result;
 
-    @NotNull(message = "A categoria do log (logCategory) é obrigatório")
+    @NotNull(message = "A categoria do log (logCategory) e obrigatoria")
     private LogCategory logCategory;
 
-    @NotBlank(message = "A descrição não pode estar vazia")
-    @Size(max = 1000, message = "A descrição deve ter no máximo 1000 caracteres")
+    @NotBlank(message = "A descricao nao pode estar vazia")
+    @Size(max = 1000, message = "A descricao deve ter no maximo 1000 caracteres")
     private String description;
 
+    @Size(max = 4000, message = "Os metadados devem ter no maximo 4000 caracteres")
     private String metadata;
 
+    @Size(max = 100, message = "A referencia do alvo deve ter no maximo 100 caracteres")
     private String targetRef;
 
-    @NotBlank(message = "O módulo de origem deve ser identificado")
+    @NotBlank(message = "O modulo de origem deve ser identificado")
+    @Size(max = 100, message = "O modulo de origem deve ter no maximo 100 caracteres")
     private String module;
 }
