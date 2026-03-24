@@ -14,8 +14,8 @@ CREATE TABLE IF NOT EXISTS energia.indicadores (
     concessionaria_id INTEGER REFERENCES energia.concessionarias(id),
     ano INTEGER NOT NULL,
     mes INTEGER NOT NULL,
-    dec_anual DECIMAL(10,2),
-    fec_anual DECIMAL(10,2),
+    dec_anual DECIMAL(10,2), 
+    fec_anual DECIMAL(10,2), 
     data_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(concessionaria_id, ano, mes)
 );
@@ -100,64 +100,64 @@ CREATE TABLE user_terms (
 -- Reference: app_user (table: user_role)
 ALTER TABLE user_role ADD CONSTRAINT app_user_user_role
     FOREIGN KEY (user_id)
-    REFERENCES app_user (id)
-    NOT DEFERRABLE
+    REFERENCES app_user (id)  
+    NOT DEFERRABLE 
     INITIALLY IMMEDIATE
 ;
 
 -- Reference: terms (table: user_terms)
 ALTER TABLE user_terms ADD CONSTRAINT terms_user_terms
     FOREIGN KEY (terms_id)
-    REFERENCES terms (id)
-    NOT DEFERRABLE
+    REFERENCES terms (id)  
+    NOT DEFERRABLE 
     INITIALLY IMMEDIATE
 ;
 
 -- Reference: app_user (table: user_terms)
 ALTER TABLE user_terms ADD CONSTRAINT app_user_user_terms
     FOREIGN KEY (user_id)
-    REFERENCES app_user (id)
-    NOT DEFERRABLE
+    REFERENCES app_user (id)  
+    NOT DEFERRABLE 
     INITIALLY IMMEDIATE
 ;
 
 -- Reference: status (table: user_status)
 ALTER TABLE user_status ADD CONSTRAINT status_user_status
     FOREIGN KEY (status_id)
-    REFERENCES status (id)
-    NOT DEFERRABLE
+    REFERENCES status (id)  
+    NOT DEFERRABLE 
     INITIALLY IMMEDIATE
 ;
 
 -- Reference: term_type (table: terms)
 ALTER TABLE terms ADD CONSTRAINT term_type_terms
     FOREIGN KEY (term_type_id)
-    REFERENCES term_type (id)
-    NOT DEFERRABLE
+    REFERENCES term_type (id)  
+    NOT DEFERRABLE 
     INITIALLY IMMEDIATE
 ;
 
 -- Reference: role (table: user_role)
 ALTER TABLE user_role ADD CONSTRAINT role_user_role
     FOREIGN KEY (role_id)
-    REFERENCES role (id)
-    NOT DEFERRABLE
+    REFERENCES role (id)  
+    NOT DEFERRABLE 
     INITIALLY IMMEDIATE
 ;
 
 -- Reference: app_user (table: user_status)
 ALTER TABLE user_status ADD CONSTRAINT app_user_user_status_assigned_by_user_id
     FOREIGN KEY (assigned_by_user_id)
-    REFERENCES app_user (id)
-    NOT DEFERRABLE
+    REFERENCES app_user (id)  
+    NOT DEFERRABLE 
     INITIALLY IMMEDIATE
 ;
 
 -- Reference: app_user (table: user_status)
 ALTER TABLE user_status ADD CONSTRAINT app_user_user_status_user_id
     FOREIGN KEY (user_id)
-    REFERENCES app_user (id)
-    NOT DEFERRABLE
+    REFERENCES app_user (id)  
+    NOT DEFERRABLE 
     INITIALLY IMMEDIATE
 ;
 
