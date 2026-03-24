@@ -1,39 +1,39 @@
 package com.energia.backend.model;
 
 import jakarta.persistence.*;
+import lombok.*;
+
+import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
-@Table(name = "user_status", schema = "energia")
+@Table(name = "user_status")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class UserStatus {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue
+    private UUID id;
 
-    @Column(name = "description", nullable = false, unique = true)
-    private String description;
+    @ManyToOne
+    @JoinColumn(name = "status_id", nullable = false)
+    private Status status;
 
-    public UserStatus() {
-    }
+    @ManyToOne
+    @JoinColumn(name = "user_id", nullable = false)
+    private AppUser user;
 
-    public UserStatus(Long id, String description) {
-        this.id = id;
-        this.description = description;
-    }
+    @ManyToOne
+    @JoinColumn(name = "assigned_by_user_id")
+    private AppUser assignedBy;
 
-    public Long getId() {
-        return id;
-    }
+    @Column(name = "assigned_at")
+    private LocalDateTime assignedAt;
 
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public void setDescription(String description) {
-        this.description = description;
-    }
+    @Column(name = "rationale_for_rejection", columnDefinition = "TEXT")
+    private String rationaleForRejection;
 }
