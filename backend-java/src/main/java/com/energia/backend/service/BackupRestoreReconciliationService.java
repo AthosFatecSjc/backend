@@ -37,13 +37,29 @@ public class BackupRestoreReconciliationService {
                 registryRepository.findAllByActiveTrueOrderByAnonymizedAtAsc();
 
         int reappliedCount = 0;
+        int failedCount = 0;
         for (PrivacyAnonymizationRegistryEntity registry : registries) {
             if (registry.getRestoreAction() != RestoreAction.REAPPLY) {
                 continue;
             }
 
-            if (anonymizationService.reapplyAnonymizationIfNeeded(registry)) {
-                reappliedCount++;
+            try {
+                if (anonymizationService.reapplyAnonymizationIfNeeded(registry)) {
+                    reappliedCount++;
+                }
+            } catch (RuntimeException ex) {
+                failedCount++;
+                logService.log(
+                        "system",
+                        registry.getEntityId().toString(),
+                        SourceType.JOB,
+                        LogEvent.BACKUP_RESTORE_RECONCILIATION,
+                        ResultType.FAIL,
+                        LogCategory.TECHNICAL,
+                        "Falha ao reaplicar anonymization para registro individual.",
+                        "error=" + sanitizeMetadata(ex.getMessage()),
+                        MODULE_NAME
+                );
             }
         }
 
@@ -52,13 +68,19 @@ public class BackupRestoreReconciliationService {
                 null,
                 SourceType.JOB,
                 LogEvent.BACKUP_RESTORE_RECONCILIATION,
-                ResultType.SUCCESS,
+                failedCount == 0 ? ResultType.SUCCESS : ResultType.FAIL,
                 LogCategory.TECHNICAL,
                 "Reconsolidacao de anonimizations apos restore executada.",
-                "reappliedCount=" + reappliedCount + ";checkedCount=" + registries.size(),
+                "reappliedCount=" + reappliedCount
+                        + ";failedCount=" + failedCount
+                        + ";checkedCount=" + registries.size(),
                 MODULE_NAME
         );
 
         return reappliedCount;
+    }
+
+    private String sanitizeMetadata(String value) {
+        return value == null ? "unknown" : value.replace(";", ",");
     }
 }

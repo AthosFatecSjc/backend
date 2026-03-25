@@ -14,6 +14,7 @@ import com.energia.backend.repository.PrivacyAnonymizationRegistryRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -85,7 +86,7 @@ public class UserPrivacyAnonymizationService {
         );
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public boolean reapplyAnonymizationIfNeeded(PrivacyAnonymizationRegistryEntity registry) {
         Optional<AppUserEntity> maybeUser = appUserRepository.findById(registry.getEntityId());
         LocalDateTime now = LocalDateTime.now();
