@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Service
 public class MinhaContaService {
@@ -24,16 +25,16 @@ public class MinhaContaService {
     }
 
     @Transactional(readOnly = true)
-    public MinhaContaResponse consultar(String emailAutenticado) {
-        AppUserEntity usuario = buscarUsuarioPorEmail(emailAutenticado);
+    public MinhaContaResponse consultar(UUID uidAutenticado) {
+        AppUserEntity usuario = buscarUsuarioPorUid(uidAutenticado);
         return toResponse(usuario);
     }
 
     @Transactional
-    public MinhaContaResponse atualizar(String emailAutenticado, MinhaContaUpdateRequest request) {
+    public MinhaContaResponse atualizar(UUID uidAutenticado, MinhaContaUpdateRequest request) {
         validarUpdateRequest(request);
 
-        AppUserEntity usuario = buscarUsuarioPorEmail(emailAutenticado);
+        AppUserEntity usuario = buscarUsuarioPorUid(uidAutenticado);
 
         if (request.getNomeCompleto() != null) {
             usuario.setName(normalizarNome(request.getNomeCompleto()));
@@ -47,13 +48,12 @@ public class MinhaContaService {
         return toResponse(atualizado);
     }
 
-    private AppUserEntity buscarUsuarioPorEmail(String emailAutenticado) {
-        String emailNormalizado = normalizarEmail(emailAutenticado);
-        if (emailNormalizado == null) {
-            throw new IllegalArgumentException("Usuario autenticado invalido.");
+    private AppUserEntity buscarUsuarioPorUid(UUID uidAutenticado) {
+        if (uidAutenticado == null) {
+            throw new IllegalArgumentException("UID do usuario autenticado invalido.");
         }
 
-        return appUserRepository.findByEmailIgnoreCase(emailNormalizado)
+        return appUserRepository.findById(uidAutenticado)
                 .orElseThrow(() -> new UsuarioNaoEncontradoException("Usuario autenticado nao encontrado."));
     }
 
@@ -106,13 +106,6 @@ public class MinhaContaService {
         if (request.getNomeCompleto() != null && normalizarNome(request.getNomeCompleto()) == null) {
             throw new IllegalArgumentException("Nome completo invalido.");
         }
-    }
-
-    private String normalizarEmail(String email) {
-        if (email == null || email.trim().isEmpty()) {
-            return null;
-        }
-        return email.trim().toLowerCase();
     }
 
     private String normalizarNome(String nome) {

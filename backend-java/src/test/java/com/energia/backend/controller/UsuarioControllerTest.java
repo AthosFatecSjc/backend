@@ -15,6 +15,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.security.Principal;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -54,6 +55,7 @@ class UsuarioControllerTest {
         UsuarioCadastroService cadastroService = mock(UsuarioCadastroService.class);
         MinhaContaService minhaContaService = mock(MinhaContaService.class);
         UsuarioController controller = new UsuarioController(cadastroService, minhaContaService);
+        UUID userId = UUID.randomUUID();
 
         LocalDateTime dataCadastro = LocalDateTime.now().minusDays(2);
         MinhaContaResponse conta = new MinhaContaResponse(
@@ -64,9 +66,9 @@ class UsuarioControllerTest {
                 dataCadastro
         );
 
-        when(minhaContaService.consultar("maria@teste.com")).thenReturn(conta);
+        when(minhaContaService.consultar(userId)).thenReturn(conta);
 
-        Principal principal = () -> "maria@teste.com";
+        Principal principal = () -> userId.toString();
         ResponseEntity<MinhaContaResponse> response = controller.consultarMinhaConta(principal);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
@@ -80,6 +82,7 @@ class UsuarioControllerTest {
         UsuarioCadastroService cadastroService = mock(UsuarioCadastroService.class);
         MinhaContaService minhaContaService = mock(MinhaContaService.class);
         UsuarioController controller = new UsuarioController(cadastroService, minhaContaService);
+        UUID userId = UUID.randomUUID();
 
         LocalDateTime dataCadastroOriginal = LocalDateTime.now().minusDays(10);
         MinhaContaResponse contaAtualizada = new MinhaContaResponse(
@@ -90,14 +93,14 @@ class UsuarioControllerTest {
                 dataCadastroOriginal
         );
 
-        when(minhaContaService.atualizar(any(String.class), any(MinhaContaUpdateRequest.class)))
+        when(minhaContaService.atualizar(any(UUID.class), any(MinhaContaUpdateRequest.class)))
                 .thenReturn(contaAtualizada);
 
         MinhaContaUpdateRequest request = new MinhaContaUpdateRequest();
         request.setNomeCompleto("Maria Atualizada");
         request.setTelefone("11911112222");
 
-        Principal principal = () -> "maria@teste.com";
+        Principal principal = () -> userId.toString();
         ResponseEntity<MinhaContaResponse> response = controller.atualizarMinhaConta(principal, request);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
@@ -120,5 +123,20 @@ class UsuarioControllerTest {
         );
 
         assertEquals(HttpStatus.UNAUTHORIZED, exception.getStatusCode());
+    }
+
+    @Test
+    void deveRetornarUnauthorizedQuandoPrincipalNaoPossuiUuidValido() {
+        UsuarioCadastroService cadastroService = mock(UsuarioCadastroService.class);
+        MinhaContaService minhaContaService = mock(MinhaContaService.class);
+        UsuarioController controller = new UsuarioController(cadastroService, minhaContaService);
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> controller.consultarMinhaConta(() -> "maria@teste.com")
+        );
+
+        assertEquals(HttpStatus.UNAUTHORIZED, exception.getStatusCode());
+        assertEquals("Identificador do usuario autenticado invalido.", exception.getReason());
     }
 }

@@ -31,8 +31,9 @@ class MinhaContaServiceTest {
         UserStatusJpaRepository userStatusRepository = mock(UserStatusJpaRepository.class);
         MinhaContaService service = new MinhaContaService(appUserRepository, userStatusRepository);
 
+        UUID userId = UUID.randomUUID();
         AppUserEntity user = AppUserEntity.builder()
-                .id(UUID.randomUUID())
+                .id(userId)
                 .name("Maria Silva")
                 .email("maria@teste.com")
                 .password("hash")
@@ -52,11 +53,11 @@ class MinhaContaServiceTest {
                 .status(StatusEntity.builder().name("PENDENTE").build())
                 .build();
 
-        when(appUserRepository.findByEmailIgnoreCase("maria@teste.com")).thenReturn(Optional.of(user));
+        when(appUserRepository.findById(userId)).thenReturn(Optional.of(user));
         when(userStatusRepository.findFirstByUserOrderByAssignedAtAsc(user)).thenReturn(Optional.of(statusInicial));
         when(userStatusRepository.findFirstByUserOrderByAssignedAtDesc(user)).thenReturn(Optional.of(statusAtual));
 
-        MinhaContaResponse response = service.consultar("maria@teste.com");
+        MinhaContaResponse response = service.consultar(userId);
 
         assertEquals("Maria Silva", response.getNomeCompleto());
         assertEquals("maria@teste.com", response.getEmail());
@@ -71,8 +72,9 @@ class MinhaContaServiceTest {
         UserStatusJpaRepository userStatusRepository = mock(UserStatusJpaRepository.class);
         MinhaContaService service = new MinhaContaService(appUserRepository, userStatusRepository);
 
+        UUID userId = UUID.randomUUID();
         AppUserEntity user = AppUserEntity.builder()
-                .id(UUID.randomUUID())
+                .id(userId)
                 .name("Nome Antigo")
                 .email("maria@teste.com")
                 .password("hash-original")
@@ -86,7 +88,7 @@ class MinhaContaServiceTest {
                 .status(StatusEntity.builder().name("PENDENTE").build())
                 .build();
 
-        when(appUserRepository.findByEmailIgnoreCase("maria@teste.com")).thenReturn(Optional.of(user));
+        when(appUserRepository.findById(userId)).thenReturn(Optional.of(user));
         when(appUserRepository.save(any(AppUserEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(userStatusRepository.findFirstByUserOrderByAssignedAtAsc(user)).thenReturn(Optional.of(status));
         when(userStatusRepository.findFirstByUserOrderByAssignedAtDesc(user)).thenReturn(Optional.of(status));
@@ -95,7 +97,7 @@ class MinhaContaServiceTest {
         request.setNomeCompleto("Nome Novo");
         request.setTelefone("11911112222");
 
-        MinhaContaResponse response = service.atualizar("maria@teste.com", request);
+        MinhaContaResponse response = service.atualizar(userId, request);
 
         assertEquals("Nome Novo", response.getNomeCompleto());
         assertEquals("11911112222", response.getTelefone());
@@ -111,8 +113,9 @@ class MinhaContaServiceTest {
         UserStatusJpaRepository userStatusRepository = mock(UserStatusJpaRepository.class);
         MinhaContaService service = new MinhaContaService(appUserRepository, userStatusRepository);
 
+        UUID userId = UUID.randomUUID();
         AppUserEntity user = AppUserEntity.builder()
-                .id(UUID.randomUUID())
+                .id(userId)
                 .name("Maria")
                 .email("maria@teste.com")
                 .password("hash")
@@ -125,7 +128,7 @@ class MinhaContaServiceTest {
                 .status(StatusEntity.builder().name("PENDENTE").build())
                 .build();
 
-        when(appUserRepository.findByEmailIgnoreCase("maria@teste.com")).thenReturn(Optional.of(user));
+        when(appUserRepository.findById(userId)).thenReturn(Optional.of(user));
         when(appUserRepository.save(any(AppUserEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(userStatusRepository.findFirstByUserOrderByAssignedAtAsc(user)).thenReturn(Optional.of(status));
         when(userStatusRepository.findFirstByUserOrderByAssignedAtDesc(user)).thenReturn(Optional.of(status));
@@ -133,7 +136,7 @@ class MinhaContaServiceTest {
         MinhaContaUpdateRequest request = new MinhaContaUpdateRequest();
         request.setTelefone("   ");
 
-        MinhaContaResponse response = service.atualizar("maria@teste.com", request);
+        MinhaContaResponse response = service.atualizar(userId, request);
 
         assertNull(response.getTelefone());
     }
@@ -146,7 +149,7 @@ class MinhaContaServiceTest {
 
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
-                () -> service.atualizar("maria@teste.com", new MinhaContaUpdateRequest())
+                () -> service.atualizar(UUID.randomUUID(), new MinhaContaUpdateRequest())
         );
 
         assertEquals("Informe ao menos nomeCompleto ou telefone para atualizar.", exception.getMessage());

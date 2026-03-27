@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.security.Principal;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/usuarios")
@@ -45,7 +46,7 @@ public class UsuarioController {
 
     @GetMapping("/minha-conta")
     public ResponseEntity<MinhaContaResponse> consultarMinhaConta(Principal principal) {
-        MinhaContaResponse response = minhaContaService.consultar(obterEmailDoUsuarioAutenticado(principal));
+        MinhaContaResponse response = minhaContaService.consultar(obterUidDoUsuarioAutenticado(principal));
         return ResponseEntity.ok(response);
     }
 
@@ -54,14 +55,19 @@ public class UsuarioController {
             Principal principal,
             @RequestBody MinhaContaUpdateRequest request
     ) {
-        MinhaContaResponse response = minhaContaService.atualizar(obterEmailDoUsuarioAutenticado(principal), request);
+        MinhaContaResponse response = minhaContaService.atualizar(obterUidDoUsuarioAutenticado(principal), request);
         return ResponseEntity.ok(response);
     }
 
-    private String obterEmailDoUsuarioAutenticado(Principal principal) {
+    private UUID obterUidDoUsuarioAutenticado(Principal principal) {
         if (principal == null || principal.getName() == null || principal.getName().trim().isEmpty()) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuario nao autenticado.");
         }
-        return principal.getName();
+
+        try {
+            return UUID.fromString(principal.getName().trim());
+        } catch (IllegalArgumentException ex) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Identificador do usuario autenticado invalido.");
+        }
     }
 }
