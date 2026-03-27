@@ -17,4 +17,5 @@ public class TermsResponseDTO {
     private LocalDateTime effectivityStartAt;
     private LocalDateTime effectivityEndAt;
     private String content;
+    private String description;
 }

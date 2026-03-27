@@ -32,6 +32,7 @@ public class TermsController {
                 .effectivityStartAt(dto.getEffectivityStartAt())
                 .effectivityEndAt(dto.getEffectivityEndAt())
                 .createdAt(LocalDateTime.now())
+                .description(dto.getDescription())
                 .build();
 
         Terms saved = service.create(terms);
@@ -60,6 +61,7 @@ public class TermsController {
                         .effectivityStartAt(t.getEffectivityStartAt())
                         .effectivityEndAt(t.getEffectivityEndAt())
                         .createdAt(t.getCreatedAt())
+                        .description(t.getDescription())
                         .build())
                 .collect(Collectors.toList());
 

@@ -62,11 +62,4 @@ public class UserTermsController {
         return ResponseEntity.ok(response);
     }
 
-    @DeleteMapping("/{userId}/{termsId}")
-    public ResponseEntity<Void> revoke(@PathVariable UUID userId,
-                                       @PathVariable UUID termsId) {
-
-        service.revokeTerms(userId, termsId);
-        return ResponseEntity.noContent().build();
-    }
 }

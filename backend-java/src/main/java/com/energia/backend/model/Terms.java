@@ -37,4 +37,7 @@ public class Terms {
 
     @Column(columnDefinition = "TEXT")
     private String content;
+
+    @Column(columnDefinition = "TEXT")
+    private String description;
 }
