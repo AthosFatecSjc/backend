@@ -11,9 +11,18 @@ import java.util.UUID;
 public class UserTermsResponseDTO {
 
     private UUID id;
+
     private UUID userId;
+
     private UUID termsId;
+
     private LocalDateTime acceptedAt;
+
     private String acceptedFrom;
+
+    private String acceptedFromIp; // 🌐 novo
+
+    private Boolean accepted; // 🔒 opcional, mas útil
+
     private LocalDateTime revokedAt;
 }

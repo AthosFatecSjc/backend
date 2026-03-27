@@ -27,12 +27,23 @@ public class UserTerms {
     @JoinColumn(name = "terms_id", nullable = false)
     private Terms terms;
 
+    // 🟢 quando aceitou
     @Column(name = "accepted_at")
     private LocalDateTime acceptedAt;
 
+    // 🌐 origem (WEB, APP, etc)
     @Column(name = "accepted_from", length = 45)
     private String acceptedFrom;
 
+    // 🌐 IP de aceite
+    @Column(name = "accepted_from_ip", length = 45)
+    private String acceptedFromIp;
+
+    // 🔒 status explícito (melhora muito a clareza)
+    @Column(name = "accepted")
+    private Boolean accepted;
+
+    // 🔄 revogação
     @Column(name = "revoked_at")
     private LocalDateTime revokedAt;
 }

@@ -27,7 +27,11 @@ public class UserTermsService {
         this.termsRepository = termsRepository;
     }
 
-    public UserTerms acceptTerms(UUID userId, UUID termsId, String acceptedFrom) {
+    // ✅ ACEITAR TERMOS
+    public UserTerms acceptTerms(UUID userId,
+                                 UUID termsId,
+                                 String acceptedFrom,
+                                 String ipAddress) {
 
         AppUser user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
@@ -35,7 +39,7 @@ public class UserTermsService {
         Terms terms = termsRepository.findById(termsId)
                 .orElseThrow(() -> new RuntimeException("Termo não encontrado"));
 
-        // 🔥 Regra: não pode aceitar o mesmo termo duas vezes sem revogar
+        // 🔒 regra: impede aceite duplicado ativo
         boolean alreadyAccepted = repository
                 .existsByUserIdAndTermsIdAndRevokedAtIsNull(userId, termsId);
 
@@ -46,26 +50,29 @@ public class UserTermsService {
         UserTerms userTerms = UserTerms.builder()
                 .user(user)
                 .terms(terms)
+                .accepted(true)
                 .acceptedAt(LocalDateTime.now())
                 .acceptedFrom(acceptedFrom)
+                .acceptedFromIp(ipAddress)
+                .revokedAt(null)
                 .build();
 
         return repository.save(userTerms);
     }
 
+    // 🔄 REVOGAR ACEITE
     public void revokeTerms(UUID userId, UUID termsId) {
 
-        List<UserTerms> termsList = repository.findByUserIdAndRevokedAtIsNull(userId);
-
-        termsList.stream()
-                .filter(t -> t.getTerms().getId().equals(termsId))
-                .findFirst()
-                .ifPresent(term -> {
+        repository.findByUserIdAndTermsIdAndRevokedAtIsNull(userId, termsId)
+                .ifPresentOrElse(term -> {
                     term.setRevokedAt(LocalDateTime.now());
                     repository.save(term);
+                }, () -> {
+                    throw new RuntimeException("Aceite de termo não encontrado para revogação");
                 });
     }
 
+    // 📄 LISTAR TERMOS DO USUÁRIO
     public List<UserTerms> getUserTerms(UUID userId) {
         return repository.findByUserId(userId);
     }
