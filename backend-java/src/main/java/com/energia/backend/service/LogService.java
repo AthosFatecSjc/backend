@@ -1,14 +1,16 @@
 package com.energia.backend.service;
 
+import com.energia.backend.dto.LogRequest;
+import com.energia.backend.model.log.LogCategory;
+import com.energia.backend.model.log.LogEvent;
+import com.energia.backend.model.log.ResultType;
+import com.energia.backend.model.log.SourceType;
+import com.energia.backend.model.log.SystemLog;
+import com.energia.backend.repository.LogRepository;
+import jakarta.validation.Valid;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
-
-import com.energia.backend.dto.LogRequest;
-import com.energia.backend.model.log.SystemLog;
-import com.energia.backend.repository.LogRepository;
-
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -50,6 +52,31 @@ public class LogService {
                     request.getModule(),
                     e);
         }
+    }
+
+    @Transactional
+    public void log(
+            String actorRef,
+            String targetRef,
+            SourceType sourceType,
+            LogEvent event,
+            ResultType result,
+            LogCategory category,
+            String description,
+            String metadata,
+            String createdByModule
+    ) {
+        log(LogRequest.builder()
+                .actor(actorRef)
+                .targetRef(targetRef)
+                .sourceType(sourceType)
+                .event(event)
+                .result(result)
+                .logCategory(category)
+                .description(description)
+                .metadata(metadata)
+                .module(createdByModule)
+                .build());
     }
 
     private String normalizeRequired(String value) {
