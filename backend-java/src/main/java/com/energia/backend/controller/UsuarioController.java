@@ -1,15 +1,8 @@
 package com.energia.backend.controller;
 
-import com.energia.backend.dto.AnonimizarUsuarioRequest;
-import com.energia.backend.dto.AnonimizarUsuarioResponse;
-import com.energia.backend.dto.MinhaContaResponse;
-import com.energia.backend.dto.MinhaContaUpdateRequest;
-import com.energia.backend.dto.UsuarioCadastroRequest;
-import com.energia.backend.dto.UsuarioCadastroResponse;
-import com.energia.backend.model.Usuario;
-import com.energia.backend.service.AnonimizacaoService;
-import com.energia.backend.service.MinhaContaService;
-import com.energia.backend.service.UsuarioCadastroService;
+import java.security.Principal;
+import java.util.UUID;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -21,8 +14,16 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.security.Principal;
-import java.util.UUID;
+import com.energia.backend.dto.AnonimizarUsuarioRequest;
+import com.energia.backend.dto.AnonimizarUsuarioResponse;
+import com.energia.backend.dto.MinhaContaResponse;
+import com.energia.backend.dto.MinhaContaUpdateRequest;
+import com.energia.backend.dto.UsuarioCadastroRequest;
+import com.energia.backend.dto.UsuarioCadastroResponse;
+import com.energia.backend.model.Usuario;
+import com.energia.backend.service.AnonimizacaoService;
+import com.energia.backend.service.MinhaContaService;
+import com.energia.backend.service.UsuarioCadastroService;
 
 @RestController
 @RequestMapping("/usuarios")

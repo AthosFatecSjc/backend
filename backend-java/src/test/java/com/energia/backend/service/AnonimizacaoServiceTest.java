@@ -1,5 +1,17 @@
 package com.energia.backend.service;
 
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import org.junit.jupiter.api.Test;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import com.energia.backend.dto.AnonimizarUsuarioRequest;
 import com.energia.backend.dto.AnonimizarUsuarioResponse;
 import com.energia.backend.exception.PermissaoNegadaException;
@@ -12,19 +24,6 @@ import com.energia.backend.repository.AppUserJpaRepository;
 import com.energia.backend.repository.LogRepository;
 import com.energia.backend.repository.StatusJpaRepository;
 import com.energia.backend.repository.UserStatusJpaRepository;
-import org.junit.jupiter.api.Test;
-
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 class AnonimizacaoServiceTest {
 
@@ -35,7 +34,7 @@ class AnonimizacaoServiceTest {
         StatusJpaRepository statusRepository = mock(StatusJpaRepository.class);
         UserStatusJpaRepository userStatusRepository = mock(UserStatusJpaRepository.class);
         LogRepository logRepository = mock(LogRepository.class);
-        
+
         AnonimizacaoService service = new AnonimizacaoService(
                 appUserRepository,
                 statusRepository,
@@ -49,7 +48,7 @@ class AnonimizacaoServiceTest {
                 .id(UUID.randomUUID())
                 .name("ADMIN")
                 .build();
-        
+
         AppUserEntity admin = AppUserEntity.builder()
                 .id(adminId)
                 .name("Admin User")
@@ -89,7 +88,7 @@ class AnonimizacaoServiceTest {
         // Verify
         assertEquals(usuarioId, response.usuarioId());
         assertEquals("Usuario anonimizado com sucesso.", response.mensagem());
-        
+
         // Verify que dados foram anonimizados
         verify(appUserRepository).save(any(AppUserEntity.class));
         verify(userStatusRepository).save(any());
@@ -102,7 +101,7 @@ class AnonimizacaoServiceTest {
         StatusJpaRepository statusRepository = mock(StatusJpaRepository.class);
         UserStatusJpaRepository userStatusRepository = mock(UserStatusJpaRepository.class);
         LogRepository logRepository = mock(LogRepository.class);
-        
+
         AnonimizacaoService service = new AnonimizacaoService(
                 appUserRepository,
                 statusRepository,
@@ -133,7 +132,7 @@ class AnonimizacaoServiceTest {
         StatusJpaRepository statusRepository = mock(StatusJpaRepository.class);
         UserStatusJpaRepository userStatusRepository = mock(UserStatusJpaRepository.class);
         LogRepository logRepository = mock(LogRepository.class);
-        
+
         AnonimizacaoService service = new AnonimizacaoService(
                 appUserRepository,
                 statusRepository,
@@ -175,7 +174,7 @@ class AnonimizacaoServiceTest {
         StatusJpaRepository statusRepository = mock(StatusJpaRepository.class);
         UserStatusJpaRepository userStatusRepository = mock(UserStatusJpaRepository.class);
         LogRepository logRepository = mock(LogRepository.class);
-        
+
         AnonimizacaoService service = new AnonimizacaoService(
                 appUserRepository,
                 statusRepository,

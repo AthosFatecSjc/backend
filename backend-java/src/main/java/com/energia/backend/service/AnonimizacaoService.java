@@ -1,5 +1,11 @@
 package com.energia.backend.service;
 
+import java.time.LocalDateTime;
+import java.util.UUID;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.energia.backend.dto.AnonimizarUsuarioRequest;
 import com.energia.backend.dto.AnonimizarUsuarioResponse;
 import com.energia.backend.exception.PermissaoNegadaException;
@@ -17,11 +23,6 @@ import com.energia.backend.repository.AppUserJpaRepository;
 import com.energia.backend.repository.LogRepository;
 import com.energia.backend.repository.StatusJpaRepository;
 import com.energia.backend.repository.UserStatusJpaRepository;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.time.LocalDateTime;
-import java.util.UUID;
 
 @Service
 public class AnonimizacaoService {
