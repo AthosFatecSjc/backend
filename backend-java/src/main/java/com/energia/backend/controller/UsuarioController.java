@@ -4,6 +4,7 @@ import com.energia.backend.dto.MinhaContaResponse;
 import com.energia.backend.dto.MinhaContaUpdateRequest;
 import com.energia.backend.dto.UsuarioCadastroRequest;
 import com.energia.backend.dto.UsuarioCadastroResponse;
+import com.energia.backend.dto.AprovacaoRejeicaoUsuarioRequest;
 import com.energia.backend.model.Usuario;
 import com.energia.backend.service.MinhaContaService;
 import com.energia.backend.service.UsuarioCadastroService;
@@ -29,6 +30,21 @@ public class UsuarioController {
     public UsuarioController(UsuarioCadastroService cadastroService, MinhaContaService minhaContaService) {
         this.cadastroService = cadastroService;
         this.minhaContaService = minhaContaService;
+    }
+
+    @PostMapping("/aprovar")
+    public ResponseEntity<String> aprovarUsuario(@RequestBody AprovacaoRejeicaoUsuarioRequest request, Principal principal) {
+        cadastroService.aprovarUsuario(request.getUsuarioId(), obterUidDoUsuarioAutenticado(principal));
+        return ResponseEntity.ok("Usuário aprovado com sucesso.");
+    }
+
+    @PostMapping("/rejeitar")
+    public ResponseEntity<String> rejeitarUsuario(@RequestBody AprovacaoRejeicaoUsuarioRequest request, Principal principal) {
+        if (request.getMotivo() == null || request.getMotivo().trim().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Motivo da rejeição é obrigatório.");
+        }
+        cadastroService.rejeitarUsuario(request.getUsuarioId(), obterUidDoUsuarioAutenticado(principal), request.getMotivo());
+        return ResponseEntity.ok("Usuário rejeitado com sucesso.");
     }
 
     @PostMapping("/cadastro")

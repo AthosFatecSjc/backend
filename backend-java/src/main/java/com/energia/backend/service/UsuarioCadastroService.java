@@ -1,6 +1,12 @@
 package com.energia.backend.service;
 
 import com.energia.backend.dto.UsuarioCadastroRequest;
+import com.energia.backend.model.AppUserEntity;
+import com.energia.backend.model.StatusEntity;
+import com.energia.backend.model.UserStatusEntity;
+import com.energia.backend.repository.AppUserJpaRepository;
+import com.energia.backend.repository.StatusJpaRepository;
+import com.energia.backend.repository.UserStatusJpaRepository;
 import com.energia.backend.exception.EmailJaCadastradoException;
 import com.energia.backend.model.StatusUsuario;
 import com.energia.backend.model.Usuario;
@@ -24,11 +30,59 @@ public class UsuarioCadastroService {
     private static final int ITERATIONS = 65536;
     private static final int KEY_LENGTH = 256;
 
-    private final UsuarioCadastroRepository repository;
 
-    public UsuarioCadastroService(UsuarioCadastroRepository repository) {
+    private final UsuarioCadastroRepository repository;
+    private final AppUserJpaRepository appUserRepository;
+    private final StatusJpaRepository statusRepository;
+    private final UserStatusJpaRepository userStatusRepository;
+
+        public UsuarioCadastroService(UsuarioCadastroRepository repository,
+                      AppUserJpaRepository appUserRepository,
+                      StatusJpaRepository statusRepository,
+                      UserStatusJpaRepository userStatusRepository) {
         this.repository = repository;
-    }
+        this.appUserRepository = appUserRepository;
+        this.statusRepository = statusRepository;
+        this.userStatusRepository = userStatusRepository;
+        }
+
+        @Transactional
+        public void aprovarUsuario(java.util.UUID usuarioId, java.util.UUID adminId) {
+        AppUserEntity usuario = appUserRepository.findById(usuarioId)
+            .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado."));
+        AppUserEntity admin = appUserRepository.findById(adminId)
+            .orElseThrow(() -> new IllegalArgumentException("Admin não encontrado."));
+        StatusEntity statusAprovado = statusRepository.findByNameIgnoreCase("APROVADO")
+            .orElseThrow(() -> new IllegalArgumentException("Status APROVADO não encontrado."));
+        UserStatusEntity userStatus = UserStatusEntity.builder()
+            .user(usuario)
+            .status(statusAprovado)
+            .assignedBy(admin)
+            .assignedAt(java.time.LocalDateTime.now())
+            .build();
+        userStatusRepository.save(userStatus);
+        }
+
+        @Transactional
+        public void rejeitarUsuario(java.util.UUID usuarioId, java.util.UUID adminId, String motivo) {
+        if (motivo == null || motivo.trim().isEmpty()) {
+            throw new IllegalArgumentException("Motivo da rejeição é obrigatório.");
+        }
+        AppUserEntity usuario = appUserRepository.findById(usuarioId)
+            .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado."));
+        AppUserEntity admin = appUserRepository.findById(adminId)
+            .orElseThrow(() -> new IllegalArgumentException("Admin não encontrado."));
+        StatusEntity statusRejeitado = statusRepository.findByNameIgnoreCase("REJEITADO")
+            .orElseThrow(() -> new IllegalArgumentException("Status REJEITADO não encontrado."));
+        UserStatusEntity userStatus = UserStatusEntity.builder()
+            .user(usuario)
+            .status(statusRejeitado)
+            .assignedBy(admin)
+            .assignedAt(java.time.LocalDateTime.now())
+            .rationaleForRejection(motivo)
+            .build();
+        userStatusRepository.save(userStatus);
+        }
 
     @Transactional
     public Usuario cadastrar(UsuarioCadastroRequest request) {
