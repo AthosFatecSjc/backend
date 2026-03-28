@@ -1,15 +1,19 @@
 package com.energia.backend.controller;
 
+import com.energia.backend.dto.AnonimizarUsuarioRequest;
+import com.energia.backend.dto.AnonimizarUsuarioResponse;
 import com.energia.backend.dto.MinhaContaResponse;
 import com.energia.backend.dto.MinhaContaUpdateRequest;
 import com.energia.backend.dto.UsuarioCadastroRequest;
 import com.energia.backend.dto.UsuarioCadastroResponse;
 import com.energia.backend.model.Usuario;
+import com.energia.backend.service.AnonimizacaoService;
 import com.energia.backend.service.MinhaContaService;
 import com.energia.backend.service.UsuarioCadastroService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -25,10 +29,16 @@ import java.util.UUID;
 public class UsuarioController {
     private final UsuarioCadastroService cadastroService;
     private final MinhaContaService minhaContaService;
+    private final AnonimizacaoService anonimizacaoService;
 
-    public UsuarioController(UsuarioCadastroService cadastroService, MinhaContaService minhaContaService) {
+    public UsuarioController(
+            UsuarioCadastroService cadastroService,
+            MinhaContaService minhaContaService,
+            AnonimizacaoService anonimizacaoService
+    ) {
         this.cadastroService = cadastroService;
         this.minhaContaService = minhaContaService;
+        this.anonimizacaoService = anonimizacaoService;
     }
 
     @PostMapping("/cadastro")
@@ -56,6 +66,19 @@ public class UsuarioController {
             @RequestBody MinhaContaUpdateRequest request
     ) {
         MinhaContaResponse response = minhaContaService.atualizar(obterUidDoUsuarioAutenticado(principal), request);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/{usuarioId}/anonimizar")
+    public ResponseEntity<AnonimizarUsuarioResponse> anonimizarUsuario(
+            Principal principal,
+            @PathVariable UUID usuarioId
+    ) {
+        UUID adminId = obterUidDoUsuarioAutenticado(principal);
+        AnonimizarUsuarioResponse response = anonimizacaoService.anonimizar(
+                adminId,
+                new AnonimizarUsuarioRequest(usuarioId)
+        );
         return ResponseEntity.ok(response);
     }
 
