@@ -21,8 +21,9 @@ public class SigIndicador {
     @OneToMany(mappedBy = "sigIndicador")
 	private List<Metricas> metrics;
 	
-	@Column(name = "indicador_type", nullable = false)
-    private String indicadorType;
+	@Enumerated(EnumType.STRING)
+    @Column(name = "indicador_type", nullable = false)
+    private IndicadorType indicadorType;
 
 
 

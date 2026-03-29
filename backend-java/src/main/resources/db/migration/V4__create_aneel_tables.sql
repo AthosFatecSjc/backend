@@ -68,7 +68,11 @@ CREATE TABLE aneel.limites (
 -- =========================
 CREATE TABLE aneel.sig_indicador (
     id BIGSERIAL PRIMARY KEY,
-    indicador_type VARCHAR(100) NOT NULL
+    indicador_type VARCHAR(100) NOT NULL,
+
+    CONSTRAINT chk_indicador_type CHECK (
+        indicador_type IN ('DEC', 'FEC')
+    )
 );
 
 -- =========================
