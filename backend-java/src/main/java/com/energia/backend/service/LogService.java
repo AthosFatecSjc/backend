@@ -1,20 +1,28 @@
 package com.energia.backend.service;
 
+import com.energia.backend.dto.LogRequest;
 import com.energia.backend.model.log.LogCategory;
 import com.energia.backend.model.log.LogEvent;
 import com.energia.backend.model.log.ResultType;
 import com.energia.backend.model.log.SourceType;
-import com.energia.backend.model.log.SystemLog;
-import com.energia.backend.repository.LogRepository;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.validation.annotation.Validated;
 
+/**
+ * Servico centralizado para registro de eventos e auditoria do sistema.
+ * Substitui operacoes CRUD genericas por um contrato de registro padronizado.
+ */
 @Service
+@Validated
+@RequiredArgsConstructor
 public class LogService {
 
-    private final LogRepository logRepository;
+    private final LogPersistenceService logPersistenceService;
 
-    public LogService(LogRepository logRepository) {
-        this.logRepository = logRepository;
+    public void log(@Valid LogRequest request) {
+        logPersistenceService.persist(request);
     }
 
     public void log(
@@ -28,16 +36,16 @@ public class LogService {
             String metadata,
             String createdByModule
     ) {
-        SystemLog log = new SystemLog();
-        log.setActorRef(actorRef);
-        log.setTargetRef(targetRef);
-        log.setSourceType(sourceType);
-        log.setEvent(event);
-        log.setResult(result);
-        log.setLogCategory(category);
-        log.setDescription(description);
-        log.setMetadata(metadata);
-        log.setCreatedByModule(createdByModule);
-        logRepository.save(log);
+        logPersistenceService.persist(LogRequest.builder()
+                .actor(actorRef)
+                .targetRef(targetRef)
+                .sourceType(sourceType)
+                .event(event)
+                .result(result)
+                .logCategory(category)
+                .description(description)
+                .metadata(metadata)
+                .module(createdByModule)
+                .build());
     }
 }
