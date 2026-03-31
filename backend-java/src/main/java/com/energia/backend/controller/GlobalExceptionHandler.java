@@ -1,5 +1,6 @@
 package com.energia.backend.controller;
 
+import com.energia.backend.exception.DocumentosObrigatoriosNaoConfiguradosException;
 import com.energia.backend.exception.EmailJaCadastradoException;
 import com.energia.backend.exception.UsuarioNaoEncontradoException;
 import org.springframework.http.HttpStatus;
@@ -32,6 +33,16 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, String>> handleUsuarioNaoEncontrado(UsuarioNaoEncontradoException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
                 "erro", "USUARIO_NAO_ENCONTRADO",
+                "mensagem", ex.getMessage()
+        ));
+    }
+
+    @ExceptionHandler(DocumentosObrigatoriosNaoConfiguradosException.class)
+    public ResponseEntity<Map<String, String>> handleDocumentosObrigatoriosNaoConfigurados(
+            DocumentosObrigatoriosNaoConfiguradosException ex
+    ) {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(Map.of(
+                "erro", "DOCUMENTOS_CONSENTIMENTO_INDISPONIVEIS",
                 "mensagem", ex.getMessage()
         ));
     }
