@@ -4,22 +4,28 @@ import com.energia.backend.dto.UsuarioCadastroRequest;
 import com.energia.backend.dto.UsuarioCadastroResponse;
 import com.energia.backend.model.StatusUsuario;
 import com.energia.backend.model.Usuario;
+import com.energia.backend.service.TermsService;
 import com.energia.backend.service.UsuarioCadastroService;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
+import java.util.List;
+import java.util.UUID;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 class UsuarioControllerTest {
 
     @Test
     void deveRetornarCreatedComMensagemDeSucesso() {
+
         UsuarioCadastroService service = mock(UsuarioCadastroService.class);
-        UsuarioController controller = new UsuarioController(service);
+        TermsService termsService = mock(TermsService.class); // ✅ NOVO
+
+        UsuarioController controller = new UsuarioController(service, termsService); // ✅ CORRIGIDO
 
         Usuario usuario = new Usuario();
         usuario.setEmail("novo@teste.com");
@@ -32,11 +38,18 @@ class UsuarioControllerTest {
         request.setEmail("novo@teste.com");
         request.setSenha("SenhaFuerte123");
 
+        // ✅ adiciona termos (senão pode dar NPE dependendo da lógica)
+        request.setTermsIds(List.of(UUID.randomUUID()));
+
         ResponseEntity<UsuarioCadastroResponse> response = controller.cadastrar(request);
 
         assertEquals(HttpStatus.CREATED, response.getStatusCode());
         assertEquals("Cadastro realizado com sucesso. Aguardando aprovacao do administrador.", response.getBody().getMensagem());
         assertEquals("novo@teste.com", response.getBody().getEmail());
         assertEquals(StatusUsuario.PENDENTE, response.getBody().getStatus());
+
+        // ✅ garante que o TermsService foi chamado
+        verify(termsService, times(1))
+                .registrarTermosAceitos(any(), any());
     }
 }

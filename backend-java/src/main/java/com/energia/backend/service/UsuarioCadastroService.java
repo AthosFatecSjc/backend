@@ -47,7 +47,7 @@ public class UsuarioCadastroService {
         usuario.setStatus(StatusUsuario.PENDENTE);
         usuario.setDataCadastro(LocalDateTime.now());
 
-        try {
+        try {   
             return repository.save(usuario);
         } catch (DataIntegrityViolationException ex) {
             throw new EmailJaCadastradoException("E-mail ja cadastrado.");
