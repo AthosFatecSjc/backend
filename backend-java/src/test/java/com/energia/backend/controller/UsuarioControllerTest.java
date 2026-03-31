@@ -3,7 +3,7 @@ package com.energia.backend.controller;
 import com.energia.backend.dto.UsuarioCadastroRequest;
 import com.energia.backend.dto.UsuarioCadastroResponse;
 import com.energia.backend.model.StatusUsuario;
-import com.energia.backend.model.Usuario;
+import com.energia.backend.dto.Usuario;
 import com.energia.backend.service.TermsService;
 import com.energia.backend.service.UsuarioCadastroService;
 import org.junit.jupiter.api.Test;
@@ -23,9 +23,9 @@ class UsuarioControllerTest {
     void deveRetornarCreatedComMensagemDeSucesso() {
 
         UsuarioCadastroService service = mock(UsuarioCadastroService.class);
-        TermsService termsService = mock(TermsService.class); // ✅ NOVO
+        TermsService termsService = mock(TermsService.class);
 
-        UsuarioController controller = new UsuarioController(service, termsService); // ✅ CORRIGIDO
+        UsuarioController controller = new UsuarioController(service);
 
         Usuario usuario = new Usuario();
         usuario.setEmail("novo@teste.com");
@@ -38,7 +38,6 @@ class UsuarioControllerTest {
         request.setEmail("novo@teste.com");
         request.setSenha("SenhaFuerte123");
 
-        // ✅ adiciona termos (senão pode dar NPE dependendo da lógica)
         request.setTermsIds(List.of(UUID.randomUUID()));
 
         ResponseEntity<UsuarioCadastroResponse> response = controller.cadastrar(request);
@@ -48,7 +47,6 @@ class UsuarioControllerTest {
         assertEquals("novo@teste.com", response.getBody().getEmail());
         assertEquals(StatusUsuario.PENDENTE, response.getBody().getStatus());
 
-        // ✅ garante que o TermsService foi chamado
         verify(termsService, times(1))
                 .registrarTermosAceitos(any(), any());
     }

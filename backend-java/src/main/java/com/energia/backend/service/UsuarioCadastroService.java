@@ -2,9 +2,13 @@ package com.energia.backend.service;
 
 import com.energia.backend.dto.UsuarioCadastroRequest;
 import com.energia.backend.exception.EmailJaCadastradoException;
+import com.energia.backend.exception.TermoNaoEncontradoException;
+import com.energia.backend.model.AppUserEntity;
 import com.energia.backend.model.StatusUsuario;
-import com.energia.backend.model.Usuario;
+import com.energia.backend.dto.Usuario;
 import com.energia.backend.repository.UsuarioCadastroRepository;
+import com.energia.backend.repository.UsuarioRepository;
+
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,10 +28,13 @@ public class UsuarioCadastroService {
     private static final int ITERATIONS = 65536;
     private static final int KEY_LENGTH = 256;
 
-    private final UsuarioCadastroRepository repository;
+    private final UsuarioRepository usuarioRepository;
+    private final TermsService termsService;
 
-    public UsuarioCadastroService(UsuarioCadastroRepository repository) {
-        this.repository = repository;
+    public UsuarioCadastroService(UsuarioRepository usuarioRepository,
+                                TermsService termsService) {
+        this.usuarioRepository = usuarioRepository;
+        this.termsService = termsService;
     }
 
     @Transactional
@@ -35,20 +42,34 @@ public class UsuarioCadastroService {
         validarRequest(request);
 
         String emailNormalizado = normalizarEmail(request.getEmail());
-        if (repository.existsByEmail(emailNormalizado)) {
+
+        if (usuarioRepository.existsByEmail(emailNormalizado)) {
             throw new EmailJaCadastradoException("E-mail ja cadastrado.");
         }
 
-        Usuario usuario = new Usuario();
-        usuario.setNomeCompleto(request.getNomeCompleto().trim());
-        usuario.setEmail(emailNormalizado);
-        usuario.setSenhaHash(gerarHashSeguro(request.getSenha()));
-        usuario.setTelefone(normalizarOpcional(request.getTelefone()));
-        usuario.setStatus(StatusUsuario.PENDENTE);
-        usuario.setDataCadastro(LocalDateTime.now());
+        AppUserEntity appUser = new AppUserEntity();
+        appUser.setName(request.getNomeCompleto().trim());
+        appUser.setEmail(emailNormalizado);
+        appUser.setPassword(gerarHashSeguro(request.getSenha()));
+        appUser.setPhone(normalizarOpcional(request.getTelefone()));
 
-        try {   
-            return repository.save(usuario);
+        try {
+            AppUserEntity appUserSalvo = usuarioRepository.save(appUser);
+
+            if (request.getTermsIds() != null && !request.getTermsIds().isEmpty()) {
+                termsService.registrarTermosAceitos(request.getTermsIds(), appUserSalvo);
+            }
+
+            Usuario usuario = new Usuario();
+            usuario.setNomeCompleto(appUserSalvo.getName());
+            usuario.setEmail(appUserSalvo.getEmail());
+            usuario.setSenhaHash(appUserSalvo.getPassword());
+            usuario.setTelefone(appUserSalvo.getPhone());
+            usuario.setStatus(StatusUsuario.PENDENTE);
+            usuario.setDataCadastro(LocalDateTime.now());
+
+            return usuario;
+
         } catch (DataIntegrityViolationException ex) {
             throw new EmailJaCadastradoException("E-mail ja cadastrado.");
         }

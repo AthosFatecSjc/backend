@@ -11,5 +11,5 @@ public class UsuarioCadastroRequest {
     private String email;
     private String senha;
     private String telefone;
-    private List<UUID> TermsIds; 
+    private List<UUID> termsIds; 
 }

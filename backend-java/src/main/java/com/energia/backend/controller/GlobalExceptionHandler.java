@@ -1,6 +1,8 @@
 package com.energia.backend.controller;
 
 import com.energia.backend.exception.EmailJaCadastradoException;
+import com.energia.backend.exception.TermoNaoEncontradoException;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -23,6 +25,14 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, String>> handleBadRequest(IllegalArgumentException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of(
                 "erro", "DADOS_INVALIDOS",
+                "mensagem", ex.getMessage()
+        ));
+    }
+
+    @ExceptionHandler(TermoNaoEncontradoException.class)
+    public ResponseEntity<Map<String, String>> handleTermoNaoEncontrado(TermoNaoEncontradoException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of(
+                "erro", "TERMO_NAO_ENCONTRADO",
                 "mensagem", ex.getMessage()
         ));
     }

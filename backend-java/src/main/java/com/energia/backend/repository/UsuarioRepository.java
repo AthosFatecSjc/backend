@@ -9,5 +9,6 @@ import com.energia.backend.model.AppUserEntity;
 
 public interface UsuarioRepository extends JpaRepository<AppUserEntity, UUID> {
     Optional<AppUserEntity> findByEmail(String email);
+    Boolean existsByEmail(String email);
     
 }
