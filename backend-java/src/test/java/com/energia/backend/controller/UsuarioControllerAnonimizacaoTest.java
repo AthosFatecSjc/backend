@@ -58,6 +58,29 @@ class UsuarioControllerAnonimizacaoTest {
     }
 
     @Test
+    void deveExcluirUsuarioComSucesso() {
+        AnonimizacaoService anonimizacaoService = mock(AnonimizacaoService.class);
+        com.energia.backend.service.UsuarioCadastroService cadastroService =
+                mock(com.energia.backend.service.UsuarioCadastroService.class);
+        com.energia.backend.service.MinhaContaService minhaContaService =
+                mock(com.energia.backend.service.MinhaContaService.class);
+
+        UsuarioController controller = new UsuarioController(cadastroService, minhaContaService, anonimizacaoService);
+
+        UUID userId = UUID.randomUUID();
+        UUID usuarioId = UUID.randomUUID();
+
+        when(anonimizacaoService.anonimizar(any(), any())).thenReturn(new AnonimizarUsuarioResponse(usuarioId, "Usuario anonimizado com sucesso.", LocalDateTime.now()));
+
+        java.security.Principal principal = () -> userId.toString();
+
+        ResponseEntity<Void> resultado = controller.excluirUsuario(principal, usuarioId);
+
+        assertEquals(HttpStatus.NO_CONTENT, resultado.getStatusCode());
+        verify(anonimizacaoService).anonimizar(userId, new AnonimizarUsuarioRequest(usuarioId));
+    }
+
+    @Test
     void deveLancarPermissaoNegadaQuandoNaoForAdmin() {
         AnonimizacaoService anonimizacaoService = mock(AnonimizacaoService.class);
         com.energia.backend.service.UsuarioCadastroService cadastroService =

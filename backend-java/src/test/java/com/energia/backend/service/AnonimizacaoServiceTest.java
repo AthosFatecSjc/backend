@@ -8,6 +8,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import org.junit.jupiter.api.Test;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -17,13 +19,10 @@ import com.energia.backend.dto.AnonimizarUsuarioResponse;
 import com.energia.backend.exception.PermissaoNegadaException;
 import com.energia.backend.exception.UsuarioJaAnonimizadoException;
 import com.energia.backend.exception.UsuarioNaoEncontradoException;
+import com.energia.backend.model.AnonymizationStatus;
 import com.energia.backend.model.AppUserEntity;
 import com.energia.backend.model.RoleEntity;
-import com.energia.backend.model.StatusEntity;
 import com.energia.backend.repository.AppUserJpaRepository;
-import com.energia.backend.repository.LogRepository;
-import com.energia.backend.repository.StatusJpaRepository;
-import com.energia.backend.repository.UserStatusJpaRepository;
 
 class AnonimizacaoServiceTest {
 
@@ -31,15 +30,11 @@ class AnonimizacaoServiceTest {
     void deveAnonimizarUsuarioComSucesso() {
         // Setup repositories
         AppUserJpaRepository appUserRepository = mock(AppUserJpaRepository.class);
-        StatusJpaRepository statusRepository = mock(StatusJpaRepository.class);
-        UserStatusJpaRepository userStatusRepository = mock(UserStatusJpaRepository.class);
-        LogRepository logRepository = mock(LogRepository.class);
+        UserPrivacyAnonymizationService userPrivacyAnonymizationService = mock(UserPrivacyAnonymizationService.class);
 
         AnonimizacaoService service = new AnonimizacaoService(
                 appUserRepository,
-                statusRepository,
-                userStatusRepository,
-                logRepository
+                userPrivacyAnonymizationService
         );
 
         // Setup admin com role ADMIN
@@ -67,19 +62,9 @@ class AnonimizacaoServiceTest {
                 .phone("11988887777")
                 .build();
 
-        // Setup status INATIVO
-        StatusEntity statusInativo = StatusEntity.builder()
-                .id(UUID.randomUUID())
-                .name("INATIVO")
-                .build();
-
         // Mock repository calls
         when(appUserRepository.findById(adminId)).thenReturn(Optional.of(admin));
         when(appUserRepository.findById(usuarioId)).thenReturn(Optional.of(usuario));
-        when(appUserRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
-        when(statusRepository.findByNameIgnoreCase("INATIVO")).thenReturn(Optional.of(statusInativo));
-        when(userStatusRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
-        when(logRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         // Execute
         AnonimizarUsuarioRequest request = new AnonimizarUsuarioRequest(usuarioId);
@@ -89,24 +74,46 @@ class AnonimizacaoServiceTest {
         assertEquals(usuarioId, response.usuarioId());
         assertEquals("Usuario anonimizado com sucesso.", response.mensagem());
 
-        // Verify que dados foram anonimizados
-        verify(appUserRepository).save(any(AppUserEntity.class));
-        verify(userStatusRepository).save(any());
-        verify(logRepository).save(any());
+        // Verify que o serviço central de anonimização foi acionado
+        verify(userPrivacyAnonymizationService).anonymizeUser(eq(usuarioId), eq(adminId.toString()), anyString());
+    }
+
+    @Test
+    void deveAnonimizarUsuarioPorEleMesmo() {
+        AppUserJpaRepository appUserRepository = mock(AppUserJpaRepository.class);
+        UserPrivacyAnonymizationService userPrivacyAnonymizationService = mock(UserPrivacyAnonymizationService.class);
+
+        AnonimizacaoService service = new AnonimizacaoService(
+                appUserRepository,
+                userPrivacyAnonymizationService
+        );
+
+        UUID usuarioId = UUID.randomUUID();
+        AppUserEntity usuario = AppUserEntity.builder()
+                .id(usuarioId)
+                .name("João Silva")
+                .email("joao@teste.com")
+                .password("hash")
+                .roles(List.of())
+                .build();
+
+        when(appUserRepository.findById(usuarioId)).thenReturn(Optional.of(usuario));
+
+        AnonimizarUsuarioResponse response = service.anonimizar(usuarioId, new AnonimizarUsuarioRequest(usuarioId));
+
+        assertEquals(usuarioId, response.usuarioId());
+        assertEquals("Usuario anonimizado com sucesso.", response.mensagem());
+        verify(userPrivacyAnonymizationService).anonymizeUser(eq(usuarioId), eq(usuarioId.toString()), anyString());
     }
 
     @Test
     void naoDeveAnonimizarSemPermissaoDeAdmin() {
         AppUserJpaRepository appUserRepository = mock(AppUserJpaRepository.class);
-        StatusJpaRepository statusRepository = mock(StatusJpaRepository.class);
-        UserStatusJpaRepository userStatusRepository = mock(UserStatusJpaRepository.class);
-        LogRepository logRepository = mock(LogRepository.class);
+        UserPrivacyAnonymizationService userPrivacyAnonymizationService = mock(UserPrivacyAnonymizationService.class);
 
         AnonimizacaoService service = new AnonimizacaoService(
                 appUserRepository,
-                statusRepository,
-                userStatusRepository,
-                logRepository
+                userPrivacyAnonymizationService
         );
 
         // Setup usuário sem role ADMIN
@@ -119,25 +126,30 @@ class AnonimizacaoServiceTest {
                 .roles(List.of())
                 .build();
 
+        UUID usuarioId = UUID.randomUUID();
+        AppUserEntity usuario = AppUserEntity.builder()
+                .id(usuarioId)
+                .name("João Silva")
+                .email("joao@teste.com")
+                .password("hash")
+                .build();
+
         when(appUserRepository.findById(userId)).thenReturn(Optional.of(userSemAdmin));
+        when(appUserRepository.findById(usuarioId)).thenReturn(Optional.of(usuario));
 
         // Execute e verify exception
-        AnonimizarUsuarioRequest request = new AnonimizarUsuarioRequest(UUID.randomUUID());
+        AnonimizarUsuarioRequest request = new AnonimizarUsuarioRequest(usuarioId);
         assertThrows(PermissaoNegadaException.class, () -> service.anonimizar(userId, request));
     }
 
     @Test
     void naoDeveAnonimizarUsuarioJaAnonimizado() {
         AppUserJpaRepository appUserRepository = mock(AppUserJpaRepository.class);
-        StatusJpaRepository statusRepository = mock(StatusJpaRepository.class);
-        UserStatusJpaRepository userStatusRepository = mock(UserStatusJpaRepository.class);
-        LogRepository logRepository = mock(LogRepository.class);
+        UserPrivacyAnonymizationService userPrivacyAnonymizationService = mock(UserPrivacyAnonymizationService.class);
 
         AnonimizacaoService service = new AnonimizacaoService(
                 appUserRepository,
-                statusRepository,
-                userStatusRepository,
-                logRepository
+                userPrivacyAnonymizationService
         );
 
         // Setup admin
@@ -155,9 +167,10 @@ class AnonimizacaoServiceTest {
         UUID usuarioId = UUID.randomUUID();
         AppUserEntity usuarioAnonimizado = AppUserEntity.builder()
                 .id(usuarioId)
-                .name("ANONIMIZADO")
-                .email("email@anonimizado.local")
-                .password("hash")
+                .name("ANONYMIZED USER")
+                .email("u" + usuarioId.toString().replace("-", "") + "@anon.io")
+                .password("ANONYMIZED::" + usuarioId.toString().replace("-", ""))
+                .anonymizationStatus(AnonymizationStatus.ANONYMIZED)
                 .build();
 
         when(appUserRepository.findById(adminId)).thenReturn(Optional.of(admin));
@@ -171,15 +184,11 @@ class AnonimizacaoServiceTest {
     @Test
     void naoDeveAnonimizarUsuarioInexistente() {
         AppUserJpaRepository appUserRepository = mock(AppUserJpaRepository.class);
-        StatusJpaRepository statusRepository = mock(StatusJpaRepository.class);
-        UserStatusJpaRepository userStatusRepository = mock(UserStatusJpaRepository.class);
-        LogRepository logRepository = mock(LogRepository.class);
+        UserPrivacyAnonymizationService userPrivacyAnonymizationService = mock(UserPrivacyAnonymizationService.class);
 
         AnonimizacaoService service = new AnonimizacaoService(
                 appUserRepository,
-                statusRepository,
-                userStatusRepository,
-                logRepository
+                userPrivacyAnonymizationService
         );
 
         // Setup admin

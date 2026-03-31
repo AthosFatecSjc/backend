@@ -5,6 +5,7 @@ import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -75,12 +76,22 @@ public class UsuarioController {
             Principal principal,
             @PathVariable UUID usuarioId
     ) {
-        UUID adminId = obterUidDoUsuarioAutenticado(principal);
+        UUID actorId = obterUidDoUsuarioAutenticado(principal);
         AnonimizarUsuarioResponse response = anonimizacaoService.anonimizar(
-                adminId,
+                actorId,
                 new AnonimizarUsuarioRequest(usuarioId)
         );
         return ResponseEntity.ok(response);
+    }
+
+    @DeleteMapping("/{usuarioId}")
+    public ResponseEntity<Void> excluirUsuario(
+            Principal principal,
+            @PathVariable UUID usuarioId
+    ) {
+        UUID actorId = obterUidDoUsuarioAutenticado(principal);
+        anonimizacaoService.anonimizar(actorId, new AnonimizarUsuarioRequest(usuarioId));
+        return ResponseEntity.noContent().build();
     }
 
     private UUID obterUidDoUsuarioAutenticado(Principal principal) {
