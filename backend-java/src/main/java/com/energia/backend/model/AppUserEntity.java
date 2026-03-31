@@ -7,6 +7,7 @@ import com.energia.backend.model.RoleEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -38,6 +39,13 @@ public class AppUserEntity {
 
     @Column(length = 50)
     private String phone;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "anonymization_status", length = 20)
+    private AnonymizationStatus anonymizationStatus;
+
+    @Column(name = "anonymized_at")
+    private LocalDateTime anonymizedAt;
 
     // MANY-TO-MANY → ROLE
     @ManyToMany(fetch = FetchType.LAZY)
