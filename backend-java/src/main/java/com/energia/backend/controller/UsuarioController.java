@@ -5,6 +5,8 @@ import com.energia.backend.dto.MinhaContaUpdateRequest;
 import com.energia.backend.dto.UsuarioCadastroRequest;
 import com.energia.backend.dto.UsuarioCadastroResponse;
 import com.energia.backend.dto.AprovacaoRejeicaoUsuarioRequest;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PatchMapping;
 import com.energia.backend.model.Usuario;
 import com.energia.backend.service.MinhaContaService;
 import com.energia.backend.service.UsuarioCadastroService;
@@ -32,19 +34,18 @@ public class UsuarioController {
         this.minhaContaService = minhaContaService;
     }
 
-    @PostMapping("/aprovar")
-    public ResponseEntity<String> aprovarUsuario(@RequestBody AprovacaoRejeicaoUsuarioRequest request, Principal principal) {
-        cadastroService.aprovarUsuario(request.getUsuarioId(), obterUidDoUsuarioAutenticado(principal));
-        return ResponseEntity.ok("Usuário aprovado com sucesso.");
-    }
 
-    @PostMapping("/rejeitar")
-    public ResponseEntity<String> rejeitarUsuario(@RequestBody AprovacaoRejeicaoUsuarioRequest request, Principal principal) {
-        if (request.getMotivo() == null || request.getMotivo().trim().isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Motivo da rejeição é obrigatório.");
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<String> alterarStatusUsuario(
+            @PathVariable("id") UUID usuarioId,
+            @RequestBody AprovacaoRejeicaoUsuarioRequest request,
+            Principal principal) {
+        UUID adminId = obterUidDoUsuarioAutenticado(principal);
+        if (request.getMotivo() != null && request.getMotivo().trim().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Motivo da rejeição é obrigatório se informado.");
         }
-        cadastroService.rejeitarUsuario(request.getUsuarioId(), obterUidDoUsuarioAutenticado(principal), request.getMotivo());
-        return ResponseEntity.ok("Usuário rejeitado com sucesso.");
+        cadastroService.alterarStatusUsuario(usuarioId, adminId, request.getStatus(), request.getMotivo());
+        return ResponseEntity.ok("Status do usuário atualizado com sucesso.");
     }
 
     @PostMapping("/cadastro")

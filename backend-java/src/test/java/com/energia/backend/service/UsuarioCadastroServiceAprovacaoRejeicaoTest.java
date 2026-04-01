@@ -21,6 +21,7 @@ class UsuarioCadastroServiceAprovacaoRejeicaoTest {
     private UUID adminId;
     private AppUserEntity usuario;
     private AppUserEntity admin;
+    private RoleEntity adminRole;
     private StatusEntity statusAprovado;
     private StatusEntity statusRejeitado;
     private List<UserStatusEntity> statusEntities;
@@ -29,8 +30,9 @@ class UsuarioCadastroServiceAprovacaoRejeicaoTest {
     void setup() {
         usuarioId = UUID.randomUUID();
         adminId = UUID.randomUUID();
+        adminRole = RoleEntity.builder().id(UUID.randomUUID()).name("ADMIN").build();
         usuario = AppUserEntity.builder().id(usuarioId).name("User").email("user@x.com").build();
-        admin = AppUserEntity.builder().id(adminId).name("Admin").email("admin@x.com").build();
+        admin = AppUserEntity.builder().id(adminId).name("Admin").email("admin@x.com").roles(List.of(adminRole)).build();
         statusAprovado = StatusEntity.builder().id(UUID.randomUUID()).name("APROVADO").build();
         statusRejeitado = StatusEntity.builder().id(UUID.randomUUID()).name("REJEITADO").build();
         statusEntities = new ArrayList<>();
@@ -92,9 +94,13 @@ class UsuarioCadastroServiceAprovacaoRejeicaoTest {
 
     @Test
     void deveAprovarUsuarioComRegistroDeStatus() {
-        service.aprovarUsuario(usuarioId, adminId);
-        assertEquals(1, statusEntities.size());
-        UserStatusEntity status = statusEntities.get(0);
+        // Usuário começa como pendente
+        StatusEntity statusPendente = StatusEntity.builder().id(UUID.randomUUID()).name("PENDENTE").build();
+        UserStatusEntity pendente = UserStatusEntity.builder().user(usuario).status(statusPendente).assignedBy(admin).assignedAt(LocalDateTime.now().minusMinutes(10)).build();
+        statusEntities.add(pendente);
+        service.alterarStatusUsuario(usuarioId, adminId, StatusUsuario.APROVADO, null);
+        assertEquals(2, statusEntities.size());
+        UserStatusEntity status = statusEntities.get(1);
         assertEquals(usuario, status.getUser());
         assertEquals(admin, status.getAssignedBy());
         assertEquals("APROVADO", status.getStatus().getName());
@@ -104,10 +110,13 @@ class UsuarioCadastroServiceAprovacaoRejeicaoTest {
 
     @Test
     void deveRejeitarUsuarioComMotivo() {
+        StatusEntity statusPendente = StatusEntity.builder().id(UUID.randomUUID()).name("PENDENTE").build();
+        UserStatusEntity pendente = UserStatusEntity.builder().user(usuario).status(statusPendente).assignedBy(admin).assignedAt(LocalDateTime.now().minusMinutes(10)).build();
+        statusEntities.add(pendente);
         String motivo = "Dados inconsistentes";
-        service.rejeitarUsuario(usuarioId, adminId, motivo);
-        assertEquals(1, statusEntities.size());
-        UserStatusEntity status = statusEntities.get(0);
+        service.alterarStatusUsuario(usuarioId, adminId, StatusUsuario.REJEITADO, motivo);
+        assertEquals(2, statusEntities.size());
+        UserStatusEntity status = statusEntities.get(1);
         assertEquals(usuario, status.getUser());
         assertEquals(admin, status.getAssignedBy());
         assertEquals("REJEITADO", status.getStatus().getName());
@@ -117,8 +126,34 @@ class UsuarioCadastroServiceAprovacaoRejeicaoTest {
 
     @Test
     void rejeicaoSemMotivoDeveLancarExcecao() {
+        StatusEntity statusPendente = StatusEntity.builder().id(UUID.randomUUID()).name("PENDENTE").build();
+        UserStatusEntity pendente = UserStatusEntity.builder().user(usuario).status(statusPendente).assignedBy(admin).assignedAt(LocalDateTime.now().minusMinutes(10)).build();
+        statusEntities.add(pendente);
         Exception ex = assertThrows(IllegalArgumentException.class, () ->
-            service.rejeitarUsuario(usuarioId, adminId, " "));
+            service.alterarStatusUsuario(usuarioId, adminId, StatusUsuario.REJEITADO, " "));
         assertTrue(ex.getMessage().toLowerCase().contains("motivo"));
+    }
+
+    @Test
+    void naoPermiteAlterarStatusSeNaoForAdmin() {
+        // Remove role admin do admin
+        admin.setRoles(Collections.emptyList());
+        StatusEntity statusPendente = StatusEntity.builder().id(UUID.randomUUID()).name("PENDENTE").build();
+        UserStatusEntity pendente = UserStatusEntity.builder().user(usuario).status(statusPendente).assignedBy(admin).assignedAt(LocalDateTime.now().minusMinutes(10)).build();
+        statusEntities.add(pendente);
+        Exception ex = assertThrows(SecurityException.class, () ->
+            service.alterarStatusUsuario(usuarioId, adminId, StatusUsuario.APROVADO, null));
+        assertTrue(ex.getMessage().toLowerCase().contains("admin"));
+    }
+
+    @Test
+    void naoPermiteAlterarStatusSeNaoEstiverPendente() {
+        // Usuário já está aprovado
+        StatusEntity statusAprovadoLocal = StatusEntity.builder().id(UUID.randomUUID()).name("APROVADO").build();
+        UserStatusEntity aprovado = UserStatusEntity.builder().user(usuario).status(statusAprovadoLocal).assignedBy(admin).assignedAt(LocalDateTime.now().minusMinutes(10)).build();
+        statusEntities.add(aprovado);
+        Exception ex = assertThrows(IllegalStateException.class, () ->
+            service.alterarStatusUsuario(usuarioId, adminId, StatusUsuario.REJEITADO, "motivo"));
+        assertTrue(ex.getMessage().toLowerCase().contains("pendente"));
     }
 }

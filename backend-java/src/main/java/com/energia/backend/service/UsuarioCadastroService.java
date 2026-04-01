@@ -4,6 +4,8 @@ import com.energia.backend.dto.UsuarioCadastroRequest;
 import com.energia.backend.model.AppUserEntity;
 import com.energia.backend.model.StatusEntity;
 import com.energia.backend.model.UserStatusEntity;
+import com.energia.backend.model.StatusUsuario;
+import com.energia.backend.model.RoleEntity;
 import com.energia.backend.repository.AppUserJpaRepository;
 import com.energia.backend.repository.StatusJpaRepository;
 import com.energia.backend.repository.UserStatusJpaRepository;
@@ -46,43 +48,42 @@ public class UsuarioCadastroService {
         this.userStatusRepository = userStatusRepository;
         }
 
-        @Transactional
-        public void aprovarUsuario(java.util.UUID usuarioId, java.util.UUID adminId) {
-        AppUserEntity usuario = appUserRepository.findById(usuarioId)
-            .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado."));
-        AppUserEntity admin = appUserRepository.findById(adminId)
-            .orElseThrow(() -> new IllegalArgumentException("Admin não encontrado."));
-        StatusEntity statusAprovado = statusRepository.findByNameIgnoreCase("APROVADO")
-            .orElseThrow(() -> new IllegalArgumentException("Status APROVADO não encontrado."));
-        UserStatusEntity userStatus = UserStatusEntity.builder()
-            .user(usuario)
-            .status(statusAprovado)
-            .assignedBy(admin)
-            .assignedAt(java.time.LocalDateTime.now())
-            .build();
-        userStatusRepository.save(userStatus);
-        }
 
-        @Transactional
-        public void rejeitarUsuario(java.util.UUID usuarioId, java.util.UUID adminId, String motivo) {
-        if (motivo == null || motivo.trim().isEmpty()) {
-            throw new IllegalArgumentException("Motivo da rejeição é obrigatório.");
-        }
-        AppUserEntity usuario = appUserRepository.findById(usuarioId)
-            .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado."));
-        AppUserEntity admin = appUserRepository.findById(adminId)
-            .orElseThrow(() -> new IllegalArgumentException("Admin não encontrado."));
-        StatusEntity statusRejeitado = statusRepository.findByNameIgnoreCase("REJEITADO")
-            .orElseThrow(() -> new IllegalArgumentException("Status REJEITADO não encontrado."));
-        UserStatusEntity userStatus = UserStatusEntity.builder()
-            .user(usuario)
-            .status(statusRejeitado)
-            .assignedBy(admin)
-            .assignedAt(java.time.LocalDateTime.now())
-            .rationaleForRejection(motivo)
-            .build();
-        userStatusRepository.save(userStatus);
-        }
+            @Transactional
+            public void alterarStatusUsuario(java.util.UUID usuarioId, java.util.UUID adminId, StatusUsuario novoStatus, String motivo) {
+            if (novoStatus == null) {
+                throw new IllegalArgumentException("Status desejado é obrigatório.");
+            }
+            if (novoStatus == StatusUsuario.REJEITADO && (motivo == null || motivo.trim().isEmpty())) {
+                throw new IllegalArgumentException("Motivo da rejeição é obrigatório.");
+            }
+            AppUserEntity usuario = appUserRepository.findById(usuarioId)
+                .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado."));
+            AppUserEntity admin = appUserRepository.findById(adminId)
+                .orElseThrow(() -> new IllegalArgumentException("Admin não encontrado."));
+
+            boolean isAdmin = admin.getRoles() != null && admin.getRoles().stream().anyMatch(r -> "ADMIN".equalsIgnoreCase(r.getName()));
+            if (!isAdmin) {
+                throw new SecurityException("Apenas administradores podem alterar o status de usuários.");
+            }
+
+            UserStatusEntity statusAtual = userStatusRepository.findFirstByUserOrderByAssignedAtDesc(usuario).orElse(null);
+            if (statusAtual == null || statusAtual.getStatus() == null || !"PENDENTE".equalsIgnoreCase(statusAtual.getStatus().getName())) {
+                throw new IllegalStateException("Só é permitido aprovar ou rejeitar usuários com status PENDENTE.");
+            }
+
+            StatusEntity statusEntity = statusRepository.findByNameIgnoreCase(novoStatus.name())
+                .orElseThrow(() -> new IllegalArgumentException("Status " + novoStatus + " não encontrado."));
+
+            UserStatusEntity novoUserStatus = UserStatusEntity.builder()
+                .user(usuario)
+                .status(statusEntity)
+                .assignedBy(admin)
+                .assignedAt(java.time.LocalDateTime.now())
+                .rationaleForRejection(novoStatus == StatusUsuario.REJEITADO ? motivo : null)
+                .build();
+            userStatusRepository.save(novoUserStatus);
+            }
 
     @Transactional
     public Usuario cadastrar(UsuarioCadastroRequest request) {
