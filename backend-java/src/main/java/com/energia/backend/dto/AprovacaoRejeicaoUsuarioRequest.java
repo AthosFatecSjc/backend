@@ -1,10 +1,12 @@
 package com.energia.backend.dto;
 
 import com.energia.backend.model.StatusUsuario;
+import java.util.UUID;
 
 public class AprovacaoRejeicaoUsuarioRequest {
     private StatusUsuario status;
     private String motivo; 
+    private UUID usuarioId;
 
     public StatusUsuario getStatus() {
         return status;
@@ -20,5 +22,13 @@ public class AprovacaoRejeicaoUsuarioRequest {
 
     public void setMotivo(String motivo) {
         this.motivo = motivo;
+    }
+
+    public UUID getUsuarioId() {
+        return usuarioId;
+    }
+
+    public void setUsuarioId(UUID usuarioId) {
+        this.usuarioId = usuarioId;
     }
 }
