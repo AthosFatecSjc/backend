@@ -94,6 +94,9 @@ public class UsuarioCadastroService {
         if (request.getSenha().trim().length() < 8) {
             throw new IllegalArgumentException("Senha deve ter no minimo 8 caracteres.");
         }
+        if (request.getTermsIds() == null || request.getTermsIds().isEmpty()) {
+            throw new TermoNaoEncontradoException("Aceite dos termos obrigatorios e obrigatorio.");
+        }
     }
 
     private String gerarHashSeguro(String senha) {

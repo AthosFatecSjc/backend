@@ -2,12 +2,14 @@ package com.energia.backend.service;
 
 import com.energia.backend.dto.UsuarioCadastroRequest;
 import com.energia.backend.exception.EmailJaCadastradoException;
+import com.energia.backend.exception.TermoNaoEncontradoException;
 import com.energia.backend.model.AppUserEntity;
 import com.energia.backend.model.StatusUsuario;
 import com.energia.backend.dto.Usuario;
 import com.energia.backend.repository.UsuarioRepository;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -39,6 +41,7 @@ class UsuarioCadastroServiceTest {
         request.setEmail("  MARIA@TESTE.COM ");
         request.setSenha("SenhaFuerte123");
         request.setTelefone(" 11999998888 ");
+        request.setTermsIds(List.of(UUID.randomUUID()));
 
         Usuario usuario = service.cadastrar(request);
 
@@ -70,6 +73,7 @@ class UsuarioCadastroServiceTest {
         request.setNomeCompleto("Joao");
         request.setEmail("DUPLICADO@TESTE.COM");
         request.setSenha("SenhaFuerte123");
+        request.setTermsIds(List.of(UUID.randomUUID()));
 
         EmailJaCadastradoException exception = assertThrows(
                 EmailJaCadastradoException.class,
@@ -79,5 +83,29 @@ class UsuarioCadastroServiceTest {
         assertEquals("E-mail ja cadastrado.", exception.getMessage());
 
         verify(usuarioRepository, never()).save(any());
+    }
+
+    @Test
+    void deveRejeitarCadastroSemAceiteDosTermosObrigatorios() {
+
+        UsuarioRepository usuarioRepository = mock(UsuarioRepository.class);
+        TermsService termsService = mock(TermsService.class);
+
+        UsuarioCadastroService service =
+                new UsuarioCadastroService(usuarioRepository, termsService);
+
+        UsuarioCadastroRequest request = new UsuarioCadastroRequest();
+        request.setNomeCompleto("Joao");
+        request.setEmail("joao@teste.com");
+        request.setSenha("SenhaFuerte123");
+
+        TermoNaoEncontradoException exception = assertThrows(
+                TermoNaoEncontradoException.class,
+                () -> service.cadastrar(request)
+        );
+
+        assertEquals("Aceite dos termos obrigatorios e obrigatorio.", exception.getMessage());
+        verify(usuarioRepository, never()).save(any());
+        verify(termsService, never()).registrarTermosAceitos(any(), any());
     }
 }

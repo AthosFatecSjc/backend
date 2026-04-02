@@ -1,6 +1,7 @@
 package com.energia.backend.repository;
 
 import com.energia.backend.model.AppUserEntity;
+import com.energia.backend.model.AnonymizationStatus;
 import com.energia.backend.model.StatusEntity;
 import com.energia.backend.model.StatusUsuario;
 import com.energia.backend.model.UserStatusEntity;
@@ -41,6 +42,7 @@ public class JpaUsuarioCadastroRepository implements UsuarioCadastroRepository {
                 .email(normalizarEmail(usuario.getEmail()))
                 .password(usuario.getSenhaHash())
                 .phone(usuario.getTelefone())
+                .anonymizationStatus(AnonymizationStatus.ACTIVE)
                 .build();
 
         AppUserEntity savedUser = appUserRepository.save(entity);
