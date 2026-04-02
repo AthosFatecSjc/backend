@@ -4,7 +4,16 @@ import jakarta.persistence.*;
 import lombok.*;
 
 @Entity
-@Table(name = "limites", schema = "aneel")
+@Table(
+    name = "limites",
+    schema = "aneel",
+    uniqueConstraints = {
+        @UniqueConstraint(
+            name = "uk_limites",
+            columnNames = {"id_conjunto", "ano"}
+        )
+    }
+)
 @Getter
 @Setter
 @NoArgsConstructor

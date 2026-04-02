@@ -7,7 +7,21 @@ import java.time.LocalDate;
 
 
 @Entity
-@Table(name = "metricas", schema = "aneel")
+@Table(
+    name = "metricas",
+    schema = "aneel",
+    uniqueConstraints = {
+        @UniqueConstraint(
+            name = "uk_metricas",
+            columnNames = {
+                "id_conjunto",
+                "id_sig_indicador",
+                "num_periodo_indice",
+                "ano_indice"
+            }
+        )
+    }
+)
 @Getter
 @Setter
 @NoArgsConstructor

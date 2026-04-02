@@ -95,11 +95,17 @@ public class TesteBancoAneel {
             // =========================
             Perdas perdas = new Perdas();
             perdas.setDistribuidora(dist);
-            perdas.setDataProcesso(LocalDate.now());
-            perdas.setTME(1.2);
+                    
+            LocalDate data = LocalDate.now();
+            perdas.setDataProcesso(data);
+                    
+            // importante agora por causa da migration
+            perdas.setAno((long) data.getYear());
+                    
+            perdas.setTme(1.2);
             perdas.setPerdasRedeBasica(2.3);
             perdas.setCustoPerdasRedeBasica(3.4);
-
+                    
             perdasRepo.save(perdas);
 
             // =========================
