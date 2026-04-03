@@ -23,7 +23,7 @@ public class DistribuidoraExcelImport {
     public void importar(String caminhoArquivo) {
 
         try (FileInputStream fis = new FileInputStream(caminhoArquivo);
-             Workbook workbook = WorkbookFactory.create(fis)) {
+            Workbook workbook = WorkbookFactory.create(fis)) {
 
             Sheet sheet = workbook.getSheetAt(0);
 
@@ -33,8 +33,15 @@ public class DistribuidoraExcelImport {
 
                 if (row.getRowNum() == 0) continue; 
 
+                Long codigoIdDist = Utils.toLong(Utils.getRaw(row.getCell(13))); 
+                if(repository.existsByCodigoIdDist(codigoIdDist)){
+                    continue;
+                }
+                
+
                 Distribuidora dist = mapRowToEntity(row);
 
+                
                 if (dist != null) {
                     lista.add(dist);
                 }
