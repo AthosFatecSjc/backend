@@ -1,4 +1,4 @@
--- V5__add_is_required.sql
+-- V7__terms.sql
 ALTER TABLE energia.terms
 ADD COLUMN IF NOT EXISTS is_required BOOLEAN NOT NULL DEFAULT FALSE;
 
