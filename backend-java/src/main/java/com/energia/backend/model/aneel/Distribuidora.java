@@ -37,6 +37,9 @@ public class Distribuidora {
     @Column(name = "num_cnpj", nullable = false, unique = true, length = 14)
     private String numCnpj;
 
+    @Column(name = "razao_social", nullable = false)
+    private String razaoSocial;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "regiao", nullable = false)
     private Regiao regiao;
