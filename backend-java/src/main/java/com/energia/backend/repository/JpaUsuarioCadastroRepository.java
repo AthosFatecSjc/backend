@@ -5,7 +5,7 @@ import com.energia.backend.model.AnonymizationStatus;
 import com.energia.backend.model.StatusEntity;
 import com.energia.backend.model.StatusUsuario;
 import com.energia.backend.model.UserStatusEntity;
-import com.energia.backend.model.Usuario;
+import com.energia.backend.dto.Usuario;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;

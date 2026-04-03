@@ -1,3 +1,9 @@
+-- Terms
+ALTER TABLE energia.terms
+ADD COLUMN is_required BOOLEAN NOT NULL DEFAULT FALSE;
+
+-- Permissions (energia_app)
+
 GRANT USAGE ON SCHEMA energia TO energia_app;
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA energia TO energia_app;

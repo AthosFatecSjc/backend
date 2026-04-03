@@ -2,32 +2,46 @@ package com.energia.backend.service;
 
 import com.energia.backend.dto.UsuarioCadastroRequest;
 import com.energia.backend.exception.EmailJaCadastradoException;
+import com.energia.backend.exception.TermoNaoEncontradoException;
+import com.energia.backend.model.AppUserEntity;
 import com.energia.backend.model.StatusUsuario;
-import com.energia.backend.model.Usuario;
-import com.energia.backend.repository.UsuarioCadastroRepository;
+import com.energia.backend.dto.Usuario;
+import com.energia.backend.repository.UsuarioRepository;
 import org.junit.jupiter.api.Test;
 
-import java.util.HashSet;
-import java.util.Set;
+import java.util.List;
+import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
 
 class UsuarioCadastroServiceTest {
 
     @Test
     void deveCadastrarUsuarioComStatusPendenteESenhaHasheada() {
-        InMemoryCadastroRepository repository = new InMemoryCadastroRepository();
-        UsuarioCadastroService service = new UsuarioCadastroService(repository);
+
+        UsuarioRepository usuarioRepository = mock(UsuarioRepository.class);
+        TermsService termsService = mock(TermsService.class);
+
+        UsuarioCadastroService service =
+                new UsuarioCadastroService(usuarioRepository, termsService);
+
+        when(usuarioRepository.existsByEmail(any())).thenReturn(false);
+
+        // simula save retornando entidade com ID
+        when(usuarioRepository.save(any(AppUserEntity.class))).thenAnswer(invocation -> {
+            AppUserEntity user = invocation.getArgument(0);
+            user.setId(UUID.randomUUID());
+            return user;
+        });
 
         UsuarioCadastroRequest request = new UsuarioCadastroRequest();
         request.setNomeCompleto("Maria Silva");
         request.setEmail("  MARIA@TESTE.COM ");
         request.setSenha("SenhaFuerte123");
         request.setTelefone(" 11999998888 ");
+        request.setTermsIds(List.of(UUID.randomUUID()));
 
         Usuario usuario = service.cadastrar(request);
 
@@ -39,18 +53,27 @@ class UsuarioCadastroServiceTest {
         assertNotEquals("SenhaFuerte123", usuario.getSenhaHash());
         assertTrue(usuario.getSenhaHash().startsWith("PBKDF2$"));
         assertEquals(4, usuario.getSenhaHash().split("\\$").length);
+
+        verify(usuarioRepository).save(any(AppUserEntity.class));
     }
 
     @Test
     void deveRejeitarEmailDuplicado() {
-        InMemoryCadastroRepository repository = new InMemoryCadastroRepository();
-        repository.markAsExisting("duplicado@teste.com");
 
-        UsuarioCadastroService service = new UsuarioCadastroService(repository);
+        UsuarioRepository usuarioRepository = mock(UsuarioRepository.class);
+        TermsService termsService = mock(TermsService.class);
+
+        UsuarioCadastroService service =
+                new UsuarioCadastroService(usuarioRepository, termsService);
+
+        when(usuarioRepository.existsByEmail("duplicado@teste.com"))
+                .thenReturn(true);
+
         UsuarioCadastroRequest request = new UsuarioCadastroRequest();
         request.setNomeCompleto("Joao");
         request.setEmail("DUPLICADO@TESTE.COM");
         request.setSenha("SenhaFuerte123");
+        request.setTermsIds(List.of(UUID.randomUUID()));
 
         EmailJaCadastradoException exception = assertThrows(
                 EmailJaCadastradoException.class,
@@ -58,24 +81,31 @@ class UsuarioCadastroServiceTest {
         );
 
         assertEquals("E-mail ja cadastrado.", exception.getMessage());
+
+        verify(usuarioRepository, never()).save(any());
     }
 
-    private static class InMemoryCadastroRepository implements UsuarioCadastroRepository {
-        private final Set<String> existingEmails = new HashSet<>();
+    @Test
+    void deveRejeitarCadastroSemAceiteDosTermosObrigatorios() {
 
-        @Override
-        public boolean existsByEmail(String email) {
-            return existingEmails.contains(email);
-        }
+        UsuarioRepository usuarioRepository = mock(UsuarioRepository.class);
+        TermsService termsService = mock(TermsService.class);
 
-        @Override
-        public Usuario save(Usuario usuario) {
-            existingEmails.add(usuario.getEmail());
-            return usuario;
-        }
+        UsuarioCadastroService service =
+                new UsuarioCadastroService(usuarioRepository, termsService);
 
-        void markAsExisting(String email) {
-            existingEmails.add(email);
-        }
+        UsuarioCadastroRequest request = new UsuarioCadastroRequest();
+        request.setNomeCompleto("Joao");
+        request.setEmail("joao@teste.com");
+        request.setSenha("SenhaFuerte123");
+
+        TermoNaoEncontradoException exception = assertThrows(
+                TermoNaoEncontradoException.class,
+                () -> service.cadastrar(request)
+        );
+
+        assertEquals("Aceite dos termos obrigatorios e obrigatorio.", exception.getMessage());
+        verify(usuarioRepository, never()).save(any());
+        verify(termsService, never()).registrarTermosAceitos(any(), any());
     }
 }

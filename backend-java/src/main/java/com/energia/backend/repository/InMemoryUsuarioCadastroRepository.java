@@ -1,8 +1,7 @@
 package com.energia.backend.repository;
 
-import com.energia.backend.model.Usuario;
+import com.energia.backend.dto.Usuario;
 import org.springframework.stereotype.Repository;
-
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
