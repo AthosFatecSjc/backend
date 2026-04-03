@@ -12,14 +12,13 @@ import java.util.List;
 import java.util.UUID;
 
 @Entity
-@Table(
-    name = "app_user",
-    uniqueConstraints = {
+@Table(name = "app_user", uniqueConstraints = {
         @UniqueConstraint(name = "uq_app_user_email", columnNames = "email")
-    }
-)
-@Getter @Setter
-@NoArgsConstructor @AllArgsConstructor
+})
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 @Builder
 public class AppUserEntity {
 
@@ -49,11 +48,8 @@ public class AppUserEntity {
 
     // MANY-TO-MANY → ROLE
     @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(
-        name = "user_role",
-        joinColumns = @JoinColumn(name = "user_id"),          // ✅ FIXED
-        inverseJoinColumns = @JoinColumn(name = "role_id")
-    )
+    @JoinTable(name = "user_role", joinColumns = @JoinColumn(name = "user_id"), // ✅ FIXED
+            inverseJoinColumns = @JoinColumn(name = "role_id"))
     private List<RoleEntity> roles;
 
     // ONE USER → MANY USER_STATUS
@@ -63,4 +59,12 @@ public class AppUserEntity {
     // ONE USER → MANY USER_TERMS
     @OneToMany(mappedBy = "user", fetch = FetchType.LAZY)
     private List<UserTermsEntity> acceptedTerms;
+
+    @PrePersist
+    public void prePersist() {
+        if (this.anonymizationStatus == null) {
+            this.anonymizationStatus = AnonymizationStatus.ACTIVE;
+        }
+    }
+
 }
