@@ -49,6 +49,7 @@ services:
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
       SPRING_DATA_MONGODB_URI: mongodb://${MONGO_USERNAME}:${MONGO_PASSWORD}@${MONGO_HOST}:${MONGO_PORT}/${MONGO_DATABASE}?authSource=${MONGO_AUTH_SOURCE}
       SERVER_PORT: ${SERVER_PORT_JAVA}
+      ETL_FILE_DIST_PATH: ${ETL_FILE_DIST_CONTAINER_PATH}
     ports:
       - "${SERVER_PORT_JAVA}:8181"
     networks:
@@ -63,7 +64,9 @@ services:
       interval: 15s
       timeout: 5s
       retries: 10
-
+    volumes:
+      - ${ETL_FILE_DIST_PATH}:${ETL_FILE_DIST_CONTAINER_PATH}
+   
   backend-python:
     build:
       context: ./backend-python

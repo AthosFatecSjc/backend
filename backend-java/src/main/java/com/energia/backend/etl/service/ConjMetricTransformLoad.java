@@ -49,7 +49,6 @@ public class ConjMetricTransformLoad {
                     (List<Map<String, Object>>) result.get("records");
 
             for (Map<String, Object> row : registros) {
-                System.out.println("Processando linha: " + row);
             
                 Long ideConjUndConsumidoras = Long.valueOf(row.get("IdeConjUndConsumidoras").toString());
                 String dscConjUndConsumidoras = row.get("DscConjUndConsumidoras").toString();
@@ -78,7 +77,6 @@ public class ConjMetricTransformLoad {
             
                 if (conjunto == null) {
 
-                    System.out.print("Criando novo Conjunto para IdeConjUndConsumidoras: " + ideConjUndConsumidoras);
             
                     Distribuidora dist = distribuidoraRepository
                         .findByNumCnpj(numCnpj)
@@ -95,7 +93,6 @@ public class ConjMetricTransformLoad {
                 }
 
                 if (created) {
-                    System.out.print("Salvando dados de coleta");
                     ColetaDados coleta = new ColetaDados();
                     coleta.setDataColeta(dataColeta);
                     coleta.setDataGeracao(dataGeracaoConjDados);
@@ -114,7 +111,6 @@ public class ConjMetricTransformLoad {
                 SigIndicador indicador = sigIndicadorRepository
                 .findByIndicadorType(tipo)
                 .orElseThrow();
-                System.out.print("SIGINDICADDDOR: " + sigIndicador);
                 
                 // MÉTRICAS (COM MÉDIA)
                 Optional<Metricas> opt = metricasRepository
@@ -123,7 +119,6 @@ public class ConjMetricTransformLoad {
                     );
                 
                 if (!opt.isPresent()) {
-                    System.out.print("Salvando nova métrica");
                     Metricas metricaNova = new Metricas();
                     metricaNova.setConjunto(conjunto);
                     metricaNova.setSigIndicador(indicador);

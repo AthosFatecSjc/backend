@@ -28,11 +28,9 @@ public class ConjuntoMetricasImport {
     
         String url = baseUrl + "?sql=" + sql;
     
-        System.out.println(url); 
 
         RestTemplate restTemplate = new RestTemplate();
         String response = restTemplate.getForObject(url, String.class);
-        System.out.printf("RESPONSE: ", response);
         return response;
     }
     
