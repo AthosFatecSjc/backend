@@ -6,6 +6,8 @@ import com.energia.backend.exception.TermoNaoEncontradoException;
 import com.energia.backend.model.AppUserEntity;
 import com.energia.backend.model.StatusUsuario;
 import com.energia.backend.dto.Usuario;
+import com.energia.backend.repository.StatusJpaRepository;
+import com.energia.backend.repository.UserStatusJpaRepository;
 import com.energia.backend.repository.UsuarioRepository;
 import org.junit.jupiter.api.Test;
 
@@ -23,9 +25,11 @@ class UsuarioCadastroServiceTest {
 
         UsuarioRepository usuarioRepository = mock(UsuarioRepository.class);
         TermsService termsService = mock(TermsService.class);
+        StatusJpaRepository statusRepository = mock(StatusJpaRepository.class);
+        UserStatusJpaRepository userStatusRepository = mock(UserStatusJpaRepository.class);
 
         UsuarioCadastroService service =
-                new UsuarioCadastroService(usuarioRepository, termsService);
+                new UsuarioCadastroService(usuarioRepository, termsService, statusRepository, userStatusRepository);
 
         when(usuarioRepository.existsByEmail(any())).thenReturn(false);
 
@@ -62,9 +66,11 @@ class UsuarioCadastroServiceTest {
 
         UsuarioRepository usuarioRepository = mock(UsuarioRepository.class);
         TermsService termsService = mock(TermsService.class);
+        StatusJpaRepository statusRepository = mock(StatusJpaRepository.class);
+        UserStatusJpaRepository userStatusRepository = mock(UserStatusJpaRepository.class);
 
         UsuarioCadastroService service =
-                new UsuarioCadastroService(usuarioRepository, termsService);
+                new UsuarioCadastroService(usuarioRepository, termsService, statusRepository, userStatusRepository);
 
         when(usuarioRepository.existsByEmail("duplicado@teste.com"))
                 .thenReturn(true);
@@ -90,9 +96,11 @@ class UsuarioCadastroServiceTest {
 
         UsuarioRepository usuarioRepository = mock(UsuarioRepository.class);
         TermsService termsService = mock(TermsService.class);
+        StatusJpaRepository statusRepository = mock(StatusJpaRepository.class);
+        UserStatusJpaRepository userStatusRepository = mock(UserStatusJpaRepository.class);
 
         UsuarioCadastroService service =
-                new UsuarioCadastroService(usuarioRepository, termsService);
+                new UsuarioCadastroService(usuarioRepository, termsService, statusRepository, userStatusRepository);
 
         UsuarioCadastroRequest request = new UsuarioCadastroRequest();
         request.setNomeCompleto("Joao");

@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.energia.backend.dto.Usuario;
 import com.energia.backend.dto.UsuarioCadastroRequest;
 import com.energia.backend.exception.EmailJaCadastradoException;
+import com.energia.backend.exception.PermissaoNegadaException;
 import com.energia.backend.exception.TermoNaoEncontradoException;
 import com.energia.backend.model.AppUserEntity;
 import com.energia.backend.model.StatusEntity;
@@ -48,10 +49,6 @@ public class UsuarioCadastroService {
         this.termsService = termsService;
         this.statusRepository = statusRepository;
         this.userStatusRepository = userStatusRepository;
-    }
-
-    public UsuarioCadastroService(UsuarioRepository usuarioRepository, TermsService termsService) {
-        this(usuarioRepository, termsService, null, null);
     }
 
     @Transactional
@@ -98,6 +95,9 @@ public class UsuarioCadastroService {
         if (novoStatus == null) {
             throw new IllegalArgumentException("Status desejado e obrigatorio.");
         }
+        if (novoStatus != StatusUsuario.APROVADO && novoStatus != StatusUsuario.REJEITADO) {
+            throw new IllegalArgumentException("Status deve ser APROVADO ou REJEITADO.");
+        }
         if (novoStatus == StatusUsuario.REJEITADO && isBlank(motivo)) {
             throw new IllegalArgumentException("Motivo da rejeicao e obrigatorio.");
         }
@@ -110,7 +110,7 @@ public class UsuarioCadastroService {
         boolean isAdmin = admin.getRoles() != null
                 && admin.getRoles().stream().anyMatch(role -> "ADMIN".equalsIgnoreCase(role.getName()));
         if (!isAdmin) {
-            throw new SecurityException("Apenas administradores podem alterar o status de usuarios.");
+            throw new PermissaoNegadaException("Apenas administradores podem alterar o status de usuarios.");
         }
 
         UserStatusEntity statusAtual = userStatusRepository.findFirstByUserOrderByAssignedAtDesc(usuario)
