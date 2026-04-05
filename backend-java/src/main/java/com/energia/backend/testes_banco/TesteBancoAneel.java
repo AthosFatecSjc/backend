@@ -31,6 +31,11 @@ public class TesteBancoAneel {
 
             System.out.println("🔥 ENTROU NO RUNNER");
 
+            if (distribuidoraRepo.existsByCodigoIdDist(1000L)) {
+                System.out.println("Seed ANEEL ja existente, pulando insercao inicial.");
+                return;
+            }
+
             System.out.println("Qtd distribuidoras antes: " + distribuidoraRepo.count());
             // =========================
             // 1. Distribuidora
