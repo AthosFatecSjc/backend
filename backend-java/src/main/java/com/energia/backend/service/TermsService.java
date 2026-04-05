@@ -1,8 +1,10 @@
 package com.energia.backend.service;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -16,12 +18,13 @@ import com.energia.backend.repository.TermsRepository;
 import com.energia.backend.repository.UserTermsRespository;
 
 import jakarta.transaction.Transactional;
+
 @Service
 @Transactional
 public class TermsService {
 
-    private TermsRepository termsRepository;
-    private UserTermsRespository userTermsRespository;
+    private final TermsRepository termsRepository;
+    private final UserTermsRespository userTermsRespository;
 
     public TermsService(TermsRepository termsRepository, UserTermsRespository userTermsRespository) {
         this.termsRepository = termsRepository;
@@ -29,38 +32,35 @@ public class TermsService {
     }
 
     public void registrarTermosAceitos(List<UUID> termosIds, AppUserEntity userEntity) {
-
         if (termosIds == null || termosIds.isEmpty()) {
-            throw new TermoNaoEncontradoException("Lista de termos não pode ser vazia.");
+            throw new TermoNaoEncontradoException("Lista de termos nao pode ser vazia.");
         }
 
         List<TermsEntity> termosEnviados = termsRepository.findAllById(termosIds);
 
         if (termosEnviados.size() != termosIds.size()) {
-            throw new TermoNaoEncontradoException("Um ou mais termos informados não existem.");
+            throw new TermoNaoEncontradoException("Um ou mais termos informados nao existem.");
         }
 
-        List<TermsEntity> termosObrigatorios = termsRepository.findByIsRequiredTrue();
-
-        Map<String, TermsEntity> enviadosPorTipo = termosEnviados.stream()
+        Map<String, TermsEntity> termosObrigatoriosVigentesPorTipo = termsRepository
+                .findActiveRequiredByReferenceTime(LocalDateTime.now())
+                .stream()
                 .collect(Collectors.toMap(
                         t -> t.getTermType().getName(),
                         t -> t,
                         (existente, novo) -> existente.getVersion() > novo.getVersion() ? existente : novo));
 
-        for (TermsEntity obrigatorio : termosObrigatorios) {
+        Set<UUID> termosEnviadosIds = new HashSet<>(termosIds);
 
-            String tipoObrigatorio = obrigatorio.getTermType().getName();
-
-            if (!enviadosPorTipo.containsKey(tipoObrigatorio)) {
-                throw new RuntimeException(
-                        "Termo obrigatório não aceito: " + tipoObrigatorio);
+        for (TermsEntity termoObrigatorio : termosObrigatoriosVigentesPorTipo.values()) {
+            if (!termosEnviadosIds.contains(termoObrigatorio.getId())) {
+                throw new TermoNaoEncontradoException(
+                        "Termo obrigatorio vigente nao aceito: " + termoObrigatorio.getTermType().getName());
             }
         }
 
         try {
             for (TermsEntity termo : termosEnviados) {
-
                 UserTermsEntity userTerms = new UserTermsEntity();
                 userTerms.setUser(userEntity);
                 userTerms.setTerms(termo);
@@ -69,7 +69,6 @@ public class TermsService {
 
                 userTermsRespository.save(userTerms);
             }
-
         } catch (Exception ex) {
             throw new RuntimeException("Erro ao registrar aceite dos termos.", ex);
         }
