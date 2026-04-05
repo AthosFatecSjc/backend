@@ -32,6 +32,14 @@ public class GlobalExceptionHandler {
         ));
     }
 
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<Map<String, String>> handleInvalidState(IllegalStateException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
+                "erro", "OPERACAO_INVALIDA",
+                "mensagem", ex.getMessage()
+        ));
+    }
+
     @ExceptionHandler(TermoNaoEncontradoException.class)
     public ResponseEntity<Map<String, String>> handleTermoNaoEncontrado(TermoNaoEncontradoException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of(

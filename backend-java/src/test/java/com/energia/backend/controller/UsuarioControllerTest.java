@@ -9,12 +9,16 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import org.junit.jupiter.api.Test;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.energia.backend.dto.AprovacaoRejeicaoUsuarioRequest;
 import com.energia.backend.dto.MinhaContaResponse;
 import com.energia.backend.dto.MinhaContaUpdateRequest;
 import com.energia.backend.dto.Usuario;
@@ -26,6 +30,67 @@ import com.energia.backend.service.MinhaContaService;
 import com.energia.backend.service.UsuarioCadastroService;
 
 class UsuarioControllerTest {
+
+    @Test
+    void deveAlterarStatusPorPatchUnico() {
+        UsuarioCadastroService cadastroService = mock(UsuarioCadastroService.class);
+        MinhaContaService minhaContaService = mock(MinhaContaService.class);
+        AnonimizacaoService anonimizacaoService = mock(AnonimizacaoService.class);
+        UsuarioController controller = new UsuarioController(cadastroService, minhaContaService, anonimizacaoService);
+
+        UUID usuarioId = UUID.randomUUID();
+        UUID adminId = UUID.randomUUID();
+        AprovacaoRejeicaoUsuarioRequest request = new AprovacaoRejeicaoUsuarioRequest();
+        request.setStatus(StatusUsuario.APROVADO);
+
+        ResponseEntity<String> response = controller.alterarStatusUsuario(usuarioId, request, () -> adminId.toString());
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals("Status do usuario atualizado com sucesso.", response.getBody());
+        verify(cadastroService).alterarStatusUsuario(eq(usuarioId), eq(adminId), eq(StatusUsuario.APROVADO), eq(null));
+    }
+
+    @Test
+    void devePropagarErroDoServiceQuandoMotivoForInvalidoNoPatchDeStatus() {
+        UsuarioCadastroService cadastroService = mock(UsuarioCadastroService.class);
+        MinhaContaService minhaContaService = mock(MinhaContaService.class);
+        AnonimizacaoService anonimizacaoService = mock(AnonimizacaoService.class);
+        UsuarioController controller = new UsuarioController(cadastroService, minhaContaService, anonimizacaoService);
+
+        AprovacaoRejeicaoUsuarioRequest request = new AprovacaoRejeicaoUsuarioRequest();
+        request.setStatus(StatusUsuario.REJEITADO);
+        request.setMotivo("   ");
+
+        doThrow(new IllegalArgumentException("Motivo da rejeicao e obrigatorio."))
+                .when(cadastroService)
+                .alterarStatusUsuario(any(UUID.class), any(UUID.class), eq(StatusUsuario.REJEITADO), eq("   "));
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> controller.alterarStatusUsuario(UUID.randomUUID(), request, () -> UUID.randomUUID().toString())
+        );
+
+        assertEquals("Motivo da rejeicao e obrigatorio.", exception.getMessage());
+    }
+
+    @Test
+    void deveRetornarUnauthorizedQuandoPrincipalForInvalidoNoPatchDeStatus() {
+        UsuarioCadastroService cadastroService = mock(UsuarioCadastroService.class);
+        MinhaContaService minhaContaService = mock(MinhaContaService.class);
+        AnonimizacaoService anonimizacaoService = mock(AnonimizacaoService.class);
+        UsuarioController controller = new UsuarioController(cadastroService, minhaContaService, anonimizacaoService);
+
+        AprovacaoRejeicaoUsuarioRequest request = new AprovacaoRejeicaoUsuarioRequest();
+        request.setStatus(StatusUsuario.APROVADO);
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> controller.alterarStatusUsuario(UUID.randomUUID(), request, () -> "admin@email.com")
+        );
+
+        assertEquals(HttpStatus.UNAUTHORIZED, exception.getStatusCode());
+        assertEquals("Identificador do usuario autenticado invalido.", exception.getReason());
+    }
 
     @Test
     void deveRetornarCreatedComMensagemDeSucesso() {
