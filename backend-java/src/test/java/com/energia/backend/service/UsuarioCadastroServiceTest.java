@@ -6,6 +6,8 @@ import com.energia.backend.model.StatusUsuario;
 import com.energia.backend.model.Usuario;
 import com.energia.backend.repository.UsuarioCadastroRepository;
 import org.junit.jupiter.api.Test;
+import org.springframework.security.crypto.password.NoOpPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -14,14 +16,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class UsuarioCadastroServiceTest {
 
     @Test
     void deveCadastrarUsuarioComStatusPendenteESenhaHasheada() {
         InMemoryCadastroRepository repository = new InMemoryCadastroRepository();
-        UsuarioCadastroService service = new UsuarioCadastroService(repository);
+        PasswordEncoder passwordEncoder = new MockPasswordEncoder(); // Mock que transforma: "password" -> "encoded_password"
+        UsuarioCadastroService service = new UsuarioCadastroService(repository, passwordEncoder);
 
         UsuarioCadastroRequest request = new UsuarioCadastroRequest();
         request.setNomeCompleto("Maria Silva");
@@ -36,9 +38,10 @@ class UsuarioCadastroServiceTest {
         assertEquals("11999998888", usuario.getTelefone());
         assertNotNull(usuario.getDataCadastro());
         assertNotNull(usuario.getSenhaHash());
+        // Verifica que a senha foi encriptada (não é igual à original)
         assertNotEquals("SenhaFuerte123", usuario.getSenhaHash());
-        assertTrue(usuario.getSenhaHash().startsWith("PBKDF2$"));
-        assertEquals(4, usuario.getSenhaHash().split("\\$").length);
+        // Verifica que o PasswordEncoder foi usado (mock adiciona prefixo "encoded_")
+        assertEquals("encoded_SenhaFuerte123", usuario.getSenhaHash());
     }
 
     @Test
@@ -46,7 +49,8 @@ class UsuarioCadastroServiceTest {
         InMemoryCadastroRepository repository = new InMemoryCadastroRepository();
         repository.markAsExisting("duplicado@teste.com");
 
-        UsuarioCadastroService service = new UsuarioCadastroService(repository);
+        PasswordEncoder passwordEncoder = new MockPasswordEncoder();
+        UsuarioCadastroService service = new UsuarioCadastroService(repository, passwordEncoder);
         UsuarioCadastroRequest request = new UsuarioCadastroRequest();
         request.setNomeCompleto("Joao");
         request.setEmail("DUPLICADO@TESTE.COM");
@@ -58,6 +62,22 @@ class UsuarioCadastroServiceTest {
         );
 
         assertEquals("E-mail ja cadastrado.", exception.getMessage());
+    }
+
+    /**
+     * Mock PasswordEncoder que prefixia a senha com "encoded_" para fins de teste.
+     * Em produção, seria BCryptPasswordEncoder.
+     */
+    private static class MockPasswordEncoder implements PasswordEncoder {
+        @Override
+        public String encode(CharSequence rawPassword) {
+            return "encoded_" + rawPassword.toString();
+        }
+
+        @Override
+        public boolean matches(CharSequence rawPassword, String encodedPassword) {
+            return encode(rawPassword).equals(encodedPassword);
+        }
     }
 
     private static class InMemoryCadastroRepository implements UsuarioCadastroRepository {

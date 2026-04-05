@@ -1,10 +1,5 @@
 package com.energia.backend.controller;
 
-import com.energia.backend.dto.AuthenticationErrorResponse;
-import com.energia.backend.dto.LoginRequest;
-import com.energia.backend.dto.LoginResponse;
-import com.energia.backend.exception.LoginAuthenticationException;
-import com.energia.backend.service.AuthenticationService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -12,7 +7,14 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.energia.backend.dto.AuthenticationErrorResponse;
+import com.energia.backend.dto.LoginRequest;
+import com.energia.backend.dto.LoginResponse;
+import com.energia.backend.exception.LoginAuthenticationException;
+import com.energia.backend.service.AuthenticationService;
+
 @RestController
+@RequestMapping("/auth")
 public class AuthenticationController {
     private final AuthenticationService authenticationService;
 
@@ -49,3 +51,4 @@ public class AuthenticationController {
         }
     }
 }
+

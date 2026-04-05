@@ -6,28 +6,23 @@ import com.energia.backend.model.StatusUsuario;
 import com.energia.backend.model.Usuario;
 import com.energia.backend.repository.UsuarioCadastroRepository;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import javax.crypto.SecretKeyFactory;
-import javax.crypto.spec.PBEKeySpec;
-import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
-import java.security.spec.InvalidKeySpecException;
 import java.time.LocalDateTime;
-import java.util.Base64;
 import java.util.regex.Pattern;
 
 @Service
 public class UsuarioCadastroService {
     private static final Pattern EMAIL_PATTERN = Pattern.compile("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$");
-    private static final int ITERATIONS = 65536;
-    private static final int KEY_LENGTH = 256;
 
     private final UsuarioCadastroRepository repository;
+    private final PasswordEncoder passwordEncoder;
 
-    public UsuarioCadastroService(UsuarioCadastroRepository repository) {
+    public UsuarioCadastroService(UsuarioCadastroRepository repository, PasswordEncoder passwordEncoder) {
         this.repository = repository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Transactional
@@ -42,7 +37,7 @@ public class UsuarioCadastroService {
         Usuario usuario = new Usuario();
         usuario.setNomeCompleto(request.getNomeCompleto().trim());
         usuario.setEmail(emailNormalizado);
-        usuario.setSenhaHash(gerarHashSeguro(request.getSenha()));
+        usuario.setSenhaHash(passwordEncoder.encode(request.getSenha()));
         usuario.setTelefone(normalizarOpcional(request.getTelefone()));
         usuario.setStatus(StatusUsuario.PENDENTE);
         usuario.setDataCadastro(LocalDateTime.now());
@@ -75,25 +70,6 @@ public class UsuarioCadastroService {
         }
     }
 
-    private String gerarHashSeguro(String senha) {
-        byte[] salt = new byte[16];
-        new SecureRandom().nextBytes(salt);
-
-        PBEKeySpec spec = new PBEKeySpec(senha.toCharArray(), salt, ITERATIONS, KEY_LENGTH);
-
-        try {
-            SecretKeyFactory keyFactory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
-            byte[] hash = keyFactory.generateSecret(spec).getEncoded();
-            String saltBase64 = Base64.getEncoder().encodeToString(salt);
-            String hashBase64 = Base64.getEncoder().encodeToString(hash);
-            return "PBKDF2$" + ITERATIONS + "$" + saltBase64 + "$" + hashBase64;
-        } catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
-            throw new IllegalStateException("Falha ao gerar hash de senha.", e);
-        } finally {
-            spec.clearPassword();
-        }
-    }
-
     private String normalizarEmail(String email) {
         return email.trim().toLowerCase();
     }
@@ -106,3 +82,4 @@ public class UsuarioCadastroService {
         return value == null || value.trim().isEmpty();
     }
 }
+

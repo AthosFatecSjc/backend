@@ -1,26 +1,26 @@
 package com.energia.backend.controller;
 
-import com.energia.backend.dto.LoginRequest;
-import com.energia.backend.dto.LoginResponse;
-import com.energia.backend.exception.LoginAuthenticationException;
-import com.energia.backend.service.AuthenticationService;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.jupiter.api.Test;
+import static org.hamcrest.Matchers.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+import java.util.UUID;
+
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.util.UUID;
-
-import static org.hamcrest.Matchers.notNullValue;
-import static org.hamcrest.Matchers.equalTo;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import com.energia.backend.dto.LoginRequest;
+import com.energia.backend.dto.LoginResponse;
+import com.energia.backend.exception.LoginAuthenticationException;
+import com.energia.backend.service.AuthenticationService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 @WebMvcTest(AuthenticationController.class)
 @DisplayName("AuthenticationController Tests")

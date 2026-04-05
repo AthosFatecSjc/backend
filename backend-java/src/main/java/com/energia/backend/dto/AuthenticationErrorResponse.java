@@ -1,6 +1,5 @@
 package com.energia.backend.dto;
 
-import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 
 public class AuthenticationErrorResponse {

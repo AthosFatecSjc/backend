@@ -1,5 +1,17 @@
 package com.energia.backend.service;
 
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.energia.backend.dto.LoginRequest;
 import com.energia.backend.dto.LoginResponse;
 import com.energia.backend.exception.LoginAuthenticationException;
@@ -7,34 +19,20 @@ import com.energia.backend.model.AppUserEntity;
 import com.energia.backend.model.UserStatusEntity;
 import com.energia.backend.repository.AppUserJpaRepository;
 import com.energia.backend.repository.UserStatusJpaRepository;
+
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import javax.crypto.SecretKeyFactory;
-import javax.crypto.spec.PBEKeySpec;
-import java.security.NoSuchAlgorithmException;
-import java.security.spec.InvalidKeySpecException;
-import java.time.LocalDateTime;
-import java.util.Base64;
-import java.util.Date;
-import java.util.Optional;
-import java.util.UUID;
 
 @Service
 public class AuthenticationService {
-    private static final int ITERATIONS = 65536;
-    private static final int KEY_LENGTH = 256;
-    private static final String PBKDF2_ALGORITHM = "PBKDF2WithHmacSHA256";
 
     private final AppUserJpaRepository userRepository;
     private final UserStatusJpaRepository userStatusRepository;
+    private final PasswordEncoder passwordEncoder;
 
-    @Value("${jwt.secret:sua-chave-secreta-muito-longa-com-pelo-menos-256-bits-de-comprimento}")
+    @Value("${jwt.secret:sua-chave-secreta-muito-longa-com-pelo-menos-256-bits-de-comprimento-para-hs512}")
     private String jwtSecret;
 
     @Value("${jwt.expiration:3600000}")
@@ -42,10 +40,12 @@ public class AuthenticationService {
 
     public AuthenticationService(
             AppUserJpaRepository userRepository,
-            UserStatusJpaRepository userStatusRepository
+            UserStatusJpaRepository userStatusRepository,
+            PasswordEncoder passwordEncoder
     ) {
         this.userRepository = userRepository;
         this.userStatusRepository = userStatusRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Transactional(readOnly = true)
@@ -60,8 +60,8 @@ public class AuthenticationService {
                         HttpStatus.UNAUTHORIZED.value()
                 ));
 
-        // 2. Verificar senha
-        if (!verificarSenha(request.getSenha(), user.getPassword())) {
+        // 2. Verificar senha com BCrypt
+        if (!passwordEncoder.matches(request.getSenha(), user.getPassword())) {
             throw new LoginAuthenticationException(
                     "Invalid email or password",
                     "INVALID_CREDENTIALS",
@@ -107,10 +107,15 @@ public class AuthenticationService {
             );
         }
 
-        // 4. Gerar JWT
-        String token = gerarJWT(user.getId(), user.getEmail(), user.getName());
+        // 4. Extrair roles do usuário (simplificado: apenas "admin" ou "user")
+        List<String> roles = user.getRoles().stream()
+                .map(role -> role.getName().toLowerCase().replaceAll("role_", ""))
+                .collect(Collectors.toList());
 
-        // 5. Retornar resposta com sucesso
+        // 5. Gerar JWT com roles
+        String token = generateTokenWithRoles(user.getId(), user.getEmail(), user.getName(), roles);
+
+        // 6. Retornar resposta com sucesso
         return new LoginResponse(token, user.getId(), user.getEmail(), user.getName());
     }
 
@@ -126,47 +131,93 @@ public class AuthenticationService {
         }
     }
 
-    private boolean verificarSenha(String senhaProvidenciada, String senhaHashArmazenada) {
-        try {
-            // Formato armazenado: PBKDF2$<iterations>$<salt_base64>$<hash_base64>
-            String[] partes = senhaHashArmazenada.split("\\$");
-            if (partes.length != 4 || !partes[0].equals("PBKDF2")) {
-                return false;
-            }
+    // ======== JWT Methods ========
 
-            int iterations = Integer.parseInt(partes[1]);
-            byte[] salt = Base64.getDecoder().decode(partes[2]);
-            String hashArmazenado = partes[3];
-
-            // Recompor o hash com a senha fornecida
-            PBEKeySpec spec = new PBEKeySpec(
-                    senhaProvidenciada.toCharArray(),
-                    salt,
-                    iterations,
-                    KEY_LENGTH
-            );
-
-            SecretKeyFactory keyFactory = SecretKeyFactory.getInstance(PBKDF2_ALGORITHM);
-            byte[] hashComputed = keyFactory.generateSecret(spec).getEncoded();
-            String hashComputedBase64 = Base64.getEncoder().encodeToString(hashComputed);
-
-            return hashArmazenado.equals(hashComputedBase64);
-        } catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
-            throw new IllegalStateException("Falha ao verificar senha", e);
-        }
+    /**
+     * Gera um JWT token com roles inclusos
+     */
+    public String generateTokenWithRoles(UUID userId, String email, String username, List<String> roles) {
+        Map<String, Object> claims = Map.of(
+            "userId", userId.toString(),
+            "email", email,
+            "username", username,
+            "roles", roles
+        );
+        return createToken(claims, userId.toString());
     }
 
-    private String gerarJWT(java.util.UUID userId, String email, String nome) {
+    /**
+     * Cria o token assinado HS512
+     */
+    private String createToken(Map<String, Object> claims, String subject) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + jwtExpiration);
 
         return Jwts.builder()
-                .subject(userId.toString())
-                .claim("email", email)
-                .claim("nome", nome)
-                .issuedAt(now)
-                .expiration(expiryDate)
+                .setClaims(claims)
+                .setSubject(subject)
+                .setIssuedAt(now)
+                .setExpiration(expiryDate)
                 .signWith(Keys.hmacShaKeyFor(jwtSecret.getBytes()), SignatureAlgorithm.HS512)
                 .compact();
+    }
+
+    /**
+     * Valida se o token é válido (não expirado e assinado corretamente)
+     */
+    public boolean isTokenValid(String token) {
+        try {
+            Jwts.parser()
+                    .verifyWith(Keys.hmacShaKeyFor(jwtSecret.getBytes()))
+                    .build()
+                    .parseSignedClaims(token);
+            return true;
+        } catch (Exception ex) {
+            return false;
+        }
+    }
+
+    /**
+     * Extrai o userId do token
+     */
+    public UUID extractUserId(String token) {
+        Claims claims = extractAllClaims(token);
+        return UUID.fromString(claims.get("userId", String.class));
+    }
+
+    /**
+     * Extrai o email do token
+     */
+    public String extractEmail(String token) {
+        Claims claims = extractAllClaims(token);
+        return claims.get("email", String.class);
+    }
+
+    /**
+     * Extrai username do token
+     */
+    public String extractUsername(String token) {
+        Claims claims = extractAllClaims(token);
+        return claims.get("username", String.class);
+    }
+
+    /**
+     * Extrai os roles do token
+     */
+    @SuppressWarnings("unchecked")
+    public List<String> extractRoles(String token) {
+        Claims claims = extractAllClaims(token);
+        return claims.get("roles", java.util.List.class);
+    }
+
+    /**
+     * Extrai todas as claims
+     */
+    private Claims extractAllClaims(String token) {
+        return Jwts.parser()
+                .verifyWith(Keys.hmacShaKeyFor(jwtSecret.getBytes()))
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
     }
 }

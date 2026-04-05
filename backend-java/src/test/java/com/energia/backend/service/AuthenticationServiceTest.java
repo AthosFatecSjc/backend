@@ -1,27 +1,30 @@
 package com.energia.backend.service;
 
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import org.springframework.security.crypto.password.PasswordEncoder;
+
 import com.energia.backend.dto.LoginRequest;
 import com.energia.backend.dto.LoginResponse;
 import com.energia.backend.exception.LoginAuthenticationException;
 import com.energia.backend.model.AppUserEntity;
+import com.energia.backend.model.RoleEntity;
 import com.energia.backend.model.StatusEntity;
 import com.energia.backend.model.UserStatusEntity;
 import com.energia.backend.repository.AppUserJpaRepository;
 import com.energia.backend.repository.UserStatusJpaRepository;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.DisplayName;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
-import org.springframework.test.util.ReflectionTestUtils;
-
-import java.time.LocalDateTime;
-import java.util.Optional;
-import java.util.UUID;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.*;
 
 @DisplayName("AuthenticationService Tests")
 class AuthenticationServiceTest {
@@ -34,40 +37,44 @@ class AuthenticationServiceTest {
     @Mock
     private UserStatusJpaRepository userStatusRepository;
 
+    @Mock
+    private PasswordEncoder passwordEncoder;
+
     private UUID userId;
     private String email;
     private String nome;
     private String password;
-    private String passwordHash;
+    private String passwordHashBcrypt;
 
     @BeforeEach
     void setup() {
         MockitoAnnotations.openMocks(this);
-        authenticationService = new AuthenticationService(userRepository, userStatusRepository);
-
-        // Set JWT properties
-        ReflectionTestUtils.setField(authenticationService, "jwtSecret",
-            "sua-chave-secreta-muito-longa-com-pelo-menos-256-bits-de-comprimento-para-hs512");
-        ReflectionTestUtils.setField(authenticationService, "jwtExpiration", 3600000L);
+        authenticationService = new AuthenticationService(
+            userRepository,
+            userStatusRepository,
+            passwordEncoder
+        );
 
         userId = UUID.randomUUID();
         email = "user@example.com";
         nome = "Test User";
         password = "senha123456";
 
-        // Pre-computed PBKDF2 hash for "senha123456"
-        passwordHash = "PBKDF2$65536$h+sUEJz0m+0HUCpmdDLkqg==$jPJ2xKnKwBYKj7hRqgUYOE4sWYHs7d5UtBQKVSAoYmc=";
+        // BCrypt hash for "senha123456" (generated with strength=10)
+        passwordHashBcrypt = "$2a$10$slYQmyNdGzin7olVN3p5be4DlH.PKZbv5H8KnzzVgXXbVxzy990RK";
     }
 
     @Test
     @DisplayName("Scenario 1: ATIVO user can login successfully")
     void testLogin_ActiveUserSucceeds() {
         // Arrange
-        AppUserEntity user = criarAppUserEntity(userId, email, nome, passwordHash);
+        RoleEntity userRole = RoleEntity.builder().id(UUID.randomUUID()).name("user").build();
+        AppUserEntity user = criarAppUserEntity(userId, email, nome, passwordHashBcrypt, List.of(userRole));
         UserStatusEntity userStatus = criarUserStatus(user, "ATIVO");
 
         when(userRepository.findByEmailIgnoreCase(email)).thenReturn(Optional.of(user));
         when(userStatusRepository.findFirstByUserOrderByAssignedAtDesc(user)).thenReturn(Optional.of(userStatus));
+        when(passwordEncoder.matches(password, passwordHashBcrypt)).thenReturn(true);
 
         LoginRequest request = new LoginRequest(email, password);
 
@@ -82,19 +89,28 @@ class AuthenticationServiceTest {
         assertNotNull(response.getAccessToken());
         assertEquals("Bearer", response.getTokenType());
 
+        // Valida que o token contém as informações corretas
+        String token = response.getAccessToken();
+        assertTrue(authenticationService.isTokenValid(token));
+        assertEquals(userId, authenticationService.extractUserId(token));
+        assertEquals(email, authenticationService.extractEmail(token));
+
         verify(userRepository, times(1)).findByEmailIgnoreCase(email);
         verify(userStatusRepository, times(1)).findFirstByUserOrderByAssignedAtDesc(user);
+        verify(passwordEncoder, times(1)).matches(password, passwordHashBcrypt);
     }
 
     @Test
     @DisplayName("Scenario 2: PENDENTE user cannot login")
     void testLogin_PendingUserFails() {
         // Arrange
-        AppUserEntity user = criarAppUserEntity(userId, email, nome, passwordHash);
+        RoleEntity userRole = RoleEntity.builder().id(UUID.randomUUID()).name("user").build();
+        AppUserEntity user = criarAppUserEntity(userId, email, nome, passwordHashBcrypt, List.of(userRole));
         UserStatusEntity userStatus = criarUserStatus(user, "PENDENTE");
 
         when(userRepository.findByEmailIgnoreCase(email)).thenReturn(Optional.of(user));
         when(userStatusRepository.findFirstByUserOrderByAssignedAtDesc(user)).thenReturn(Optional.of(userStatus));
+        when(passwordEncoder.matches(password, passwordHashBcrypt)).thenReturn(true);
 
         LoginRequest request = new LoginRequest(email, password);
 
@@ -114,12 +130,14 @@ class AuthenticationServiceTest {
     @DisplayName("Scenario 3: REJEITADO user cannot login")
     void testLogin_RejectedUserFails() {
         // Arrange
-        AppUserEntity user = criarAppUserEntity(userId, email, nome, passwordHash);
+        RoleEntity userRole = RoleEntity.builder().id(UUID.randomUUID()).name("user").build();
+        AppUserEntity user = criarAppUserEntity(userId, email, nome, passwordHashBcrypt, List.of(userRole));
         UserStatusEntity userStatus = criarUserStatus(user, "REJEITADO");
         userStatus.setRationaleForRejection("Failed security check");
 
         when(userRepository.findByEmailIgnoreCase(email)).thenReturn(Optional.of(user));
         when(userStatusRepository.findFirstByUserOrderByAssignedAtDesc(user)).thenReturn(Optional.of(userStatus));
+        when(passwordEncoder.matches(password, passwordHashBcrypt)).thenReturn(true);
 
         LoginRequest request = new LoginRequest(email, password);
 
@@ -140,9 +158,11 @@ class AuthenticationServiceTest {
     @DisplayName("Scenario 4: Invalid credentials are rejected")
     void testLogin_InvalidCredentialsFail() {
         // Arrange
-        AppUserEntity user = criarAppUserEntity(userId, email, nome, passwordHash);
+        RoleEntity userRole = RoleEntity.builder().id(UUID.randomUUID()).name("user").build();
+        AppUserEntity user = criarAppUserEntity(userId, email, nome, passwordHashBcrypt, List.of(userRole));
 
         when(userRepository.findByEmailIgnoreCase(email)).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("wrongPassword", passwordHashBcrypt)).thenReturn(false);
 
         LoginRequest request = new LoginRequest(email, "wrongPassword");
 
@@ -204,12 +224,13 @@ class AuthenticationServiceTest {
     }
 
     // Helper methods
-    private AppUserEntity criarAppUserEntity(UUID id, String email, String nome, String password) {
+    private AppUserEntity criarAppUserEntity(UUID id, String email, String nome, String password, List<RoleEntity> roles) {
         AppUserEntity user = new AppUserEntity();
         user.setId(id);
         user.setEmail(email);
         user.setName(nome);
         user.setPassword(password);
+        user.setRoles(roles);
         return user;
     }
 
