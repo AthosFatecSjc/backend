@@ -2,6 +2,7 @@ package com.energia.backend.controller;
 
 import java.security.Principal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -16,10 +17,10 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.energia.backend.dto.MinhaContaResponse;
 import com.energia.backend.dto.MinhaContaUpdateRequest;
+import com.energia.backend.dto.Usuario;
 import com.energia.backend.dto.UsuarioCadastroRequest;
 import com.energia.backend.dto.UsuarioCadastroResponse;
 import com.energia.backend.model.StatusUsuario;
-import com.energia.backend.model.Usuario;
 import com.energia.backend.service.AnonimizacaoService;
 import com.energia.backend.service.MinhaContaService;
 import com.energia.backend.service.UsuarioCadastroService;
@@ -28,21 +29,22 @@ class UsuarioControllerTest {
 
     @Test
     void deveRetornarCreatedComMensagemDeSucesso() {
-        UsuarioCadastroService service = mock(UsuarioCadastroService.class);
+        UsuarioCadastroService cadastroService = mock(UsuarioCadastroService.class);
         MinhaContaService minhaContaService = mock(MinhaContaService.class);
         AnonimizacaoService anonimizacaoService = mock(AnonimizacaoService.class);
-        UsuarioController controller = new UsuarioController(service, minhaContaService, anonimizacaoService);
+        UsuarioController controller = new UsuarioController(cadastroService, minhaContaService, anonimizacaoService);
 
         Usuario usuario = new Usuario();
         usuario.setEmail("novo@teste.com");
         usuario.setStatus(StatusUsuario.PENDENTE);
 
-        when(service.cadastrar(any(UsuarioCadastroRequest.class))).thenReturn(usuario);
+        when(cadastroService.cadastrar(any(UsuarioCadastroRequest.class))).thenReturn(usuario);
 
         UsuarioCadastroRequest request = new UsuarioCadastroRequest();
         request.setNomeCompleto("Novo Usuario");
         request.setEmail("novo@teste.com");
         request.setSenha("SenhaFuerte123");
+        request.setTermsIds(List.of(UUID.randomUUID()));
 
         ResponseEntity<UsuarioCadastroResponse> response = controller.cadastrar(request);
 
@@ -65,7 +67,7 @@ class UsuarioControllerTest {
                 "Maria Silva",
                 "maria@teste.com",
                 "11999998888",
-            StatusUsuario.PENDENTE,
+                StatusUsuario.PENDENTE,
                 dataCadastro
         );
 
