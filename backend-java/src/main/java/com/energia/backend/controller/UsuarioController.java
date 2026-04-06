@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -17,11 +18,12 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.energia.backend.dto.AnonimizarUsuarioRequest;
 import com.energia.backend.dto.AnonimizarUsuarioResponse;
+import com.energia.backend.dto.AprovacaoRejeicaoUsuarioRequest;
 import com.energia.backend.dto.MinhaContaResponse;
 import com.energia.backend.dto.MinhaContaUpdateRequest;
+import com.energia.backend.dto.Usuario;
 import com.energia.backend.dto.UsuarioCadastroRequest;
 import com.energia.backend.dto.UsuarioCadastroResponse;
-import com.energia.backend.model.Usuario;
 import com.energia.backend.service.AnonimizacaoService;
 import com.energia.backend.service.MinhaContaService;
 import com.energia.backend.service.UsuarioCadastroService;
@@ -41,6 +43,17 @@ public class UsuarioController {
         this.cadastroService = cadastroService;
         this.minhaContaService = minhaContaService;
         this.anonimizacaoService = anonimizacaoService;
+    }
+
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<String> alterarStatusUsuario(
+            @PathVariable("id") UUID usuarioId,
+            @RequestBody AprovacaoRejeicaoUsuarioRequest request,
+            Principal principal
+    ) {
+        UUID adminId = obterUidDoUsuarioAutenticado(principal);
+        cadastroService.alterarStatusUsuario(usuarioId, adminId, request.getStatus(), request.getMotivo());
+        return ResponseEntity.ok("Status do usuario atualizado com sucesso.");
     }
 
     @PostMapping("/cadastro")

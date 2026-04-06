@@ -50,4 +50,7 @@ Thumbs.db
 *.swp
 
 #Postman
+.postman
 *.postman
+.postman.*
+.postman/

@@ -99,7 +99,7 @@ public class AuthenticationService {
             );
         }
 
-        if (!"ATIVO".equals(statusName)) {
+        if (!"APROVADO".equals(statusName)) {
             throw new LoginAuthenticationException(
                     "User account status is invalid: " + statusName,
                     "INVALID_USER_STATUS",
@@ -108,9 +108,11 @@ public class AuthenticationService {
         }
 
         // 4. Extrair roles do usuário (simplificado: apenas "admin" ou "user")
-        List<String> roles = user.getRoles().stream()
-                .map(role -> role.getName().toLowerCase().replaceAll("role_", ""))
-                .collect(Collectors.toList());
+        List<String> roles = user.getRoles() != null 
+                ? user.getRoles().stream()
+                    .map(role -> role.getName().toLowerCase().replaceAll("role_", ""))
+                    .collect(Collectors.toList())
+                : java.util.Collections.emptyList();
 
         // 5. Gerar JWT com roles
         String token = generateTokenWithRoles(user.getId(), user.getEmail(), user.getName(), roles);

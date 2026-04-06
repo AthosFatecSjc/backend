@@ -1,35 +1,57 @@
 package com.energia.backend.service;
 
-import com.energia.backend.dto.UsuarioCadastroRequest;
-import com.energia.backend.exception.EmailJaCadastradoException;
-import com.energia.backend.model.StatusUsuario;
-import com.energia.backend.model.Usuario;
-import com.energia.backend.repository.UsuarioCadastroRepository;
-import org.junit.jupiter.api.Test;
-import org.springframework.security.crypto.password.NoOpPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import org.junit.jupiter.api.Test;
+import org.springframework.security.crypto.password.PasswordEncoder;
+
+import com.energia.backend.dto.Usuario;
+import com.energia.backend.dto.UsuarioCadastroRequest;
+import com.energia.backend.exception.EmailJaCadastradoException;
+import com.energia.backend.model.AppUserEntity;
+import com.energia.backend.model.StatusUsuario;
+import com.energia.backend.repository.StatusJpaRepository;
+import com.energia.backend.repository.UserStatusJpaRepository;
+import com.energia.backend.repository.UsuarioCadastroRepository;
+import com.energia.backend.repository.UsuarioRepository;
 
 class UsuarioCadastroServiceTest {
 
     @Test
     void deveCadastrarUsuarioComStatusPendenteESenhaHasheada() {
-        InMemoryCadastroRepository repository = new InMemoryCadastroRepository();
-        PasswordEncoder passwordEncoder = new MockPasswordEncoder(); // Mock que transforma: "password" -> "encoded_password"
-        UsuarioCadastroService service = new UsuarioCadastroService(repository, passwordEncoder);
+
+        UsuarioRepository usuarioRepository = mock(UsuarioRepository.class);
+        TermsService termsService = mock(TermsService.class);
+        StatusJpaRepository statusRepository = mock(StatusJpaRepository.class);
+        UserStatusJpaRepository userStatusRepository = mock(UserStatusJpaRepository.class);
+        PasswordEncoder passwordEncoder = mock(PasswordEncoder.class);
+        when(passwordEncoder.encode(any())).thenReturn("encoded_SenhaFuerte123");
+
+        UsuarioCadastroService service =
+                new UsuarioCadastroService(usuarioRepository, termsService, statusRepository, userStatusRepository, passwordEncoder);
+
+        when(usuarioRepository.existsByEmail(any())).thenReturn(false);
+
+        // simula save retornando entidade com ID
+        when(usuarioRepository.save(any(AppUserEntity.class))).thenAnswer(invocation -> {
+            AppUserEntity user = invocation.getArgument(0);
+            user.setId(UUID.randomUUID());
+            return user;
+        });
 
         UsuarioCadastroRequest request = new UsuarioCadastroRequest();
         request.setNomeCompleto("Maria Silva");
         request.setEmail("  MARIA@TESTE.COM ");
         request.setSenha("SenhaFuerte123");
         request.setTelefone(" 11999998888 ");
+        request.setTermsIds(List.of(UUID.randomUUID()));
 
         Usuario usuario = service.cadastrar(request);
 
@@ -46,15 +68,24 @@ class UsuarioCadastroServiceTest {
 
     @Test
     void deveRejeitarEmailDuplicado() {
-        InMemoryCadastroRepository repository = new InMemoryCadastroRepository();
-        repository.markAsExisting("duplicado@teste.com");
+
+        UsuarioRepository usuarioRepository = mock(UsuarioRepository.class);
+        TermsService termsService = mock(TermsService.class);
+        StatusJpaRepository statusRepository = mock(StatusJpaRepository.class);
+        UserStatusJpaRepository userStatusRepository = mock(UserStatusJpaRepository.class);
 
         PasswordEncoder passwordEncoder = new MockPasswordEncoder();
-        UsuarioCadastroService service = new UsuarioCadastroService(repository, passwordEncoder);
+        UsuarioCadastroService service =
+                new UsuarioCadastroService(usuarioRepository, termsService, statusRepository, userStatusRepository, passwordEncoder);
+
+        when(usuarioRepository.existsByEmail("duplicado@teste.com"))
+                .thenReturn(true);
+
         UsuarioCadastroRequest request = new UsuarioCadastroRequest();
         request.setNomeCompleto("Joao");
         request.setEmail("DUPLICADO@TESTE.COM");
         request.setSenha("SenhaFuerte123");
+        request.setTermsIds(List.of(UUID.randomUUID()));
 
         EmailJaCadastradoException exception = assertThrows(
                 EmailJaCadastradoException.class,

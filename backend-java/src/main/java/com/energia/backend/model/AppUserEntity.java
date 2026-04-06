@@ -1,25 +1,38 @@
 package com.energia.backend.model;
 
-import com.energia.backend.model.UserTermsEntity;
-import com.energia.backend.model.StatusEntity;
-import com.energia.backend.model.RoleEntity;
-
-import jakarta.persistence.*;
-import lombok.*;
-
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
 @Entity
-@Table(
-    name = "app_user",
-    uniqueConstraints = {
+@Table(name = "app_user", uniqueConstraints = {
         @UniqueConstraint(name = "uq_app_user_email", columnNames = "email")
-    }
-)
-@Getter @Setter
-@NoArgsConstructor @AllArgsConstructor
+})
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 @Builder
 public class AppUserEntity {
 
@@ -40,6 +53,9 @@ public class AppUserEntity {
     @Column(length = 50)
     private String phone;
 
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "anonymization_status", length = 20)
     private AnonymizationStatus anonymizationStatus;
@@ -49,11 +65,8 @@ public class AppUserEntity {
 
     // MANY-TO-MANY → ROLE
     @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(
-        name = "user_role",
-        joinColumns = @JoinColumn(name = "user_id"),          // ✅ FIXED
-        inverseJoinColumns = @JoinColumn(name = "role_id")
-    )
+    @JoinTable(name = "user_role", joinColumns = @JoinColumn(name = "user_id"), // ✅ FIXED
+            inverseJoinColumns = @JoinColumn(name = "role_id"))
     private List<RoleEntity> roles;
 
     // ONE USER → MANY USER_STATUS
@@ -63,4 +76,15 @@ public class AppUserEntity {
     // ONE USER → MANY USER_TERMS
     @OneToMany(mappedBy = "user", fetch = FetchType.LAZY)
     private List<UserTermsEntity> acceptedTerms;
+
+    @PrePersist
+    public void prePersist() {
+        if (this.createdAt == null) {
+            this.createdAt = LocalDateTime.now();
+        }
+        if (this.anonymizationStatus == null) {
+            this.anonymizationStatus = AnonymizationStatus.ACTIVE;
+        }
+    }
+
 }
