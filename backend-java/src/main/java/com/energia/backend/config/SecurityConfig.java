@@ -29,7 +29,6 @@ public class SecurityConfig {
                 .requestMatchers("/auth/login").permitAll()
                 .requestMatchers("/login").permitAll()  // Backward compatibility
                 .requestMatchers("/usuarios/cadastro").permitAll()
-                .requestMatchers("/hello/**").permitAll()
                 // Admin endpoints (require ROLE_ADMIN)
                 .requestMatchers("/admin/**").hasRole("admin")
                 // Protected endpoints (require authentication)
