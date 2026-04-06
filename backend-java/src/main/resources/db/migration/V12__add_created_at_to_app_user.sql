@@ -1,0 +1,12 @@
+ALTER TABLE app_user
+    ADD COLUMN IF NOT EXISTS created_at TIMESTAMP;
+
+UPDATE app_user
+SET created_at = CURRENT_TIMESTAMP
+WHERE created_at IS NULL;
+
+ALTER TABLE app_user
+    ALTER COLUMN created_at SET NOT NULL;
+
+ALTER TABLE app_user
+    ALTER COLUMN created_at SET DEFAULT CURRENT_TIMESTAMP;

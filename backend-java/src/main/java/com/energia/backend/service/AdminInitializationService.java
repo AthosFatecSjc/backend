@@ -22,16 +22,6 @@ import com.energia.backend.repository.RoleJpaRepository;
 import com.energia.backend.repository.StatusJpaRepository;
 import com.energia.backend.repository.UserStatusJpaRepository;
 
-/**
- * Serviço de bootstrap seguro para criar o primeiro usuário administrador.
- * Lê credenciais de variáveis de ambiente, não de hardcode ou migrations versionadas.
- *
- * Variáveis esperadas:
- * - ADMIN_EMAIL (obrigatória para ativar)
- * - ADMIN_PASSWORD (obrigatória para ativar)
- *
- * Executa automaticamente na inicialização da aplicação.
- */
 @Service
 public class AdminInitializationService implements CommandLineRunner {
 
@@ -66,16 +56,13 @@ public class AdminInitializationService implements CommandLineRunner {
     @Override
     @Transactional
     public void run(String... args) {
-        // Se as variáveis de ambiente não foram configuradas, não cria admin
         if (adminEmail == null || adminEmail.isEmpty() || adminPassword == null || adminPassword.isEmpty()) {
             logger.info("Admin initialization disabled: ADMIN_EMAIL or ADMIN_PASSWORD not set");
             return;
         }
 
-        // Normalizar email
         String normalizedEmail = adminEmail.trim().toLowerCase();
 
-        // Verificar se o admin já existe
         if (appUserRepository.existsByEmailIgnoreCase(normalizedEmail)) {
             logger.info("Admin user already exists with email: {}", normalizedEmail);
             return;
@@ -84,24 +71,20 @@ public class AdminInitializationService implements CommandLineRunner {
         try {
             logger.info("Creating admin user with email: {}", normalizedEmail);
 
-            // Garantir que a role ADMIN existe
             RoleEntity adminRole = roleRepository.findByNameIgnoreCase("admin")
                     .orElseGet(() -> {
                         RoleEntity newRole = RoleEntity.builder().name("admin").build();
                         return roleRepository.save(newRole);
                     });
 
-            // Garantir que o status ATIVO existe
             StatusEntity ativoStatus = statusRepository.findByNameIgnoreCase("ATIVO")
                     .orElseGet(() -> {
                         StatusEntity newStatus = StatusEntity.builder().name("ATIVO").build();
                         return statusRepository.save(newStatus);
                     });
 
-            // Hash da senha com BCrypt
             String encodedPassword = passwordEncoder.encode(adminPassword);
 
-            // Criar usuário admin
             AppUserEntity adminUser = AppUserEntity.builder()
                     .id(UUID.randomUUID())
                     .name("Administrator")
@@ -114,7 +97,6 @@ public class AdminInitializationService implements CommandLineRunner {
 
             AppUserEntity savedAdmin = appUserRepository.save(adminUser);
 
-            // Atribuir status ATIVO ao admin
             UserStatusEntity adminStatus = UserStatusEntity.builder()
                     .id(UUID.randomUUID())
                     .user(savedAdmin)

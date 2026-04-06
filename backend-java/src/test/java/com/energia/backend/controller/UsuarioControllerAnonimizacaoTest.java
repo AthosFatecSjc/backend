@@ -44,13 +44,10 @@ class UsuarioControllerAnonimizacaoTest {
 
         when(anonimizacaoService.anonimizar(any(), any())).thenReturn(response);
 
-        // Simular Principal
         java.security.Principal principal = () -> adminId.toString();
 
-        // Execute
         ResponseEntity<AnonimizarUsuarioResponse> resultado = controller.anonimizarUsuario(principal, usuarioId);
 
-        // Verify
         assertEquals(HttpStatus.OK, resultado.getStatusCode());
         assertEquals(usuarioId, resultado.getBody().usuarioId());
         assertEquals("Usuario anonimizado com sucesso.", resultado.getBody().mensagem());

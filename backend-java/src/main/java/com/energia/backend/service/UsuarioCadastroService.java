@@ -17,27 +17,32 @@ import com.energia.backend.model.AppUserEntity;
 import com.energia.backend.model.StatusEntity;
 import com.energia.backend.model.StatusUsuario;
 import com.energia.backend.model.UserStatusEntity;
+import com.energia.backend.repository.AppUserJpaRepository;
 import com.energia.backend.repository.StatusJpaRepository;
 import com.energia.backend.repository.UserStatusJpaRepository;
-import com.energia.backend.repository.UsuarioRepository;
+import com.energia.backend.repository.UsuarioCadastroRepository;
 
 @Service
 public class UsuarioCadastroService {
     private static final Pattern EMAIL_PATTERN = Pattern.compile("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$");
 
-    private final UsuarioRepository usuarioRepository;
+    private final UsuarioCadastroRepository usuarioCadastroRepository;
+    private final AppUserJpaRepository appUserRepository;
     private final TermsService termsService;
     private final StatusJpaRepository statusRepository;
     private final UserStatusJpaRepository userStatusRepository;
     private final PasswordEncoder passwordEncoder;
 
     public UsuarioCadastroService(
-            UsuarioRepository usuarioRepository,
+            UsuarioCadastroRepository usuarioCadastroRepository,
+            AppUserJpaRepository appUserRepository,
             TermsService termsService,
             StatusJpaRepository statusRepository,
-            UserStatusJpaRepository userStatusRepository
-    , PasswordEncoder passwordEncoder) {
-        this.usuarioRepository = usuarioRepository;
+            UserStatusJpaRepository userStatusRepository,
+            PasswordEncoder passwordEncoder
+    ) {
+        this.usuarioCadastroRepository = usuarioCadastroRepository;
+        this.appUserRepository = appUserRepository;
         this.termsService = termsService;
         this.statusRepository = statusRepository;
         this.userStatusRepository = userStatusRepository;
@@ -50,31 +55,28 @@ public class UsuarioCadastroService {
 
         String emailNormalizado = normalizarEmail(request.getEmail());
 
-        if (usuarioRepository.existsByEmailIgnoreCase(emailNormalizado)) {
+        if (usuarioCadastroRepository.existsByEmail(emailNormalizado)) {
             throw new EmailJaCadastradoException("E-mail ja cadastrado.");
         }
 
-        AppUserEntity appUser = new AppUserEntity();
-        appUser.setName(request.getNomeCompleto().trim());
-        appUser.setEmail(emailNormalizado);
-        appUser.setPassword(passwordEncoder.encode(request.getSenha()));
-        appUser.setPhone(normalizarOpcional(request.getTelefone()));
-
         try {
-            AppUserEntity appUserSalvo = usuarioRepository.save(appUser);
-
-            if (request.getTermsIds() != null && !request.getTermsIds().isEmpty()) {
-                termsService.registrarTermosAceitos(request.getTermsIds(), appUserSalvo);
-            }
-
             Usuario usuario = new Usuario();
-            usuario.setNomeCompleto(appUserSalvo.getName());
-            usuario.setEmail(appUserSalvo.getEmail());
-            usuario.setTelefone(appUserSalvo.getPhone());
+            usuario.setNomeCompleto(request.getNomeCompleto().trim());
+            usuario.setEmail(emailNormalizado);
+            usuario.setSenhaHash(passwordEncoder.encode(request.getSenha()));
+            usuario.setTelefone(normalizarOpcional(request.getTelefone()));
             usuario.setStatus(StatusUsuario.PENDENTE);
             usuario.setDataCadastro(LocalDateTime.now());
 
-            return usuario;
+            Usuario usuarioSalvo = usuarioCadastroRepository.save(usuario);
+
+            if (request.getTermsIds() != null && !request.getTermsIds().isEmpty()) {
+                AppUserEntity appUserSalvo = appUserRepository.findByEmailIgnoreCase(usuarioSalvo.getEmail())
+                        .orElseThrow(() -> new IllegalStateException("Usuario cadastrado nao encontrado para registrar termos."));
+                termsService.registrarTermosAceitos(request.getTermsIds(), appUserSalvo);
+            }
+
+            return usuarioSalvo;
         } catch (DataIntegrityViolationException ex) {
             throw new EmailJaCadastradoException("E-mail ja cadastrado.");
         }
@@ -94,9 +96,9 @@ public class UsuarioCadastroService {
             throw new IllegalArgumentException("Motivo da rejeicao e obrigatorio.");
         }
 
-        AppUserEntity usuario = usuarioRepository.findById(usuarioId)
+        AppUserEntity usuario = appUserRepository.findById(usuarioId)
                 .orElseThrow(() -> new IllegalArgumentException("Usuario nao encontrado."));
-        AppUserEntity admin = usuarioRepository.findById(adminId)
+        AppUserEntity admin = appUserRepository.findById(adminId)
                 .orElseThrow(() -> new IllegalArgumentException("Admin nao encontrado."));
 
         boolean isAdmin = admin.getRoles() != null
@@ -161,11 +163,8 @@ public class UsuarioCadastroService {
     }
 
     private void validarDependenciasStatus() {
-        // Valida se as dependências necessárias para alterar status estão disponíveis
-        // Esta validação garante que repositórios e serviços estão configurados
-        if (statusRepository == null || userStatusRepository == null || usuarioRepository == null) {
-            throw new IllegalStateException("Dependências não inicializadas para operação de status.");
+        if (statusRepository == null || userStatusRepository == null || appUserRepository == null) {
+            throw new IllegalStateException("DependÃªncias nÃ£o inicializadas para operaÃ§Ã£o de status.");
         }
     }
 }
-

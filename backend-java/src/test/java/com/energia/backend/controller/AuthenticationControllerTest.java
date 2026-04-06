@@ -1,10 +1,14 @@
 package com.energia.backend.controller;
 
-import static org.hamcrest.Matchers.*;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.notNullValue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.UUID;
 
@@ -43,13 +47,11 @@ class AuthenticationControllerTest {
     @Test
     @DisplayName("POST /auth/login - Active user login succeeds with JWT token")
     void testLoginSuccess() throws Exception {
-        // Arrange
         LoginRequest request = new LoginRequest(EMAIL, PASSWORD);
         LoginResponse response = new LoginResponse("jwt-token-here", USER_ID, EMAIL, "Test User");
 
         when(authenticationService.authenticate(any(LoginRequest.class))).thenReturn(response);
 
-        // Act & Assert
         mockMvc.perform(post(LOGIN_ENDPOINT)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
@@ -66,7 +68,6 @@ class AuthenticationControllerTest {
     @Test
     @DisplayName("POST /auth/login - Pending user returns 403 with USER_PENDING_APPROVAL code")
     void testLoginPendingUser() throws Exception {
-        // Arrange
         LoginRequest request = new LoginRequest(EMAIL, PASSWORD);
 
         when(authenticationService.authenticate(any(LoginRequest.class)))
@@ -76,7 +77,6 @@ class AuthenticationControllerTest {
                 403
             ));
 
-        // Act & Assert
         mockMvc.perform(post(LOGIN_ENDPOINT)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
@@ -93,7 +93,6 @@ class AuthenticationControllerTest {
     @Test
     @DisplayName("POST /auth/login - Rejected user returns 403 with USER_REJECTED code")
     void testLoginRejectedUser() throws Exception {
-        // Arrange
         LoginRequest request = new LoginRequest(EMAIL, PASSWORD);
 
         when(authenticationService.authenticate(any(LoginRequest.class)))
@@ -104,7 +103,6 @@ class AuthenticationControllerTest {
                 "Failed security check"
             ));
 
-        // Act & Assert
         mockMvc.perform(post(LOGIN_ENDPOINT)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
@@ -121,7 +119,6 @@ class AuthenticationControllerTest {
     @Test
     @DisplayName("POST /auth/login - Invalid credentials returns 401 with INVALID_CREDENTIALS code")
     void testLoginInvalidCredentials() throws Exception {
-        // Arrange
         LoginRequest request = new LoginRequest(EMAIL, "wrongPassword");
 
         when(authenticationService.authenticate(any(LoginRequest.class)))
@@ -131,7 +128,6 @@ class AuthenticationControllerTest {
                 401
             ));
 
-        // Act & Assert
         mockMvc.perform(post(LOGIN_ENDPOINT)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
@@ -147,13 +143,11 @@ class AuthenticationControllerTest {
     @Test
     @DisplayName("POST /auth/login - Empty email returns 400 with INVALID_REQUEST code")
     void testLoginEmptyEmail() throws Exception {
-        // Arrange
         LoginRequest request = new LoginRequest("", PASSWORD);
 
         when(authenticationService.authenticate(any(LoginRequest.class)))
             .thenThrow(new IllegalArgumentException("Email is required"));
 
-        // Act & Assert
         mockMvc.perform(post(LOGIN_ENDPOINT)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))

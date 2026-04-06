@@ -20,13 +20,15 @@ import com.energia.backend.model.RoleEntity;
 import com.energia.backend.model.StatusEntity;
 import com.energia.backend.model.StatusUsuario;
 import com.energia.backend.model.UserStatusEntity;
+import com.energia.backend.repository.AppUserJpaRepository;
 import com.energia.backend.repository.StatusJpaRepository;
 import com.energia.backend.repository.UserStatusJpaRepository;
-import com.energia.backend.repository.UsuarioRepository;
+import com.energia.backend.repository.UsuarioCadastroRepository;
 
 class UsuarioCadastroServiceAprovacaoRejeicaoTest {
 
-    private UsuarioRepository usuarioRepository;
+    private UsuarioCadastroRepository usuarioCadastroRepository;
+    private AppUserJpaRepository appUserRepository;
     private TermsService termsService;
     private StatusJpaRepository statusRepository;
     private UserStatusJpaRepository userStatusRepository;
@@ -40,12 +42,20 @@ class UsuarioCadastroServiceAprovacaoRejeicaoTest {
 
     @BeforeEach
     void setup() {
-        usuarioRepository = mock(UsuarioRepository.class);
+        usuarioCadastroRepository = mock(UsuarioCadastroRepository.class);
+        appUserRepository = mock(AppUserJpaRepository.class);
         termsService = mock(TermsService.class);
         statusRepository = mock(StatusJpaRepository.class);
         userStatusRepository = mock(UserStatusJpaRepository.class);
         passwordEncoder = mock(PasswordEncoder.class);
-        service = new UsuarioCadastroService(usuarioRepository, termsService, statusRepository, userStatusRepository, passwordEncoder);
+        service = new UsuarioCadastroService(
+                usuarioCadastroRepository,
+                appUserRepository,
+                termsService,
+                statusRepository,
+                userStatusRepository,
+                passwordEncoder
+        );
 
         usuarioId = UUID.randomUUID();
         adminId = UUID.randomUUID();
@@ -63,8 +73,8 @@ class UsuarioCadastroServiceAprovacaoRejeicaoTest {
                 .roles(List.of(RoleEntity.builder().id(UUID.randomUUID()).name("ADMIN").build()))
                 .build();
 
-        when(usuarioRepository.findById(usuarioId)).thenReturn(Optional.of(usuario));
-        when(usuarioRepository.findById(adminId)).thenReturn(Optional.of(admin));
+        when(appUserRepository.findById(usuarioId)).thenReturn(Optional.of(usuario));
+        when(appUserRepository.findById(adminId)).thenReturn(Optional.of(admin));
     }
 
     @Test

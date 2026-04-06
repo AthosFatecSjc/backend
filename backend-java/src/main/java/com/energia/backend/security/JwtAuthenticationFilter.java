@@ -57,24 +57,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (SecurityContextHolder.getContext().getAuthentication() == null) {
             try {
                 UUID userId = authenticationService.extractUserId(token);
-                String email = authenticationService.extractEmail(token);
-                String username = authenticationService.extractUsername(token);
                 List<String> roles = authenticationService.extractRoles(token);
 
-                // Converte roles do token em GrantedAuthority para Spring Security
                 List<GrantedAuthority> authorities = new ArrayList<>();
                 if (roles != null) {
                     for (String role : roles) {
-                        // Garante que todos os roles têm o prefixo ROLE_
                         String roleWithPrefix = role.startsWith("ROLE_") ? role : "ROLE_" + role.toUpperCase();
                         authorities.add(new SimpleGrantedAuthority(roleWithPrefix));
                     }
                 }
 
-                // Cria UserDetails com as autoridades do token
                 UserDetails user = User.builder()
-                        .username(email)
-                        .password("") // JWT não usa password no contexto autenticado
+                        .username(userId.toString())
+                        .password("")
                         .authorities(authorities)
                         .build();
 

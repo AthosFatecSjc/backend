@@ -25,22 +25,17 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(authz -> authz
-                // Public endpoints
                 .requestMatchers("/auth/login").permitAll()
-                .requestMatchers("/login").permitAll()  // Backward compatibility
+                .requestMatchers("/login").permitAll()
                 .requestMatchers("/usuarios/cadastro").permitAll()
-                // Admin endpoints (require ROLE_ADMIN)
-                .requestMatchers("/admin/**").hasRole("admin")
-                // Protected endpoints (require authentication)
+                .requestMatchers("/admin/**").hasRole("ADMIN")
                 .requestMatchers("/usuarios/**").authenticated()
                 .requestMatchers("/indicadores/**").authenticated()
                 .requestMatchers("/concessionarias/**").authenticated()
-                // All other requests
                 .anyRequest().authenticated()
             )
             .httpBasic(basic -> basic.disable());
 
-        // Add JWT filter only if available (lazy loaded to break circular dependency)
         jwtFilterProvider.ifAvailable(filter ->
             http.addFilterBefore(filter, UsernamePasswordAuthenticationFilter.class)
         );
@@ -53,4 +48,3 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 }
-

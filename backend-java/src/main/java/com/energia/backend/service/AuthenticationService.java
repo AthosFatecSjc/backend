@@ -52,7 +52,6 @@ public class AuthenticationService {
     public LoginResponse authenticate(LoginRequest request) {
         validarRequest(request);
 
-        // 1. Buscar usuário pelo email
         AppUserEntity user = userRepository.findByEmailIgnoreCase(request.getEmail())
                 .orElseThrow(() -> new LoginAuthenticationException(
                         "Invalid email or password",
@@ -60,7 +59,6 @@ public class AuthenticationService {
                         HttpStatus.UNAUTHORIZED.value()
                 ));
 
-        // 2. Verificar senha com BCrypt
         if (!passwordEncoder.matches(request.getSenha(), user.getPassword())) {
             throw new LoginAuthenticationException(
                     "Invalid email or password",
@@ -69,7 +67,6 @@ public class AuthenticationService {
             );
         }
 
-        // 3. Verificar status do usuário
         UserStatusEntity userStatus = userStatusRepository.findFirstByUserOrderByAssignedAtDesc(user)
                 .orElseThrow(() -> new LoginAuthenticationException(
                         "User account has no status assigned",
@@ -99,7 +96,7 @@ public class AuthenticationService {
             );
         }
 
-        if (!"APROVADO".equals(statusName)) {
+        if (!"APROVADO".equals(statusName) && !"ATIVO".equals(statusName)) {
             throw new LoginAuthenticationException(
                     "User account status is invalid: " + statusName,
                     "INVALID_USER_STATUS",
@@ -107,17 +104,13 @@ public class AuthenticationService {
             );
         }
 
-        // 4. Extrair roles do usuário (simplificado: apenas "admin" ou "user")
-        List<String> roles = user.getRoles() != null 
+        List<String> roles = user.getRoles() != null
                 ? user.getRoles().stream()
                     .map(role -> role.getName().toLowerCase().replaceAll("role_", ""))
                     .collect(Collectors.toList())
                 : java.util.Collections.emptyList();
 
-        // 5. Gerar JWT com roles
         String token = generateTokenWithRoles(user.getId(), user.getEmail(), user.getName(), roles);
-
-        // 6. Retornar resposta com sucesso
         return new LoginResponse(token, user.getId(), user.getEmail(), user.getName());
     }
 
@@ -133,11 +126,6 @@ public class AuthenticationService {
         }
     }
 
-    // ======== JWT Methods ========
-
-    /**
-     * Gera um JWT token com roles inclusos
-     */
     public String generateTokenWithRoles(UUID userId, String email, String username, List<String> roles) {
         Map<String, Object> claims = Map.of(
             "userId", userId.toString(),
@@ -148,9 +136,6 @@ public class AuthenticationService {
         return createToken(claims, userId.toString());
     }
 
-    /**
-     * Cria o token assinado HS512
-     */
     private String createToken(Map<String, Object> claims, String subject) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + jwtExpiration);
@@ -164,9 +149,6 @@ public class AuthenticationService {
                 .compact();
     }
 
-    /**
-     * Valida se o token é válido (não expirado e assinado corretamente)
-     */
     public boolean isTokenValid(String token) {
         try {
             Jwts.parser()
@@ -179,42 +161,27 @@ public class AuthenticationService {
         }
     }
 
-    /**
-     * Extrai o userId do token
-     */
     public UUID extractUserId(String token) {
         Claims claims = extractAllClaims(token);
         return UUID.fromString(claims.get("userId", String.class));
     }
 
-    /**
-     * Extrai o email do token
-     */
     public String extractEmail(String token) {
         Claims claims = extractAllClaims(token);
         return claims.get("email", String.class);
     }
 
-    /**
-     * Extrai username do token
-     */
     public String extractUsername(String token) {
         Claims claims = extractAllClaims(token);
         return claims.get("username", String.class);
     }
 
-    /**
-     * Extrai os roles do token
-     */
     @SuppressWarnings("unchecked")
     public List<String> extractRoles(String token) {
         Claims claims = extractAllClaims(token);
         return claims.get("roles", java.util.List.class);
     }
 
-    /**
-     * Extrai todas as claims
-     */
     private Claims extractAllClaims(String token) {
         return Jwts.parser()
                 .verifyWith(Keys.hmacShaKeyFor(jwtSecret.getBytes()))

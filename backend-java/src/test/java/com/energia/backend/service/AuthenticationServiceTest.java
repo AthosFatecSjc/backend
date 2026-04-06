@@ -59,15 +59,12 @@ class AuthenticationServiceTest {
         email = "user@example.com";
         nome = "Test User";
         password = "senha123456";
-
-        // BCrypt hash for "senha123456" (generated with strength=10)
         passwordHashBcrypt = "$2a$10$slYQmyNdGzin7olVN3p5be4DlH.PKZbv5H8KnzzVgXXbVxzy990RK";
     }
 
     @Test
     @DisplayName("Scenario 1: ATIVO user can login successfully")
     void testLogin_ActiveUserSucceeds() {
-        // Arrange
         RoleEntity userRole = RoleEntity.builder().id(UUID.randomUUID()).name("user").build();
         AppUserEntity user = criarAppUserEntity(userId, email, nome, passwordHashBcrypt, List.of(userRole));
         UserStatusEntity userStatus = criarUserStatus(user, "ATIVO");
@@ -77,11 +74,8 @@ class AuthenticationServiceTest {
         when(passwordEncoder.matches(password, passwordHashBcrypt)).thenReturn(true);
 
         LoginRequest request = new LoginRequest(email, password);
-
-        // Act
         LoginResponse response = authenticationService.authenticate(request);
 
-        // Assert
         assertNotNull(response);
         assertEquals(userId, response.getUserId());
         assertEquals(email, response.getEmail());
@@ -89,7 +83,6 @@ class AuthenticationServiceTest {
         assertNotNull(response.getAccessToken());
         assertEquals("Bearer", response.getTokenType());
 
-        // Valida que o token contém as informações corretas
         String token = response.getAccessToken();
         assertTrue(authenticationService.isTokenValid(token));
         assertEquals(userId, authenticationService.extractUserId(token));
@@ -103,7 +96,6 @@ class AuthenticationServiceTest {
     @Test
     @DisplayName("Scenario 2: PENDENTE user cannot login")
     void testLogin_PendingUserFails() {
-        // Arrange
         RoleEntity userRole = RoleEntity.builder().id(UUID.randomUUID()).name("user").build();
         AppUserEntity user = criarAppUserEntity(userId, email, nome, passwordHashBcrypt, List.of(userRole));
         UserStatusEntity userStatus = criarUserStatus(user, "PENDENTE");
@@ -114,7 +106,6 @@ class AuthenticationServiceTest {
 
         LoginRequest request = new LoginRequest(email, password);
 
-        // Act & Assert
         LoginAuthenticationException exception = assertThrows(
             LoginAuthenticationException.class,
             () -> authenticationService.authenticate(request),
@@ -129,7 +120,6 @@ class AuthenticationServiceTest {
     @Test
     @DisplayName("Scenario 3: REJEITADO user cannot login")
     void testLogin_RejectedUserFails() {
-        // Arrange
         RoleEntity userRole = RoleEntity.builder().id(UUID.randomUUID()).name("user").build();
         AppUserEntity user = criarAppUserEntity(userId, email, nome, passwordHashBcrypt, List.of(userRole));
         UserStatusEntity userStatus = criarUserStatus(user, "REJEITADO");
@@ -141,7 +131,6 @@ class AuthenticationServiceTest {
 
         LoginRequest request = new LoginRequest(email, password);
 
-        // Act & Assert
         LoginAuthenticationException exception = assertThrows(
             LoginAuthenticationException.class,
             () -> authenticationService.authenticate(request),
@@ -157,7 +146,6 @@ class AuthenticationServiceTest {
     @Test
     @DisplayName("Scenario 4: Invalid credentials are rejected")
     void testLogin_InvalidCredentialsFail() {
-        // Arrange
         RoleEntity userRole = RoleEntity.builder().id(UUID.randomUUID()).name("user").build();
         AppUserEntity user = criarAppUserEntity(userId, email, nome, passwordHashBcrypt, List.of(userRole));
 
@@ -166,7 +154,6 @@ class AuthenticationServiceTest {
 
         LoginRequest request = new LoginRequest(email, "wrongPassword");
 
-        // Act & Assert
         LoginAuthenticationException exception = assertThrows(
             LoginAuthenticationException.class,
             () -> authenticationService.authenticate(request),
@@ -181,12 +168,10 @@ class AuthenticationServiceTest {
     @Test
     @DisplayName("Scenario 5: Non-existent user cannot login")
     void testLogin_NonExistentUserFails() {
-        // Arrange
         when(userRepository.findByEmailIgnoreCase(anyString())).thenReturn(Optional.empty());
 
         LoginRequest request = new LoginRequest("nonexistent@example.com", password);
 
-        // Act & Assert
         LoginAuthenticationException exception = assertThrows(
             LoginAuthenticationException.class,
             () -> authenticationService.authenticate(request),
@@ -200,10 +185,8 @@ class AuthenticationServiceTest {
     @Test
     @DisplayName("Should reject null email")
     void testLogin_NullEmailFails() {
-        // Arrange
         LoginRequest request = new LoginRequest(null, password);
 
-        // Act & Assert
         assertThrows(IllegalArgumentException.class,
             () -> authenticationService.authenticate(request),
             "Should throw IllegalArgumentException for null email"
@@ -213,17 +196,14 @@ class AuthenticationServiceTest {
     @Test
     @DisplayName("Should reject null password")
     void testLogin_NullPasswordFails() {
-        // Arrange
         LoginRequest request = new LoginRequest(email, null);
 
-        // Act & Assert
         assertThrows(IllegalArgumentException.class,
             () -> authenticationService.authenticate(request),
             "Should throw IllegalArgumentException for null password"
         );
     }
 
-    // Helper methods
     private AppUserEntity criarAppUserEntity(UUID id, String email, String nome, String password, List<RoleEntity> roles) {
         AppUserEntity user = new AppUserEntity();
         user.setId(id);
