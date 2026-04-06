@@ -9,6 +9,7 @@ import org.springframework.context.annotation.Configuration;
 
 import com.energia.backend.etl.service.DistribuidoraExcelImport;
 import com.energia.backend.etl.service.LimitesImport;
+import com.energia.backend.etl.service.LimitesTransformLoad;
 import com.energia.backend.etl.service.ConjuntoMetricasImport;
 import com.energia.backend.etl.LimitesCsvParser.LimiteFiltrado;
 import com.energia.backend.etl.service.ConjMetricTransformLoad;
@@ -21,12 +22,14 @@ public class EtlRunner {
         LimitesCsvParser limitesCsvParser,
         ConjuntoMetricasImport conjService, 
         LimitesImport limService,
+        LimitesTransformLoad limitesTransformLoad,
         ConjMetricTransformLoad conjTransformService){
         return args -> {
             if (Arrays.stream(args).noneMatch(arg -> arg.equalsIgnoreCase("etl"))) {
                 System.out.println("ARGS: " + Arrays.toString(args));
                 String response = limService.importar();
-                List<LimiteFiltrado> listaLim = limitesCsvParser.parsearFiltrando(response, List.of(15394L));
+                List<LimiteFiltrado> listaLim = limitesCsvParser.parsearFiltrando(response, List.of(12722L));
+                limitesTransformLoad.processarLista(listaLim);
                 System.out.print ("LISTALIM: " + listaLim);
                 System.out.println("ENTROU NA FUNÇÃO DO ETL");
                 return;

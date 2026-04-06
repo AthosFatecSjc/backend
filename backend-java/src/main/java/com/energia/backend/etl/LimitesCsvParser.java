@@ -3,12 +3,16 @@ package com.energia.backend.etl;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.StringReader;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
 import org.springframework.stereotype.Service;
+
+import lombok.Getter;
+
 
 
 @Service
@@ -18,7 +22,8 @@ public class LimitesCsvParser {
             Long ideConjUndConsumidoras,
             String sigIndicador,
             Long anoLimiteQualidade,
-            Double vlrLimite
+            Double vlrLimite,
+            LocalDate dataGeracao
     ) {}
 
     public List<LimiteFiltrado> parsearFiltrando(String csv, List<Long> ideConjPermitidos) throws IOException {
@@ -48,6 +53,7 @@ public class LimitesCsvParser {
                 String sigIndicador = cols[5].trim();
                 Long ano = Utils.toLong(cols[6].trim());
                 Double valor = parseDoubleBr(cols[7].trim());
+                LocalDate dataGeracao = LocalDate.parse((cols[0].trim()).toString());
 
                 if (ideConj == null || !permitidos.contains(ideConj)) {
                     continue; 
@@ -57,7 +63,8 @@ public class LimitesCsvParser {
                         ideConj,
                         sigIndicador,
                         ano,
-                        valor
+                        valor,
+                        dataGeracao
                 ));
             }
         }
