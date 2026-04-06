@@ -1,0 +1,56 @@
+# Python virtual environments
+venv/
+venv*/
+.venv/
+.venv*/
+env/
+env*/
+
+# Environment files
+.env
+.env.*
+
+# IDE files
+.idea/
+
+# Java/Maven build output
+target/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Compilados Java
+*.class
+
+# Logs
+*.log
+
+# Maven
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+
+# Gradle
+.gradle/
+build/
+
+# IDEs
+*.iml
+.vscode/
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
+
+# Arquivos temporarios
+*.tmp
+*.swp
+
+#Postman
+.postman
+*.postman
+.postman.*
+.postman/

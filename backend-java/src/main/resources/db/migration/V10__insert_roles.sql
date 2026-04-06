@@ -1,0 +1,5 @@
+-- V5: Insert default roles
+INSERT INTO role (id, name) VALUES
+    ('10000000-0000-0000-0000-000000000001', 'admin'),
+    ('10000000-0000-0000-0000-000000000002', 'user')
+ON CONFLICT (name) DO NOTHING;
