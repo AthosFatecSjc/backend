@@ -1,12 +1,8 @@
 package com.energia.backend.service;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -16,6 +12,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import com.energia.backend.exception.PermissaoNegadaException;
 import com.energia.backend.model.AppUserEntity;
@@ -23,16 +20,19 @@ import com.energia.backend.model.RoleEntity;
 import com.energia.backend.model.StatusEntity;
 import com.energia.backend.model.StatusUsuario;
 import com.energia.backend.model.UserStatusEntity;
+import com.energia.backend.repository.AppUserJpaRepository;
 import com.energia.backend.repository.StatusJpaRepository;
 import com.energia.backend.repository.UserStatusJpaRepository;
-import com.energia.backend.repository.UsuarioRepository;
+import com.energia.backend.repository.UsuarioCadastroRepository;
 
 class UsuarioCadastroServiceAprovacaoRejeicaoTest {
 
-    private UsuarioRepository usuarioRepository;
+    private UsuarioCadastroRepository usuarioCadastroRepository;
+    private AppUserJpaRepository appUserRepository;
     private TermsService termsService;
     private StatusJpaRepository statusRepository;
     private UserStatusJpaRepository userStatusRepository;
+    private PasswordEncoder passwordEncoder;
     private UsuarioCadastroService service;
 
     private UUID usuarioId;
@@ -42,11 +42,20 @@ class UsuarioCadastroServiceAprovacaoRejeicaoTest {
 
     @BeforeEach
     void setup() {
-        usuarioRepository = mock(UsuarioRepository.class);
+        usuarioCadastroRepository = mock(UsuarioCadastroRepository.class);
+        appUserRepository = mock(AppUserJpaRepository.class);
         termsService = mock(TermsService.class);
         statusRepository = mock(StatusJpaRepository.class);
         userStatusRepository = mock(UserStatusJpaRepository.class);
-        service = new UsuarioCadastroService(usuarioRepository, termsService, statusRepository, userStatusRepository);
+        passwordEncoder = mock(PasswordEncoder.class);
+        service = new UsuarioCadastroService(
+                usuarioCadastroRepository,
+                appUserRepository,
+                termsService,
+                statusRepository,
+                userStatusRepository,
+                passwordEncoder
+        );
 
         usuarioId = UUID.randomUUID();
         adminId = UUID.randomUUID();
@@ -64,8 +73,8 @@ class UsuarioCadastroServiceAprovacaoRejeicaoTest {
                 .roles(List.of(RoleEntity.builder().id(UUID.randomUUID()).name("ADMIN").build()))
                 .build();
 
-        when(usuarioRepository.findById(usuarioId)).thenReturn(Optional.of(usuario));
-        when(usuarioRepository.findById(adminId)).thenReturn(Optional.of(admin));
+        when(appUserRepository.findById(usuarioId)).thenReturn(Optional.of(usuario));
+        when(appUserRepository.findById(adminId)).thenReturn(Optional.of(admin));
     }
 
     @Test

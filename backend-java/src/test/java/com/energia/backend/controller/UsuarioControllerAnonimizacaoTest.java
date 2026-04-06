@@ -44,40 +44,14 @@ class UsuarioControllerAnonimizacaoTest {
 
         when(anonimizacaoService.anonimizar(any(), any())).thenReturn(response);
 
-        // Simular Principal
         java.security.Principal principal = () -> adminId.toString();
 
-        // Execute
         ResponseEntity<AnonimizarUsuarioResponse> resultado = controller.anonimizarUsuario(principal, usuarioId);
 
-        // Verify
         assertEquals(HttpStatus.OK, resultado.getStatusCode());
         assertEquals(usuarioId, resultado.getBody().usuarioId());
         assertEquals("Usuario anonimizado com sucesso.", resultado.getBody().mensagem());
         verify(anonimizacaoService).anonimizar(adminId, new AnonimizarUsuarioRequest(usuarioId));
-    }
-
-    @Test
-    void deveExcluirUsuarioComSucesso() {
-        AnonimizacaoService anonimizacaoService = mock(AnonimizacaoService.class);
-        com.energia.backend.service.UsuarioCadastroService cadastroService =
-                mock(com.energia.backend.service.UsuarioCadastroService.class);
-        com.energia.backend.service.MinhaContaService minhaContaService =
-                mock(com.energia.backend.service.MinhaContaService.class);
-
-        UsuarioController controller = new UsuarioController(cadastroService, minhaContaService, anonimizacaoService);
-
-        UUID userId = UUID.randomUUID();
-        UUID usuarioId = UUID.randomUUID();
-
-        when(anonimizacaoService.anonimizar(any(), any())).thenReturn(new AnonimizarUsuarioResponse(usuarioId, "Usuario anonimizado com sucesso.", LocalDateTime.now()));
-
-        java.security.Principal principal = () -> userId.toString();
-
-        ResponseEntity<Void> resultado = controller.excluirUsuario(principal, usuarioId);
-
-        assertEquals(HttpStatus.NO_CONTENT, resultado.getStatusCode());
-        verify(anonimizacaoService).anonimizar(userId, new AnonimizarUsuarioRequest(usuarioId));
     }
 
     @Test

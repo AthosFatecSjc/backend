@@ -48,3 +48,9 @@ Thumbs.db
 # Arquivos temporarios
 *.tmp
 *.swp
+
+#Postman
+.postman
+*.postman
+.postman.*
+.postman/

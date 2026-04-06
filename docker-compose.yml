@@ -49,6 +49,10 @@ services:
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
       SPRING_DATA_MONGODB_URI: mongodb://${MONGO_USERNAME}:${MONGO_PASSWORD}@${MONGO_HOST}:${MONGO_PORT}/${MONGO_DATABASE}?authSource=${MONGO_AUTH_SOURCE}
       SERVER_PORT: ${SERVER_PORT_JAVA}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRATION: ${JWT_EXPIRATION}
+      ADMIN_EMAIL: ${ADMIN_EMAIL}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
     ports:
       - "${SERVER_PORT_JAVA}:8181"
     networks:
@@ -59,7 +63,7 @@ services:
       mongodb:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://localhost:8181/hello || exit 1"]
+      test: ["CMD-SHELL", "curl -fsS -X POST http://localhost:8181/auth/login -H 'Content-Type: application/json' -d '{\"email\":\"invalid@example.com\",\"senha\":\"invalid\"}' >/dev/null 2>&1 || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 10

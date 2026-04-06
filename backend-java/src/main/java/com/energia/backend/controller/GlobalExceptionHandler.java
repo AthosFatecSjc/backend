@@ -1,13 +1,15 @@
 package com.energia.backend.controller;
 
-import com.energia.backend.exception.DocumentosObrigatoriosNaoConfiguradosException;
-import com.energia.backend.exception.EmailJaCadastradoException;
 import java.util.Map;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import com.energia.backend.exception.DocumentosObrigatoriosNaoConfiguradosException;
+import com.energia.backend.exception.EmailJaCadastradoException;
+import com.energia.backend.exception.LoginAuthenticationException;
 import com.energia.backend.exception.PermissaoNegadaException;
 import com.energia.backend.exception.TermoNaoEncontradoException;
 import com.energia.backend.exception.UsuarioJaAnonimizadoException;
@@ -80,5 +82,16 @@ public class GlobalExceptionHandler {
                 "erro", "USUARIO_JA_ANONIMIZADO",
                 "mensagem", ex.getMessage()
         ));
+    }
+
+    @ExceptionHandler(LoginAuthenticationException.class)
+    public ResponseEntity<Map<String, Object>> handleLoginAuthenticationException(LoginAuthenticationException ex) {
+        Map<String, Object> response = Map.of(
+                "erro", ex.getErrorCode(),
+                "mensagem", ex.getMessage(),
+                "status", ex.getHttpStatus()
+        );
+        HttpStatus httpStatus = HttpStatus.valueOf(ex.getHttpStatus());
+        return ResponseEntity.status(httpStatus).body(response);
     }
 }
