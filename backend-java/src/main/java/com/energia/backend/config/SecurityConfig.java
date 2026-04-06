@@ -28,6 +28,7 @@ public class SecurityConfig {
                 .requestMatchers("/auth/login").permitAll()
                 .requestMatchers("/login").permitAll()
                 .requestMatchers("/usuarios/cadastro").permitAll()
+                .requestMatchers("/documentos/consentimentos/vigentes").permitAll()
                 .requestMatchers("/admin/**").hasRole("ADMIN")
                 .requestMatchers("/usuarios/**").authenticated()
                 .requestMatchers("/indicadores/**").authenticated()
