@@ -41,11 +41,13 @@ public class SystemLogService {
                 .id(log.getId())
                 .timestamp(log.getCreatedAt())
                 .actorRef(log.getActorRef())
+                .targetRef(log.getTargetRef())
                 .sourceType(log.getSourceType())
                 .event(log.getEvent())
                 .result(log.getResult())
                 .logCategory(log.getLogCategory())
                 .description(log.getDescription())
+                .createdByModule(log.getCreatedByModule())
                 .metadata(log.getMetadata())
                 .build();
     }

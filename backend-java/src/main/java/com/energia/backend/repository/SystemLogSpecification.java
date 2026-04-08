@@ -18,12 +18,37 @@ public class SystemLogSpecification {
 
             List<Predicate> predicates = new ArrayList<>();
 
+            if (filter.getActorRef() != null && !filter.getActorRef().isEmpty()) {
+                predicates.add(cb.equal(root.get("actorRef"), filter.getActorRef()));
+            }
+
+            if (filter.getTargetRef() != null && !filter.getTargetRef().isEmpty()) {
+                predicates.add(cb.equal(root.get("targetRef"), filter.getTargetRef()));
+            }
+
+            if (filter.getSourceType() != null) {
+                predicates.add(cb.equal(root.get("sourceType"), filter.getSourceType()));
+            }
+
             if (filter.getEvent() != null) {
                 predicates.add(cb.equal(root.get("event"), filter.getEvent()));
             }
 
             if (filter.getResult() != null) {
                 predicates.add(cb.equal(root.get("result"), filter.getResult()));
+            }
+
+            if (filter.getLogCategory() != null) {
+                predicates.add(cb.equal(root.get("logCategory"), filter.getLogCategory()));
+            }
+
+            if (filter.getCreatedByModule() != null && !filter.getCreatedByModule().isEmpty()) {
+                predicates.add(cb.equal(root.get("createdByModule"), filter.getCreatedByModule()));
+            }
+
+            if (filter.getDescription() != null && !filter.getDescription().isEmpty()) {
+                predicates.add(cb.like(cb.lower(root.get("description")), 
+                    "%" + filter.getDescription().toLowerCase() + "%"));
             }
 
             if (filter.getStartDate() != null && filter.getEndDate() != null) {

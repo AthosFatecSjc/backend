@@ -17,11 +17,13 @@ public class LogResponse {
     private Long id;
     private LocalDateTime timestamp;
     private String actorRef;
+    private String targetRef;
     private SourceType sourceType;
     private LogEvent event;
     private ResultType result;
     private LogCategory logCategory;
     private String description;
+    private String createdByModule;
     private String metadata;
 
 }
