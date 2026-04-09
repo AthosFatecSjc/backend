@@ -11,18 +11,16 @@ import com.energia.backend.dto.MinhaContaUpdateRequest;
 import com.energia.backend.exception.UsuarioNaoEncontradoException;
 import com.energia.backend.model.AppUserEntity;
 import com.energia.backend.model.StatusUsuario;
-import com.energia.backend.model.UserStatusEntity;
 import com.energia.backend.repository.AppUserJpaRepository;
-import com.energia.backend.repository.UserStatusJpaRepository;
 
 @Service
 public class MinhaContaService {
     private final AppUserJpaRepository appUserRepository;
-    private final UserStatusJpaRepository userStatusRepository;
+    private final UserStatusService userStatusService;
 
-    public MinhaContaService(AppUserJpaRepository appUserRepository, UserStatusJpaRepository userStatusRepository) {
+    public MinhaContaService(AppUserJpaRepository appUserRepository, UserStatusService userStatusService) {
         this.appUserRepository = appUserRepository;
-        this.userStatusRepository = userStatusRepository;
+        this.userStatusService = userStatusService;
     }
 
     @Transactional(readOnly = true)
@@ -72,26 +70,12 @@ public class MinhaContaService {
     }
 
     private StatusUsuario obterStatusAtual(AppUserEntity usuario) {
-        return userStatusRepository.findFirstByUserOrderByAssignedAtDesc(usuario)
-                .map(UserStatusEntity::getStatus)
-                .map(statusEntity -> toStatusUsuario(statusEntity.getName()))
-                .orElse(null);
+        return userStatusService.resolveCurrentStatus(usuario);
     }
 
     private LocalDateTime obterDataCadastro(AppUserEntity usuario) {
         // Usar a data de criação da entidade (quando foi registrado)
         return usuario.getCreatedAt() != null ? usuario.getCreatedAt() : LocalDateTime.now();
-    }
-
-    private StatusUsuario toStatusUsuario(String value) {
-        if (value == null) {
-            return null;
-        }
-        try {
-            return StatusUsuario.valueOf(value.trim().toUpperCase());
-        } catch (IllegalArgumentException ex) {
-            return null;
-        }
     }
 
     private void validarUpdateRequest(MinhaContaUpdateRequest request) {

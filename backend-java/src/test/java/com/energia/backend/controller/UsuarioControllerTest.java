@@ -41,13 +41,13 @@ class UsuarioControllerTest {
         UUID usuarioId = UUID.randomUUID();
         UUID adminId = UUID.randomUUID();
         AprovacaoRejeicaoUsuarioRequest request = new AprovacaoRejeicaoUsuarioRequest();
-        request.setStatus(StatusUsuario.APROVADO);
+        request.setStatus(StatusUsuario.ATIVO);
 
         ResponseEntity<String> response = controller.alterarStatusUsuario(usuarioId, request, () -> adminId.toString());
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals("Status do usuario atualizado com sucesso.", response.getBody());
-        verify(cadastroService).alterarStatusUsuario(eq(usuarioId), eq(adminId), eq(StatusUsuario.APROVADO), eq(null));
+        verify(cadastroService).alterarStatusUsuario(eq(usuarioId), eq(adminId), eq(StatusUsuario.ATIVO), eq(null));
     }
 
     @Test
@@ -81,7 +81,7 @@ class UsuarioControllerTest {
         UsuarioController controller = new UsuarioController(cadastroService, minhaContaService, anonimizacaoService);
 
         AprovacaoRejeicaoUsuarioRequest request = new AprovacaoRejeicaoUsuarioRequest();
-        request.setStatus(StatusUsuario.APROVADO);
+        request.setStatus(StatusUsuario.ATIVO);
 
         ResponseStatusException exception = assertThrows(
                 ResponseStatusException.class,
