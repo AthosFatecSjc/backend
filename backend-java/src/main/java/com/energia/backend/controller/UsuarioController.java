@@ -69,7 +69,7 @@ public class UsuarioController {
             @RequestBody AprovacaoRejeicaoUsuarioRequest request,
             Principal principal
     ) {
-        UUID adminId = obterUidDoUsuarioAutenticado(principal);
+        UUID adminId = obterUid(principal);
         cadastroService.alterarStatusUsuario(usuarioId, adminId, request.getStatus(), request.getMotivo());
         return ResponseEntity.ok("Status do usuario atualizado com sucesso.");
     }

@@ -18,7 +18,9 @@ import com.energia.backend.dto.AnonimizarUsuarioResponse;
 import com.energia.backend.exception.PermissaoNegadaException;
 import com.energia.backend.exception.UsuarioJaAnonimizadoException;
 import com.energia.backend.exception.UsuarioNaoEncontradoException;
+import com.energia.backend.repository.AppUserJpaRepository;
 import com.energia.backend.service.AnonimizacaoService;
+import com.energia.backend.service.TermsService;
 
 class UsuarioControllerAnonimizacaoTest {
 
@@ -29,8 +31,16 @@ class UsuarioControllerAnonimizacaoTest {
                 mock(com.energia.backend.service.UsuarioCadastroService.class);
         com.energia.backend.service.MinhaContaService minhaContaService =
                 mock(com.energia.backend.service.MinhaContaService.class);
+        TermsService termsService = mock(TermsService.class);
+        AppUserJpaRepository appUserRepository = mock(AppUserJpaRepository.class);
 
-        UsuarioController controller = new UsuarioController(cadastroService, minhaContaService, anonimizacaoService);
+        UsuarioController controller = new UsuarioController(
+                cadastroService,
+                minhaContaService,
+                anonimizacaoService,
+                termsService,
+                appUserRepository
+        );
 
         UUID adminId = UUID.randomUUID();
         UUID usuarioId = UUID.randomUUID();
@@ -61,8 +71,16 @@ class UsuarioControllerAnonimizacaoTest {
                 mock(com.energia.backend.service.UsuarioCadastroService.class);
         com.energia.backend.service.MinhaContaService minhaContaService =
                 mock(com.energia.backend.service.MinhaContaService.class);
+        TermsService termsService = mock(TermsService.class);
+        AppUserJpaRepository appUserRepository = mock(AppUserJpaRepository.class);
 
-        UsuarioController controller = new UsuarioController(cadastroService, minhaContaService, anonimizacaoService);
+        UsuarioController controller = new UsuarioController(
+                cadastroService,
+                minhaContaService,
+                anonimizacaoService,
+                termsService,
+                appUserRepository
+        );
 
         UUID userId = UUID.randomUUID();
         UUID usuarioId = UUID.randomUUID();
@@ -84,8 +102,16 @@ class UsuarioControllerAnonimizacaoTest {
                 mock(com.energia.backend.service.UsuarioCadastroService.class);
         com.energia.backend.service.MinhaContaService minhaContaService =
                 mock(com.energia.backend.service.MinhaContaService.class);
+        TermsService termsService = mock(TermsService.class);
+        AppUserJpaRepository appUserRepository = mock(AppUserJpaRepository.class);
 
-        UsuarioController controller = new UsuarioController(cadastroService, minhaContaService, anonimizacaoService);
+        UsuarioController controller = new UsuarioController(
+                cadastroService,
+                minhaContaService,
+                anonimizacaoService,
+                termsService,
+                appUserRepository
+        );
 
         UUID adminId = UUID.randomUUID();
         UUID usuarioId = UUID.randomUUID();
@@ -107,8 +133,16 @@ class UsuarioControllerAnonimizacaoTest {
                 mock(com.energia.backend.service.UsuarioCadastroService.class);
         com.energia.backend.service.MinhaContaService minhaContaService =
                 mock(com.energia.backend.service.MinhaContaService.class);
+        TermsService termsService = mock(TermsService.class);
+        AppUserJpaRepository appUserRepository = mock(AppUserJpaRepository.class);
 
-        UsuarioController controller = new UsuarioController(cadastroService, minhaContaService, anonimizacaoService);
+        UsuarioController controller = new UsuarioController(
+                cadastroService,
+                minhaContaService,
+                anonimizacaoService,
+                termsService,
+                appUserRepository
+        );
 
         UUID adminId = UUID.randomUUID();
         UUID usuarioInexistente = UUID.randomUUID();
