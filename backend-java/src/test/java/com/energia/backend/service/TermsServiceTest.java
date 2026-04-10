@@ -33,7 +33,7 @@ class TermsServiceTest {
         TermsEntity termosDeUsoVigente = termo("TERMS_OF_USE", 2, true);
         TermsEntity politicaPrivacidadeVigente = termo("PRIVACY_POLICY", 3, true);
 
-        when(termsRepository.findAllById(List.of(marketing.getId()))).thenReturn(List.of(marketing));
+        when(termsRepository.findAllWithTypeByIdIn(List.of(marketing.getId()))).thenReturn(List.of(marketing));
         when(termsRepository.findActiveRequiredByReferenceTime(any(LocalDateTime.class)))
                 .thenReturn(List.of(termosDeUsoVigente, politicaPrivacidadeVigente));
 
@@ -56,7 +56,7 @@ class TermsServiceTest {
         TermsEntity termosDeUsoVigente = termo("TERMS_OF_USE", 2, true);
         TermsEntity politicaPrivacidadeVigente = termo("PRIVACY_POLICY", 1, true);
 
-        when(termsRepository.findAllById(List.of(termosDeUsoAntigo.getId(), politicaPrivacidadeVigente.getId())))
+        when(termsRepository.findAllWithTypeByIdIn(List.of(termosDeUsoAntigo.getId(), politicaPrivacidadeVigente.getId())))
                 .thenReturn(List.of(termosDeUsoAntigo, politicaPrivacidadeVigente));
         when(termsRepository.findActiveRequiredByReferenceTime(any(LocalDateTime.class)))
                 .thenReturn(List.of(termosDeUsoVigente, politicaPrivacidadeVigente));
@@ -81,10 +81,11 @@ class TermsServiceTest {
         TermsEntity termosDeUsoVigente = termo("TERMS_OF_USE", 2, true);
         TermsEntity politicaPrivacidadeVigente = termo("PRIVACY_POLICY", 1, true);
 
-        when(termsRepository.findAllById(List.of(termosDeUsoVigente.getId(), politicaPrivacidadeVigente.getId())))
+        when(termsRepository.findAllWithTypeByIdIn(List.of(termosDeUsoVigente.getId(), politicaPrivacidadeVigente.getId())))
                 .thenReturn(List.of(termosDeUsoVigente, politicaPrivacidadeVigente));
         when(termsRepository.findActiveRequiredByReferenceTime(any(LocalDateTime.class)))
                 .thenReturn(List.of(termosDeUsoVigente, politicaPrivacidadeVigente));
+        when(userTermsRespository.findHistoryByUserId(any(UUID.class))).thenReturn(List.of());
 
         service.registrarTermosAceitos(
                 List.of(termosDeUsoVigente.getId(), politicaPrivacidadeVigente.getId()),
@@ -100,7 +101,7 @@ class TermsServiceTest {
         TermsService service = new TermsService(termsRepository, userTermsRespository);
 
         UUID termoId = UUID.randomUUID();
-        when(termsRepository.findAllById(List.of(termoId))).thenReturn(List.of());
+        when(termsRepository.findAllWithTypeByIdIn(List.of(termoId))).thenReturn(List.of());
 
         TermoNaoEncontradoException exception = assertThrows(
                 TermoNaoEncontradoException.class,

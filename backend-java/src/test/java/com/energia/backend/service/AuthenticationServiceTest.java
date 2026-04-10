@@ -19,6 +19,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import com.energia.backend.dto.LoginRequest;
 import com.energia.backend.dto.LoginResponse;
+import com.energia.backend.dto.TermosPendentesResponse;
 import com.energia.backend.exception.LoginAuthenticationException;
 import com.energia.backend.model.AppUserEntity;
 import com.energia.backend.model.RoleEntity;
@@ -41,6 +42,9 @@ class AuthenticationServiceTest {
     @Mock
     private PasswordEncoder passwordEncoder;
 
+    @Mock
+    private TermsService termsService;
+
     private UUID userId;
     private String email;
     private String nome;
@@ -53,7 +57,8 @@ class AuthenticationServiceTest {
         authenticationService = new AuthenticationService(
             userRepository,
             userStatusService,
-            passwordEncoder
+            passwordEncoder,
+            termsService
         );
         ReflectionTestUtils.setField(
             authenticationService,
@@ -80,6 +85,7 @@ class AuthenticationServiceTest {
         when(userStatusService.resolveCurrentStatusEntry(user)).thenReturn(Optional.of(userStatus));
         when(userStatusService.toOfficialStatus("ATIVO")).thenReturn(StatusUsuario.ATIVO);
         when(passwordEncoder.matches(password, passwordHashBcrypt)).thenReturn(true);
+        when(termsService.listarPendenciasDeAcesso(userId)).thenReturn(List.of());
 
         LoginRequest request = new LoginRequest(email, password);
         LoginResponse response = authenticationService.authenticate(request);
@@ -234,6 +240,31 @@ class AuthenticationServiceTest {
             () -> authenticationService.authenticate(request),
             "Should throw IllegalArgumentException for null password"
         );
+    }
+
+    @Test
+    @DisplayName("Scenario 7: ATIVO user with pending terms is blocked before login")
+    void testLogin_PendingTermsFails() {
+        RoleEntity userRole = RoleEntity.builder().id(UUID.randomUUID()).name("user").build();
+        AppUserEntity user = criarAppUserEntity(userId, email, nome, passwordHashBcrypt, List.of(userRole));
+        UserStatusEntity userStatus = criarUserStatus(user, "ATIVO");
+
+        when(userRepository.findByEmailIgnoreCase(email)).thenReturn(Optional.of(user));
+        when(userStatusService.resolveCurrentStatusEntry(user)).thenReturn(Optional.of(userStatus));
+        when(userStatusService.toOfficialStatus("ATIVO")).thenReturn(StatusUsuario.ATIVO);
+        when(passwordEncoder.matches(password, passwordHashBcrypt)).thenReturn(true);
+        when(termsService.listarPendenciasDeAcesso(userId)).thenReturn(List.of(
+                new TermosPendentesResponse(UUID.randomUUID(), "TERMS_OF_USE", 2, true)
+        ));
+
+        LoginAuthenticationException exception = assertThrows(
+                LoginAuthenticationException.class,
+                () -> authenticationService.authenticate(new LoginRequest(email, password))
+        );
+
+        assertEquals("TERMS_REVIEW_REQUIRED", exception.getErrorCode());
+        assertEquals(403, exception.getHttpStatus());
+        assertNotNull(exception.getDetails());
     }
 
     private AppUserEntity criarAppUserEntity(UUID id, String email, String nome, String password, List<RoleEntity> roles) {

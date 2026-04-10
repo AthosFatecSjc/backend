@@ -9,15 +9,19 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.List;
 import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 
+import com.energia.backend.dto.AtualizarEmailRequest;
 import com.energia.backend.dto.MinhaContaResponse;
 import com.energia.backend.dto.MinhaContaUpdateRequest;
+import com.energia.backend.exception.PermissaoNegadaException;
 import com.energia.backend.model.AppUserEntity;
+import com.energia.backend.model.RoleEntity;
 import com.energia.backend.model.StatusUsuario;
 import com.energia.backend.repository.AppUserJpaRepository;
 
@@ -131,5 +135,71 @@ class MinhaContaServiceTest {
 
         assertEquals("Informe ao menos nomeCompleto ou telefone para atualizar.", exception.getMessage());
         verify(appUserRepository, never()).save(any(AppUserEntity.class));
+    }
+
+    @Test
+    void devePermitirAdminAlterarEmailDeOutroUsuario() {
+        AppUserJpaRepository appUserRepository = mock(AppUserJpaRepository.class);
+        UserStatusService userStatusService = mock(UserStatusService.class);
+        MinhaContaService service = new MinhaContaService(appUserRepository, userStatusService);
+
+        UUID adminId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        RoleEntity adminRole = RoleEntity.builder().name("ADMIN").build();
+
+        AppUserEntity admin = AppUserEntity.builder()
+                .id(adminId)
+                .email("admin@teste.com")
+                .roles(List.of(adminRole))
+                .build();
+
+        AppUserEntity user = AppUserEntity.builder()
+                .id(userId)
+                .name("Maria")
+                .email("maria@teste.com")
+                .password("hash")
+                .createdAt(LocalDateTime.now().minusDays(1))
+                .build();
+
+        when(appUserRepository.findById(adminId)).thenReturn(Optional.of(admin));
+        when(appUserRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(appUserRepository.existsByEmailIgnoreCase("novo@teste.com")).thenReturn(false);
+        when(appUserRepository.save(any(AppUserEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(userStatusService.resolveCurrentStatus(user)).thenReturn(StatusUsuario.ATIVO);
+
+        AtualizarEmailRequest request = new AtualizarEmailRequest();
+        request.setNovoEmail("novo@teste.com");
+
+        MinhaContaResponse response = service.atualizarEmail(adminId, userId, request);
+
+        assertEquals("novo@teste.com", response.getEmail());
+    }
+
+    @Test
+    void deveRejeitarAlteracaoDeEmailQuandoSolicitanteNaoForAdmin() {
+        AppUserJpaRepository appUserRepository = mock(AppUserJpaRepository.class);
+        UserStatusService userStatusService = mock(UserStatusService.class);
+        MinhaContaService service = new MinhaContaService(appUserRepository, userStatusService);
+
+        UUID actorId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+
+        AppUserEntity actor = AppUserEntity.builder()
+                .id(actorId)
+                .email("user@teste.com")
+                .roles(List.of())
+                .build();
+
+        when(appUserRepository.findById(actorId)).thenReturn(Optional.of(actor));
+
+        AtualizarEmailRequest request = new AtualizarEmailRequest();
+        request.setNovoEmail("novo@teste.com");
+
+        PermissaoNegadaException exception = assertThrows(
+                PermissaoNegadaException.class,
+                () -> service.atualizarEmail(actorId, userId, request)
+        );
+
+        assertEquals("Apenas administradores podem alterar o e-mail do usuario.", exception.getMessage());
     }
 }
