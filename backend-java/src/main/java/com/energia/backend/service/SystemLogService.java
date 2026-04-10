@@ -36,7 +36,6 @@ public class SystemLogService {
 
         PageResponse<LogResponse> response = PageResponse.from(logsPage.map(this::toResponse));
 
-        // Registrar acesso ao módulo administrativo de logs - listagem
         logService.log(
                 getCurrentUserRef(),
                 null,
@@ -58,7 +57,6 @@ public class SystemLogService {
 
         LogResponse response = toResponse(log);
 
-        // Registrar acesso ao módulo administrativo de logs - detalhe
         logService.log(
                 getCurrentUserRef(),
                 id.toString(),

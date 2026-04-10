@@ -57,7 +57,6 @@ class SystemLogServiceTest {
         when(repository.findAll(any(org.springframework.data.jpa.domain.Specification.class), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(java.util.List.of(log), PageRequest.of(0, 20), 1));
 
-        // Mock SecurityContextHolder
         Authentication authentication = mock(Authentication.class);
         when(authentication.getName()).thenReturn("admin-user");
         SecurityContext securityContext = mock(SecurityContext.class);
@@ -77,7 +76,6 @@ class SystemLogServiceTest {
             assertEquals("admin-1", response.getContent().get(0).getActorRef());
             assertEquals("{\"ip\":\"127.0.0.1\"}", response.getContent().get(0).getMetadata());
 
-            // Verificar se o log de auditoria foi chamado
             verify(logService).log(
                     eq("admin-user"),
                     eq(null),
@@ -107,9 +105,6 @@ class SystemLogServiceTest {
 
         assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
         assertEquals("Log nao encontrado.", exception.getReason());
-
-        // Verificar que o log não foi chamado pois a exceção foi lançada antes
-        // verify(logService, never()).log(any(), any(), any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -133,7 +128,6 @@ class SystemLogServiceTest {
 
         when(repository.findById(1L)).thenReturn(Optional.of(log));
 
-        // Mock SecurityContextHolder
         Authentication authentication = mock(Authentication.class);
         when(authentication.getName()).thenReturn("admin-user");
         SecurityContext securityContext = mock(SecurityContext.class);
@@ -148,7 +142,6 @@ class SystemLogServiceTest {
             assertEquals(timestamp, response.getTimestamp());
             assertEquals("admin-1", response.getActorRef());
 
-            // Verificar se o log de auditoria foi chamado
             verify(logService).log(
                     eq("admin-user"),
                     eq("1"),
