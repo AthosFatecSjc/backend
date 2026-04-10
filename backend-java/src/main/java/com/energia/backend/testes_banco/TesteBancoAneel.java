@@ -31,6 +31,18 @@
 
 //             System.out.println("🔥 ENTROU NO RUNNER");
 
+//             if (distribuidoraRepo.existsByCodigoIdDist(1000L)) {
+//                 System.out.println("Seed ANEEL ja existente, pulando insercao inicial.");
+//                 return;
+//             }
+
+
+
+//             if (distribuidoraRepo.existsByCodigoIdDist(1000L)) {
+//                 System.out.println("Seed ANEEL ja existente, pulando insercao inicial.");
+//                 return;
+//             }
+
 //             System.out.println("Qtd distribuidoras antes: " + distribuidoraRepo.count());
 //             // =========================
 //             // 1. Distribuidora
@@ -42,6 +54,8 @@
 //             dist.setRegiao(Regiao.SUDESTE);
 //             dist.setUf("SP");
 //             dist.setContractType(ContractType.CONCESSIONARIA);
+//             dist.setRazaoSocial("Razao Social Teste");
+
 
 //             dist = distribuidoraRepo.save(dist);
 
@@ -102,9 +116,6 @@
 //             // importante agora por causa da migration
 //             perdas.setAno((long) data.getYear());
                     
-//             perdas.setTme(1.2);
-//             perdas.setPerdasRedeBasica(2.3);
-//             perdas.setCustoPerdasRedeBasica(3.4);
                     
 //             perdasRepo.save(perdas);
 

@@ -1,6 +1,5 @@
 package com.energia.backend.model;
 
-import com.energia.backend.model.UserTermsEntity;
 
 import jakarta.persistence.*;
 import lombok.*;
@@ -48,4 +47,9 @@ public class TermsEntity {
 
     @OneToMany(mappedBy = "terms", fetch = FetchType.LAZY)
     private List<UserTermsEntity> userAcceptances;
+
+    @Column(name = "is_required", nullable = false)
+    private Boolean isRequired;
+
+
 }

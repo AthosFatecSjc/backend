@@ -39,4 +39,6 @@ public class UserTermsEntity {
 
     @Column(name = "revoked_at")
     private LocalDateTime revokedAt;
+
+
 }

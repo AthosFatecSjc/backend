@@ -1,33 +1,52 @@
 package com.energia.backend.service;
 
-import com.energia.backend.dto.UsuarioCadastroRequest;
-import com.energia.backend.exception.EmailJaCadastradoException;
-import com.energia.backend.model.StatusUsuario;
-import com.energia.backend.model.Usuario;
-import com.energia.backend.repository.UsuarioCadastroRepository;
+import java.time.LocalDateTime;
+import java.util.UUID;
+import java.util.regex.Pattern;
+
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import javax.crypto.SecretKeyFactory;
-import javax.crypto.spec.PBEKeySpec;
-import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
-import java.security.spec.InvalidKeySpecException;
-import java.time.LocalDateTime;
-import java.util.Base64;
-import java.util.regex.Pattern;
+import com.energia.backend.dto.Usuario;
+import com.energia.backend.dto.UsuarioCadastroRequest;
+import com.energia.backend.exception.EmailJaCadastradoException;
+import com.energia.backend.exception.PermissaoNegadaException;
+import com.energia.backend.model.AppUserEntity;
+import com.energia.backend.model.StatusEntity;
+import com.energia.backend.model.StatusUsuario;
+import com.energia.backend.model.UserStatusEntity;
+import com.energia.backend.repository.AppUserJpaRepository;
+import com.energia.backend.repository.StatusJpaRepository;
+import com.energia.backend.repository.UserStatusJpaRepository;
+import com.energia.backend.repository.UsuarioCadastroRepository;
 
 @Service
 public class UsuarioCadastroService {
     private static final Pattern EMAIL_PATTERN = Pattern.compile("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$");
-    private static final int ITERATIONS = 65536;
-    private static final int KEY_LENGTH = 256;
 
-    private final UsuarioCadastroRepository repository;
+    private final UsuarioCadastroRepository usuarioCadastroRepository;
+    private final AppUserJpaRepository appUserRepository;
+    private final TermsService termsService;
+    private final StatusJpaRepository statusRepository;
+    private final UserStatusJpaRepository userStatusRepository;
+    private final PasswordEncoder passwordEncoder;
 
-    public UsuarioCadastroService(UsuarioCadastroRepository repository) {
-        this.repository = repository;
+    public UsuarioCadastroService(
+            UsuarioCadastroRepository usuarioCadastroRepository,
+            AppUserJpaRepository appUserRepository,
+            TermsService termsService,
+            StatusJpaRepository statusRepository,
+            UserStatusJpaRepository userStatusRepository,
+            PasswordEncoder passwordEncoder
+    ) {
+        this.usuarioCadastroRepository = usuarioCadastroRepository;
+        this.appUserRepository = appUserRepository;
+        this.termsService = termsService;
+        this.statusRepository = statusRepository;
+        this.userStatusRepository = userStatusRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Transactional
@@ -35,23 +54,79 @@ public class UsuarioCadastroService {
         validarRequest(request);
 
         String emailNormalizado = normalizarEmail(request.getEmail());
-        if (repository.existsByEmail(emailNormalizado)) {
+
+        if (usuarioCadastroRepository.existsByEmail(emailNormalizado)) {
             throw new EmailJaCadastradoException("E-mail ja cadastrado.");
         }
 
-        Usuario usuario = new Usuario();
-        usuario.setNomeCompleto(request.getNomeCompleto().trim());
-        usuario.setEmail(emailNormalizado);
-        usuario.setSenhaHash(gerarHashSeguro(request.getSenha()));
-        usuario.setTelefone(normalizarOpcional(request.getTelefone()));
-        usuario.setStatus(StatusUsuario.PENDENTE);
-        usuario.setDataCadastro(LocalDateTime.now());
-
         try {
-            return repository.save(usuario);
+            Usuario usuario = new Usuario();
+            usuario.setNomeCompleto(request.getNomeCompleto().trim());
+            usuario.setEmail(emailNormalizado);
+            usuario.setSenhaHash(passwordEncoder.encode(request.getSenha()));
+            usuario.setTelefone(normalizarOpcional(request.getTelefone()));
+            usuario.setStatus(StatusUsuario.PENDENTE);
+            usuario.setDataCadastro(LocalDateTime.now());
+
+            Usuario usuarioSalvo = usuarioCadastroRepository.save(usuario);
+
+            if (request.getTermsIds() != null && !request.getTermsIds().isEmpty()) {
+                AppUserEntity appUserSalvo = appUserRepository.findByEmailIgnoreCase(usuarioSalvo.getEmail())
+                        .orElseThrow(() -> new IllegalStateException("Usuario cadastrado nao encontrado para registrar termos."));
+                termsService.registrarTermosAceitos(request.getTermsIds(), appUserSalvo);
+            }
+
+            return usuarioSalvo;
         } catch (DataIntegrityViolationException ex) {
             throw new EmailJaCadastradoException("E-mail ja cadastrado.");
         }
+    }
+
+    @Transactional
+    public void alterarStatusUsuario(UUID usuarioId, UUID adminId, StatusUsuario novoStatus, String motivo) {
+        validarDependenciasStatus();
+
+        if (novoStatus == null) {
+            throw new IllegalArgumentException("Status desejado e obrigatorio.");
+        }
+        if (novoStatus != StatusUsuario.APROVADO && novoStatus != StatusUsuario.REJEITADO) {
+            throw new IllegalArgumentException("Status deve ser APROVADO ou REJEITADO.");
+        }
+        if (novoStatus == StatusUsuario.REJEITADO && isBlank(motivo)) {
+            throw new IllegalArgumentException("Motivo da rejeicao e obrigatorio.");
+        }
+
+        AppUserEntity usuario = appUserRepository.findById(usuarioId)
+                .orElseThrow(() -> new IllegalArgumentException("Usuario nao encontrado."));
+        AppUserEntity admin = appUserRepository.findById(adminId)
+                .orElseThrow(() -> new IllegalArgumentException("Admin nao encontrado."));
+
+        boolean isAdmin = admin.getRoles() != null
+                && admin.getRoles().stream().anyMatch(role -> "ADMIN".equalsIgnoreCase(role.getName()));
+        if (!isAdmin) {
+            throw new PermissaoNegadaException("Apenas administradores podem alterar o status de usuarios.");
+        }
+
+        UserStatusEntity statusAtual = userStatusRepository.findFirstByUserOrderByAssignedAtDesc(usuario)
+                .orElse(null);
+        if (statusAtual == null
+                || statusAtual.getStatus() == null
+                || !"PENDENTE".equalsIgnoreCase(statusAtual.getStatus().getName())) {
+            throw new IllegalStateException("So e permitido aprovar ou rejeitar usuarios com status PENDENTE.");
+        }
+
+        StatusEntity statusEntity = statusRepository.findByNameIgnoreCase(novoStatus.name())
+                .orElseThrow(() -> new IllegalArgumentException("Status " + novoStatus + " nao encontrado."));
+
+        UserStatusEntity novoUserStatus = UserStatusEntity.builder()
+                .user(usuario)
+                .status(statusEntity)
+                .assignedBy(admin)
+                .assignedAt(LocalDateTime.now())
+                .rationaleForRejection(novoStatus == StatusUsuario.REJEITADO ? motivo.trim() : null)
+                .build();
+
+        userStatusRepository.save(novoUserStatus);
     }
 
     private void validarRequest(UsuarioCadastroRequest request) {
@@ -75,25 +150,6 @@ public class UsuarioCadastroService {
         }
     }
 
-    private String gerarHashSeguro(String senha) {
-        byte[] salt = new byte[16];
-        new SecureRandom().nextBytes(salt);
-
-        PBEKeySpec spec = new PBEKeySpec(senha.toCharArray(), salt, ITERATIONS, KEY_LENGTH);
-
-        try {
-            SecretKeyFactory keyFactory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
-            byte[] hash = keyFactory.generateSecret(spec).getEncoded();
-            String saltBase64 = Base64.getEncoder().encodeToString(salt);
-            String hashBase64 = Base64.getEncoder().encodeToString(hash);
-            return "PBKDF2$" + ITERATIONS + "$" + saltBase64 + "$" + hashBase64;
-        } catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
-            throw new IllegalStateException("Falha ao gerar hash de senha.", e);
-        } finally {
-            spec.clearPassword();
-        }
-    }
-
     private String normalizarEmail(String email) {
         return email.trim().toLowerCase();
     }
@@ -104,5 +160,11 @@ public class UsuarioCadastroService {
 
     private boolean isBlank(String value) {
         return value == null || value.trim().isEmpty();
+    }
+
+    private void validarDependenciasStatus() {
+        if (statusRepository == null || userStatusRepository == null || appUserRepository == null) {
+            throw new IllegalStateException("DependÃªncias nÃ£o inicializadas para operaÃ§Ã£o de status.");
+        }
     }
 }

@@ -1,5 +1,11 @@
 package com.energia.backend.service;
 
+import java.time.LocalDateTime;
+import java.util.UUID;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.energia.backend.dto.MinhaContaResponse;
 import com.energia.backend.dto.MinhaContaUpdateRequest;
 import com.energia.backend.exception.UsuarioNaoEncontradoException;
@@ -8,11 +14,6 @@ import com.energia.backend.model.StatusUsuario;
 import com.energia.backend.model.UserStatusEntity;
 import com.energia.backend.repository.AppUserJpaRepository;
 import com.energia.backend.repository.UserStatusJpaRepository;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.time.LocalDateTime;
-import java.util.UUID;
 
 @Service
 public class MinhaContaService {
@@ -78,9 +79,8 @@ public class MinhaContaService {
     }
 
     private LocalDateTime obterDataCadastro(AppUserEntity usuario) {
-        return userStatusRepository.findFirstByUserOrderByAssignedAtAsc(usuario)
-                .map(UserStatusEntity::getAssignedAt)
-                .orElse(null);
+        // Usar a data de criação da entidade (quando foi registrado)
+        return usuario.getCreatedAt() != null ? usuario.getCreatedAt() : LocalDateTime.now();
     }
 
     private StatusUsuario toStatusUsuario(String value) {

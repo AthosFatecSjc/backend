@@ -7,8 +7,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import com.energia.backend.exception.DocumentosObrigatoriosNaoConfiguradosException;
 import com.energia.backend.exception.EmailJaCadastradoException;
+import com.energia.backend.exception.LoginAuthenticationException;
 import com.energia.backend.exception.PermissaoNegadaException;
+import com.energia.backend.exception.TermoNaoEncontradoException;
 import com.energia.backend.exception.UsuarioJaAnonimizadoException;
 import com.energia.backend.exception.UsuarioNaoEncontradoException;
 
@@ -31,10 +34,36 @@ public class GlobalExceptionHandler {
         ));
     }
 
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<Map<String, String>> handleInvalidState(IllegalStateException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
+                "erro", "OPERACAO_INVALIDA",
+                "mensagem", ex.getMessage()
+        ));
+    }
+
+    @ExceptionHandler(TermoNaoEncontradoException.class)
+    public ResponseEntity<Map<String, String>> handleTermoNaoEncontrado(TermoNaoEncontradoException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of(
+                "erro", "TERMO_NAO_ENCONTRADO",
+                "mensagem", ex.getMessage()
+        ));
+    }
+
     @ExceptionHandler(UsuarioNaoEncontradoException.class)
     public ResponseEntity<Map<String, String>> handleUsuarioNaoEncontrado(UsuarioNaoEncontradoException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
                 "erro", "USUARIO_NAO_ENCONTRADO",
+                "mensagem", ex.getMessage()
+        ));
+    }
+
+    @ExceptionHandler(DocumentosObrigatoriosNaoConfiguradosException.class)
+    public ResponseEntity<Map<String, String>> handleDocumentosObrigatoriosNaoConfigurados(
+            DocumentosObrigatoriosNaoConfiguradosException ex
+    ) {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(Map.of(
+                "erro", "DOCUMENTOS_CONSENTIMENTO_INDISPONIVEIS",
                 "mensagem", ex.getMessage()
         ));
     }
@@ -53,5 +82,16 @@ public class GlobalExceptionHandler {
                 "erro", "USUARIO_JA_ANONIMIZADO",
                 "mensagem", ex.getMessage()
         ));
+    }
+
+    @ExceptionHandler(LoginAuthenticationException.class)
+    public ResponseEntity<Map<String, Object>> handleLoginAuthenticationException(LoginAuthenticationException ex) {
+        Map<String, Object> response = Map.of(
+                "erro", ex.getErrorCode(),
+                "mensagem", ex.getMessage(),
+                "status", ex.getHttpStatus()
+        );
+        HttpStatus httpStatus = HttpStatus.valueOf(ex.getHttpStatus());
+        return ResponseEntity.status(httpStatus).body(response);
     }
 }
