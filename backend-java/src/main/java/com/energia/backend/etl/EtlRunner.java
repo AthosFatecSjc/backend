@@ -27,10 +27,7 @@ public class EtlRunner {
         return args -> {
             if (Arrays.stream(args).noneMatch(arg -> arg.equalsIgnoreCase("etl"))) {
                 System.out.println("ARGS: " + Arrays.toString(args));
-                String response = limService.importar();
-                List<LimiteFiltrado> listaLim = limitesCsvParser.parsearFiltrando(response, List.of(12722L));
-                limitesTransformLoad.processarLista(listaLim);
-                System.out.print ("LISTALIM: " + listaLim);
+                
                 System.out.println("ENTROU NA FUNÇÃO DO ETL");
                 return;
             }
@@ -45,6 +42,9 @@ public class EtlRunner {
                 List<String> cnpjs = List.of("97578090000134"); 
                 String json = conjService.importar(cnpjs);
                 conjTransformService.processarJson(json);
+                String response = limService.importar();
+                List<LimiteFiltrado> listaLim = limitesCsvParser.parsearFiltrando(response, List.of(12722L));
+                limitesTransformLoad.processarLista(listaLim);
 
                 
                 System.out.println("ETL REALIZADO");
