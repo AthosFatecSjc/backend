@@ -92,6 +92,7 @@ public class AdminInitializationService implements CommandLineRunner {
                     .password(encodedPassword)
                     .phone(null)
                     .anonymizationStatus(AnonymizationStatus.ACTIVE)
+                    .mustChangePassword(true)
                     .roles(List.of(adminRole))
                     .build();
 

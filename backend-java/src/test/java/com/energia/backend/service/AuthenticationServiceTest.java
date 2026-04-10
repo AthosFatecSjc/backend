@@ -41,6 +41,9 @@ class AuthenticationServiceTest {
     @Mock
     private PasswordEncoder passwordEncoder;
 
+    @Mock
+    private LogService logService;
+
     private UUID userId;
     private String email;
     private String nome;
@@ -53,7 +56,8 @@ class AuthenticationServiceTest {
         authenticationService = new AuthenticationService(
             userRepository,
             userStatusService,
-            passwordEncoder
+            passwordEncoder,
+            logService
         );
         ReflectionTestUtils.setField(
             authenticationService,
@@ -90,6 +94,11 @@ class AuthenticationServiceTest {
         assertEquals(nome, response.getNome());
         assertNotNull(response.getAccessToken());
         assertEquals("Bearer", response.getTokenType());
+        assertFalse(response.isAdmin());
+        assertEquals("ATIVO", response.getStatus());
+        assertNotNull(response.getRoles());
+        assertTrue(response.getRoles().contains("user"));
+        assertFalse(response.isMustChangePasswordOnFirstLogin());
 
         String token = response.getAccessToken();
         assertTrue(authenticationService.isTokenValid(token));

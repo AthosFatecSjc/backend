@@ -63,6 +63,10 @@ public class AppUserEntity {
     @Column(name = "anonymized_at")
     private LocalDateTime anonymizedAt;
 
+    @Column(name = "must_change_password", nullable = false)
+    @Builder.Default
+    private boolean mustChangePassword = false;
+
     // MANY-TO-MANY → ROLE
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(name = "user_role", joinColumns = @JoinColumn(name = "user_id"), // ✅ FIXED

@@ -1,21 +1,18 @@
 package com.energia.backend.controller;
 
-import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.mockito.Mockito.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+import java.util.List;
 import java.util.UUID;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
@@ -50,7 +47,8 @@ class AuthenticationControllerTest {
     @DisplayName("POST /auth/login - Active user login succeeds with JWT token")
     void testLoginSuccess() throws Exception {
         LoginRequest request = new LoginRequest(EMAIL, PASSWORD);
-        LoginResponse response = new LoginResponse("jwt-token-here", USER_ID, EMAIL, "Test User");
+        LoginResponse response = new LoginResponse("jwt-token-here", USER_ID, EMAIL, "Test User",
+                false, "ATIVO", List.of("user"), false);
 
         when(authenticationService.authenticate(any(LoginRequest.class))).thenReturn(response);
 

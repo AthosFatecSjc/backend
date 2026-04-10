@@ -18,6 +18,10 @@ import com.energia.backend.exception.LoginAuthenticationException;
 import com.energia.backend.model.AppUserEntity;
 import com.energia.backend.model.StatusUsuario;
 import com.energia.backend.model.UserStatusEntity;
+import com.energia.backend.model.log.LogCategory;
+import com.energia.backend.model.log.LogEvent;
+import com.energia.backend.model.log.ResultType;
+import com.energia.backend.model.log.SourceType;
 import com.energia.backend.repository.AppUserJpaRepository;
 
 import io.jsonwebtoken.Claims;
@@ -31,6 +35,7 @@ public class AuthenticationService {
     private final AppUserJpaRepository userRepository;
     private final UserStatusService userStatusService;
     private final PasswordEncoder passwordEncoder;
+    private final LogService logService;
 
     @Value("${jwt.secret:sua-chave-secreta-muito-longa-com-pelo-menos-256-bits-de-comprimento-para-hs512}")
     private String jwtSecret;
@@ -41,25 +46,41 @@ public class AuthenticationService {
     public AuthenticationService(
             AppUserJpaRepository userRepository,
             UserStatusService userStatusService,
-            PasswordEncoder passwordEncoder
+            PasswordEncoder passwordEncoder,
+            LogService logService
     ) {
         this.userRepository = userRepository;
         this.userStatusService = userStatusService;
         this.passwordEncoder = passwordEncoder;
+        this.logService = logService;
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public LoginResponse authenticate(LoginRequest request) {
         validarRequest(request);
 
+        String emailAttempt = request.getEmail().trim().toLowerCase();
+
+        logService.log(emailAttempt, null, SourceType.USER, LogEvent.LOGIN_ATTEMPT,
+                ResultType.SUCCESS, LogCategory.AUDIT,
+                "Login attempt for email: " + emailAttempt, null, "AuthenticationService");
+
         AppUserEntity user = userRepository.findByEmailIgnoreCase(request.getEmail())
-                .orElseThrow(() -> new LoginAuthenticationException(
-                        "Invalid email or password",
-                        "INVALID_CREDENTIALS",
-                        HttpStatus.UNAUTHORIZED.value()
-                ));
+                .orElseThrow(() -> {
+                    logService.log(emailAttempt, null, SourceType.USER, LogEvent.LOGIN_FAIL,
+                            ResultType.FAIL, LogCategory.AUDIT,
+                            "Invalid credentials for email: " + emailAttempt, null, "AuthenticationService");
+                    return new LoginAuthenticationException(
+                            "Invalid email or password",
+                            "INVALID_CREDENTIALS",
+                            HttpStatus.UNAUTHORIZED.value()
+                    );
+                });
 
         if (!passwordEncoder.matches(request.getSenha(), user.getPassword())) {
+            logService.log(emailAttempt, user.getId().toString(), SourceType.USER, LogEvent.LOGIN_FAIL,
+                    ResultType.FAIL, LogCategory.AUDIT,
+                    "Invalid password for email: " + emailAttempt, null, "AuthenticationService");
             throw new LoginAuthenticationException(
                     "Invalid email or password",
                     "INVALID_CREDENTIALS",
@@ -68,16 +89,24 @@ public class AuthenticationService {
         }
 
         UserStatusEntity userStatus = userStatusService.resolveCurrentStatusEntry(user)
-                .orElseThrow(() -> new LoginAuthenticationException(
-                        "User account has no status assigned",
-                        "USER_NO_STATUS",
-                        HttpStatus.FORBIDDEN.value()
-                ));
+                .orElseThrow(() -> {
+                    logService.log(emailAttempt, user.getId().toString(), SourceType.USER, LogEvent.LOGIN_FAIL,
+                            ResultType.FAIL, LogCategory.AUDIT,
+                            "User has no status assigned: " + emailAttempt, null, "AuthenticationService");
+                    return new LoginAuthenticationException(
+                            "User account has no status assigned",
+                            "USER_NO_STATUS",
+                            HttpStatus.FORBIDDEN.value()
+                    );
+                });
 
         String statusName = userStatus.getStatus() != null ? userStatus.getStatus().getName() : null;
         StatusUsuario status = userStatusService.toOfficialStatus(statusName);
 
         if (status == StatusUsuario.PENDENTE) {
+            logService.log(emailAttempt, user.getId().toString(), SourceType.USER, LogEvent.LOGIN_FAIL,
+                    ResultType.FAIL, LogCategory.AUDIT,
+                    "Login denied - account pending approval: " + emailAttempt, null, "AuthenticationService");
             throw new LoginAuthenticationException(
                     "User account is pending administrator approval",
                     "USER_PENDING_APPROVAL",
@@ -89,6 +118,9 @@ public class AuthenticationService {
             String reason = userStatus.getRationaleForRejection() != null
                     ? userStatus.getRationaleForRejection()
                     : "No reason provided";
+            logService.log(emailAttempt, user.getId().toString(), SourceType.USER, LogEvent.LOGIN_FAIL,
+                    ResultType.FAIL, LogCategory.AUDIT,
+                    "Login denied - account rejected: " + emailAttempt, null, "AuthenticationService");
             throw new LoginAuthenticationException(
                     "User account has been rejected",
                     "USER_REJECTED",
@@ -98,6 +130,9 @@ public class AuthenticationService {
         }
 
         if (status != StatusUsuario.ATIVO) {
+            logService.log(emailAttempt, user.getId().toString(), SourceType.USER, LogEvent.LOGIN_FAIL,
+                    ResultType.FAIL, LogCategory.AUDIT,
+                    "Login denied - invalid status '" + statusName + "': " + emailAttempt, null, "AuthenticationService");
             throw new LoginAuthenticationException(
                     "User account status is invalid: " + statusName,
                     "INVALID_USER_STATUS",
@@ -111,8 +146,24 @@ public class AuthenticationService {
                     .collect(Collectors.toList())
                 : java.util.Collections.emptyList();
 
+        boolean isAdmin = roles.contains("admin");
+
         String token = generateTokenWithRoles(user.getId(), user.getEmail(), user.getName(), roles);
-        return new LoginResponse(token, user.getId(), user.getEmail(), user.getName());
+
+        logService.log(emailAttempt, user.getId().toString(), SourceType.USER, LogEvent.LOGIN_SUCCESS,
+                ResultType.SUCCESS, LogCategory.AUDIT,
+                "Login successful for email: " + emailAttempt, null, "AuthenticationService");
+
+        return new LoginResponse(
+                token,
+                user.getId(),
+                user.getEmail(),
+                user.getName(),
+                isAdmin,
+                status.name(),
+                roles,
+                user.isMustChangePassword()
+        );
     }
 
     private void validarRequest(LoginRequest request) {
