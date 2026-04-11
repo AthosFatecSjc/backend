@@ -25,18 +25,36 @@ import com.energia.backend.dto.Usuario;
 import com.energia.backend.dto.UsuarioCadastroRequest;
 import com.energia.backend.dto.UsuarioCadastroResponse;
 import com.energia.backend.model.StatusUsuario;
+import com.energia.backend.repository.AppUserJpaRepository;
 import com.energia.backend.service.AnonimizacaoService;
 import com.energia.backend.service.MinhaContaService;
+import com.energia.backend.service.TermsService;
 import com.energia.backend.service.UsuarioCadastroService;
 
 class UsuarioControllerTest {
+
+    private UsuarioController criarController(
+            UsuarioCadastroService cadastroService,
+            MinhaContaService minhaContaService,
+            AnonimizacaoService anonimizacaoService
+    ) {
+        TermsService termsService = mock(TermsService.class);
+        AppUserJpaRepository appUserRepository = mock(AppUserJpaRepository.class);
+        return new UsuarioController(
+                cadastroService,
+                minhaContaService,
+                anonimizacaoService,
+                termsService,
+                appUserRepository
+        );
+    }
 
     @Test
     void deveAlterarStatusPorPatchUnico() {
         UsuarioCadastroService cadastroService = mock(UsuarioCadastroService.class);
         MinhaContaService minhaContaService = mock(MinhaContaService.class);
         AnonimizacaoService anonimizacaoService = mock(AnonimizacaoService.class);
-        UsuarioController controller = new UsuarioController(cadastroService, minhaContaService, anonimizacaoService);
+        UsuarioController controller = criarController(cadastroService, minhaContaService, anonimizacaoService);
 
         UUID usuarioId = UUID.randomUUID();
         UUID adminId = UUID.randomUUID();
@@ -55,7 +73,7 @@ class UsuarioControllerTest {
         UsuarioCadastroService cadastroService = mock(UsuarioCadastroService.class);
         MinhaContaService minhaContaService = mock(MinhaContaService.class);
         AnonimizacaoService anonimizacaoService = mock(AnonimizacaoService.class);
-        UsuarioController controller = new UsuarioController(cadastroService, minhaContaService, anonimizacaoService);
+        UsuarioController controller = criarController(cadastroService, minhaContaService, anonimizacaoService);
 
         AprovacaoRejeicaoUsuarioRequest request = new AprovacaoRejeicaoUsuarioRequest();
         request.setStatus(StatusUsuario.REJEITADO);
@@ -78,7 +96,7 @@ class UsuarioControllerTest {
         UsuarioCadastroService cadastroService = mock(UsuarioCadastroService.class);
         MinhaContaService minhaContaService = mock(MinhaContaService.class);
         AnonimizacaoService anonimizacaoService = mock(AnonimizacaoService.class);
-        UsuarioController controller = new UsuarioController(cadastroService, minhaContaService, anonimizacaoService);
+        UsuarioController controller = criarController(cadastroService, minhaContaService, anonimizacaoService);
 
         AprovacaoRejeicaoUsuarioRequest request = new AprovacaoRejeicaoUsuarioRequest();
         request.setStatus(StatusUsuario.ATIVO);
@@ -97,7 +115,7 @@ class UsuarioControllerTest {
         UsuarioCadastroService cadastroService = mock(UsuarioCadastroService.class);
         MinhaContaService minhaContaService = mock(MinhaContaService.class);
         AnonimizacaoService anonimizacaoService = mock(AnonimizacaoService.class);
-        UsuarioController controller = new UsuarioController(cadastroService, minhaContaService, anonimizacaoService);
+        UsuarioController controller = criarController(cadastroService, minhaContaService, anonimizacaoService);
 
         Usuario usuario = new Usuario();
         usuario.setEmail("novo@teste.com");
@@ -124,7 +142,7 @@ class UsuarioControllerTest {
         UsuarioCadastroService cadastroService = mock(UsuarioCadastroService.class);
         MinhaContaService minhaContaService = mock(MinhaContaService.class);
         AnonimizacaoService anonimizacaoService = mock(AnonimizacaoService.class);
-        UsuarioController controller = new UsuarioController(cadastroService, minhaContaService, anonimizacaoService);
+        UsuarioController controller = criarController(cadastroService, minhaContaService, anonimizacaoService);
         UUID userId = UUID.randomUUID();
 
         LocalDateTime dataCadastro = LocalDateTime.now().minusDays(2);
@@ -152,7 +170,7 @@ class UsuarioControllerTest {
         UsuarioCadastroService cadastroService = mock(UsuarioCadastroService.class);
         MinhaContaService minhaContaService = mock(MinhaContaService.class);
         AnonimizacaoService anonimizacaoService = mock(AnonimizacaoService.class);
-        UsuarioController controller = new UsuarioController(cadastroService, minhaContaService, anonimizacaoService);
+        UsuarioController controller = criarController(cadastroService, minhaContaService, anonimizacaoService);
         UUID userId = UUID.randomUUID();
 
         LocalDateTime dataCadastroOriginal = LocalDateTime.now().minusDays(10);
@@ -187,7 +205,7 @@ class UsuarioControllerTest {
         UsuarioCadastroService cadastroService = mock(UsuarioCadastroService.class);
         MinhaContaService minhaContaService = mock(MinhaContaService.class);
         AnonimizacaoService anonimizacaoService = mock(AnonimizacaoService.class);
-        UsuarioController controller = new UsuarioController(cadastroService, minhaContaService, anonimizacaoService);
+        UsuarioController controller = criarController(cadastroService, minhaContaService, anonimizacaoService);
 
         ResponseStatusException exception = assertThrows(
                 ResponseStatusException.class,
@@ -202,7 +220,7 @@ class UsuarioControllerTest {
         UsuarioCadastroService cadastroService = mock(UsuarioCadastroService.class);
         MinhaContaService minhaContaService = mock(MinhaContaService.class);
         AnonimizacaoService anonimizacaoService = mock(AnonimizacaoService.class);
-        UsuarioController controller = new UsuarioController(cadastroService, minhaContaService, anonimizacaoService);
+        UsuarioController controller = criarController(cadastroService, minhaContaService, anonimizacaoService);
 
         ResponseStatusException exception = assertThrows(
                 ResponseStatusException.class,
