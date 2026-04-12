@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.time.LocalDateTime;
@@ -15,8 +16,8 @@ import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
@@ -36,7 +37,7 @@ import com.energia.backend.repository.SystemLogRepository;
 class SystemLogServiceTest {
 
     @Test
-    void deveRetornarPaginaMapeandoCamposEsperados() {
+    void deveRetornarPaginaMapeandoCamposEsperadosSemRegistrarAuditoriaDaListagem() {
         SystemLogRepository repository = mock(SystemLogRepository.class);
         LogService logService = mock(LogService.class);
         SystemLogService service = new SystemLogService(repository, logService);
@@ -57,37 +58,17 @@ class SystemLogServiceTest {
         when(repository.findAll(any(org.springframework.data.jpa.domain.Specification.class), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(java.util.List.of(log), PageRequest.of(0, 20), 1));
 
-        Authentication authentication = mock(Authentication.class);
-        when(authentication.getName()).thenReturn("admin-user");
-        SecurityContext securityContext = mock(SecurityContext.class);
-        when(securityContext.getAuthentication()).thenReturn(authentication);
+        PageResponse<LogResponse> response = service.listar(new LogFilterRequest(), 0, 20);
 
-        try (MockedStatic<SecurityContextHolder> mockedStatic = Mockito.mockStatic(SecurityContextHolder.class)) {
-            mockedStatic.when(SecurityContextHolder::getContext).thenReturn(securityContext);
-
-            PageResponse<LogResponse> response = service.listar(new LogFilterRequest(), 0, 20);
-
-            assertEquals(1, response.getContent().size());
-            assertEquals(0, response.getPage());
-            assertEquals(20, response.getSize());
-            assertEquals(1, response.getTotalElements());
-            assertEquals(1, response.getTotalPages());
-            assertEquals(createdAt, response.getContent().get(0).getCreatedAt());
-            assertEquals("admin-1", response.getContent().get(0).getActorRef());
-            assertEquals("{\"ip\":\"127.0.0.1\"}", response.getContent().get(0).getMetadata());
-
-            verify(logService).log(
-                    eq("admin-user"),
-                    eq(null),
-                    eq(SourceType.USER),
-                    eq(LogEvent.ADMIN_LOG_MODULE_ACCESS),
-                    eq(ResultType.SUCCESS),
-                    eq(LogCategory.AUDIT),
-                    eq("Acesso ao módulo administrativo de consulta de logs - listagem"),
-                    eq("operation=list;page=0;size=20"),
-                    eq("SystemLogService")
-            );
-        }
+        assertEquals(1, response.getContent().size());
+        assertEquals(0, response.getPage());
+        assertEquals(20, response.getSize());
+        assertEquals(1, response.getTotalElements());
+        assertEquals(1, response.getTotalPages());
+        assertEquals(createdAt, response.getContent().get(0).getCreatedAt());
+        assertEquals("admin-1", response.getContent().get(0).getActorRef());
+        assertEquals("{\"ip\":\"127.0.0.1\"}", response.getContent().get(0).getMetadata());
+        verifyNoInteractions(logService);
     }
 
     @Test
@@ -104,7 +85,7 @@ class SystemLogServiceTest {
         );
 
         assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
-        assertEquals("Log nao encontrado.", exception.getReason());
+        assertEquals("Log não encontrado.", exception.getReason());
     }
 
     @Test

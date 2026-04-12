@@ -2,11 +2,11 @@ package com.energia.backend.service;
 
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
-import org.springframework.http.HttpStatus;
 
 import com.energia.backend.dto.LogFilterRequest;
 import com.energia.backend.dto.LogResponse;
@@ -33,27 +33,12 @@ public class SystemLogService {
     public PageResponse<LogResponse> listar(LogFilterRequest filter, int page, int size) {
         var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
         var logsPage = repository.findAll(SystemLogSpecification.withFilters(filter), pageable);
-
-        PageResponse<LogResponse> response = PageResponse.from(logsPage.map(this::toResponse));
-
-        logService.log(
-                getCurrentUserRef(),
-                null,
-                SourceType.USER,
-                LogEvent.ADMIN_LOG_MODULE_ACCESS,
-                ResultType.SUCCESS,
-                LogCategory.AUDIT,
-                "Acesso ao módulo administrativo de consulta de logs - listagem",
-                "operation=list;page=" + page + ";size=" + size,
-                "SystemLogService"
-        );
-
-        return response;
+        return PageResponse.from(logsPage.map(this::toResponse));
     }
 
     public LogResponse buscarPorId(Long id) {
         SystemLog log = repository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Log nao encontrado."));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Log não encontrado."));
 
         LogResponse response = toResponse(log);
 
