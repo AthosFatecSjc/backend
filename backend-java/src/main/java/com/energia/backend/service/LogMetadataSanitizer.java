@@ -1,10 +1,12 @@
 package com.energia.backend.service;
 
 import java.util.regex.Pattern;
-import java.util.regex.Matcher;
 import java.util.Map;
 import java.util.HashMap;
 
+import org.springframework.stereotype.Component;
+
+@Component
 public class LogMetadataSanitizer {
     private static final int MAX_METADATA_SIZE = 2048;
     private static final String MASK = "[MASKED]";
