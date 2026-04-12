@@ -31,14 +31,20 @@ import com.energia.backend.dto.UsuarioCadastroRequest;
 import com.energia.backend.dto.UsuarioCadastroResponse;
 import com.energia.backend.exception.UsuarioNaoEncontradoException;
 import com.energia.backend.model.AppUserEntity;
+import com.energia.backend.model.user.AppUserModel;
 import com.energia.backend.repository.AppUserJpaRepository;
 import com.energia.backend.service.AnonimizacaoService;
 import com.energia.backend.service.MinhaContaService;
 import com.energia.backend.service.TermsService;
 import com.energia.backend.service.UsuarioCadastroService;
+import com.energia.backend.mapper.user.AppUserMapper;
 
+import jakarta.validation.Valid;
 import jakarta.servlet.http.HttpServletRequest;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 @RestController
 @RequestMapping("/usuarios")
 public class UsuarioController {
@@ -47,19 +53,22 @@ public class UsuarioController {
     private final AnonimizacaoService anonimizacaoService;
     private final TermsService termsService;
     private final AppUserJpaRepository appUserRepository;
+    private final AppUserMapper appUserMapper;
 
     public UsuarioController(
             UsuarioCadastroService cadastroService,
             MinhaContaService minhaContaService,
             AnonimizacaoService anonimizacaoService,
             TermsService termsService,
-            AppUserJpaRepository appUserRepository
+            AppUserJpaRepository appUserRepository,
+            AppUserMapper appUserMapper
     ) {
         this.cadastroService = cadastroService;
         this.minhaContaService = minhaContaService;
         this.anonimizacaoService = anonimizacaoService;
         this.termsService = termsService;
         this.appUserRepository = appUserRepository;
+        this.appUserMapper = appUserMapper;
     }
 
     @PatchMapping("/{id}/status")
@@ -74,17 +83,31 @@ public class UsuarioController {
         return ResponseEntity.ok("Status do usuario atualizado com sucesso.");
     }
 
-    @PostMapping("/cadastro")
-    public ResponseEntity<UsuarioCadastroResponse> cadastrar(@RequestBody UsuarioCadastroRequest request) {
-        Usuario usuario = cadastroService.cadastrar(request);
+    @PostMapping(
+        value = "/cadastro",
+        consumes = "application/json",
+        produces = "application/json"
+    )
+    public ResponseEntity<UsuarioCadastroResponse> cadastrar(
+        @Valid @RequestBody UsuarioCadastroRequest request,
+        HttpServletRequest httpRequest
+    )
+    {
+        log.info("User registration requested for email={} from IP={}",
+                request.getEmail(),
+                httpRequest.getRemoteAddr());
 
-        UsuarioCadastroResponse response = new UsuarioCadastroResponse(
-                "Cadastro realizado com sucesso. Aguardando aprovacao do administrador.",
-                usuario.getEmail(),
-                usuario.getStatus()
-        );
+        AppUserModel registeredUser = cadastroService.cadastrar(appUserMapper.fromDto(request));
 
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        log.info("User registration successful for email={} with id={}",
+                registeredUser.getEmail(),
+                registeredUser.getId());
+
+        UsuarioCadastroResponse response = appUserMapper.toDto(registeredUser);
+
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(response);
     }
 
     @GetMapping("/minha-conta")

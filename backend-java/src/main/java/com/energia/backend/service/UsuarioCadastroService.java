@@ -2,7 +2,7 @@ package com.energia.backend.service;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
-import java.util.regex.Pattern;
+import java.util.Comparator;
 
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -15,13 +15,14 @@ import com.energia.backend.exception.EmailJaCadastradoException;
 import com.energia.backend.exception.PermissaoNegadaException;
 import com.energia.backend.model.AppUserEntity;
 import com.energia.backend.model.StatusUsuario;
+import com.energia.backend.model.UserStatusEntity;
+import com.energia.backend.model.user.AppUserModel;
+import com.energia.backend.model.user.UserRegistrationModel;
 import com.energia.backend.repository.AppUserJpaRepository;
 import com.energia.backend.repository.UsuarioCadastroRepository;
 
 @Service
 public class UsuarioCadastroService {
-    private static final Pattern EMAIL_PATTERN = Pattern.compile("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$");
-
     private final UsuarioCadastroRepository usuarioCadastroRepository;
     private final AppUserJpaRepository appUserRepository;
     private final TermsService termsService;
@@ -43,35 +44,37 @@ public class UsuarioCadastroService {
     }
 
     @Transactional
-    public Usuario cadastrar(UsuarioCadastroRequest request) {
-        validarRequest(request);
+    public AppUserModel cadastrar(UserRegistrationModel model)
+    {
+        UserRegistrationModel sanitizedModel = sanitizeUserRegistrationModel(model);
 
-        String emailNormalizado = normalizarEmail(request.getEmail());
+        if (usuarioCadastroRepository.existsByEmail(sanitizedModel.getUser().getEmail()))
+            throw new EmailJaCadastradoException(sanitizedModel.getUser().getEmail());
 
-        if (usuarioCadastroRepository.existsByEmail(emailNormalizado)) {
-            throw new EmailJaCadastradoException("E-mail ja cadastrado.");
+        try
+        {
+            AppUserEntity savedAppUser = usuarioCadastroRepository.save(sanitizedModel.getUser());
+
+            termsService.registrarTermosAceitos(sanitizedModel.getAcceptedTerms(), savedAppUser);
+
+            return AppUserModel.builder()
+                    .id(savedAppUser.getId())
+                    .fullName(savedAppUser.getName())
+                    .email(savedAppUser.getEmail())
+                    .password(savedAppUser.getPassword())
+                    .phone(savedAppUser.getPhone())
+                    .status(
+                        savedAppUser.getStatuses().stream()
+                            .max(Comparator.comparing(UserStatusEntity::getAssignedAt))
+                            .map(us -> StatusUsuario.valueOf(us.getStatus().getName()))
+                            .orElse(null)
+                    )
+                    .createdAt(savedAppUser.getCreatedAt())
+                    .build();
         }
-
-        try {
-            Usuario usuario = new Usuario();
-            usuario.setNomeCompleto(request.getNomeCompleto().trim());
-            usuario.setEmail(emailNormalizado);
-            usuario.setSenhaHash(passwordEncoder.encode(request.getSenha()));
-            usuario.setTelefone(normalizarOpcional(request.getTelefone()));
-            usuario.setStatus(StatusUsuario.PENDENTE);
-            usuario.setDataCadastro(LocalDateTime.now());
-
-            Usuario usuarioSalvo = usuarioCadastroRepository.save(usuario);
-
-            if (request.getTermsIds() != null && !request.getTermsIds().isEmpty()) {
-                AppUserEntity appUserSalvo = appUserRepository.findByEmailIgnoreCase(usuarioSalvo.getEmail())
-                        .orElseThrow(() -> new IllegalStateException("Usuario cadastrado nao encontrado para registrar termos."));
-                termsService.registrarTermosAceitos(request.getTermsIds(), appUserSalvo);
-            }
-
-            return usuarioSalvo;
-        } catch (DataIntegrityViolationException ex) {
-            throw new EmailJaCadastradoException("E-mail ja cadastrado.");
+        catch (DataIntegrityViolationException ex)
+        {
+            throw new EmailJaCadastradoException(sanitizedModel.getUser().getEmail());
         }
     }
 
@@ -91,37 +94,30 @@ public class UsuarioCadastroService {
         userStatusService.transitionFromPending(usuario, admin, novoStatus, motivo);
     }
 
-    private void validarRequest(UsuarioCadastroRequest request) {
-        if (request == null) {
-            throw new IllegalArgumentException("Payload de cadastro obrigatorio.");
-        }
-        if (isBlank(request.getNomeCompleto())) {
-            throw new IllegalArgumentException("Nome completo e obrigatorio.");
-        }
-        if (isBlank(request.getEmail())) {
-            throw new IllegalArgumentException("E-mail e obrigatorio.");
-        }
-        if (!EMAIL_PATTERN.matcher(request.getEmail().trim()).matches()) {
-            throw new IllegalArgumentException("E-mail invalido.");
-        }
-        if (isBlank(request.getSenha())) {
-            throw new IllegalArgumentException("Senha e obrigatoria.");
-        }
-        if (request.getSenha().trim().length() < 8) {
-            throw new IllegalArgumentException("Senha deve ter no minimo 8 caracteres.");
-        }
+    private UserRegistrationModel sanitizeUserRegistrationModel(UserRegistrationModel model)
+    {
+        //Sanitize email - trim and convert to lowercase
+        model.getUser().setEmail(model.getUser().getEmail().trim().toLowerCase());
+
+        //Sanitize full name - trim
+        model.getUser().setFullName(model.getUser().getFullName().trim());
+
+        //Generate password hash
+        model.getUser().setPassword(passwordEncoder.encode(model.getUser().getPassword()));
+
+        //Sanitize phone number (optional)
+        model.getUser().setPhone(sanitizeOptional(model.getUser().getPhone()));
+
+        return model;
     }
 
-    private String normalizarEmail(String email) {
-        return email.trim().toLowerCase();
-    }
-
-    private String normalizarOpcional(String value) {
+    private String sanitizeOptional(String value)
+    {
         return isBlank(value) ? null : value.trim();
     }
 
-    private boolean isBlank(String value) {
+    private boolean isBlank(String value)
+    {
         return value == null || value.trim().isEmpty();
     }
-
 }

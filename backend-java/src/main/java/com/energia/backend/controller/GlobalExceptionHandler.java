@@ -14,74 +14,99 @@ import com.energia.backend.exception.PermissaoNegadaException;
 import com.energia.backend.exception.TermoNaoEncontradoException;
 import com.energia.backend.exception.UsuarioJaAnonimizadoException;
 import com.energia.backend.exception.UsuarioNaoEncontradoException;
+import com.energia.backend.dto.error.ErrorResponseDto;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(EmailJaCadastradoException.class)
-    public ResponseEntity<Map<String, String>> handleEmailDuplicado(EmailJaCadastradoException ex) {
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
-                "erro", "EMAIL_DUPLICADO",
-                "mensagem", ex.getMessage()
-        ));
+    public ResponseEntity<ErrorResponseDto> handleEmailDuplicado(EmailJaCadastradoException ex) {
+        return ResponseEntity
+            .status(HttpStatus.CONFLICT)
+            .body(ErrorResponseDto.builder()
+                .error("EMAIL_DUPLICADO")
+                .message(ex.getMessage())
+                .build()
+        );
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<Map<String, String>> handleBadRequest(IllegalArgumentException ex) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of(
-                "erro", "DADOS_INVALIDOS",
-                "mensagem", ex.getMessage()
-        ));
+    public ResponseEntity<ErrorResponseDto> handleBadRequest(IllegalArgumentException ex) {
+        return ResponseEntity
+            .status(HttpStatus.BAD_REQUEST)
+            .body(ErrorResponseDto.builder()  
+                .error("DADOS_INVALIDOS")
+                .message(ex.getMessage())
+                .build()
+            );
     }
 
     @ExceptionHandler(IllegalStateException.class)
-    public ResponseEntity<Map<String, String>> handleInvalidState(IllegalStateException ex) {
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
-                "erro", "OPERACAO_INVALIDA",
-                "mensagem", ex.getMessage()
-        ));
+    public ResponseEntity<ErrorResponseDto> handleInvalidState(IllegalStateException ex) {
+        return ResponseEntity
+            .status(HttpStatus.CONFLICT)
+            .body(ErrorResponseDto.builder()
+                .error("OPERACAO_INVALIDA")
+                .message(ex.getMessage())
+                .build()
+            );
     }
 
     @ExceptionHandler(TermoNaoEncontradoException.class)
-    public ResponseEntity<Map<String, String>> handleTermoNaoEncontrado(TermoNaoEncontradoException ex) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of(
-                "erro", "TERMO_NAO_ENCONTRADO",
-                "mensagem", ex.getMessage()
-        ));
+    public ResponseEntity<ErrorResponseDto> handleTermoNaoEncontrado(TermoNaoEncontradoException ex) {
+        return ResponseEntity
+            .status(HttpStatus.BAD_REQUEST)
+            .body(ErrorResponseDto.builder()
+                .error("TERMO_NAO_ENCONTRADO")
+                .message(ex.getMessage())
+                .build()
+            );
     }
 
     @ExceptionHandler(UsuarioNaoEncontradoException.class)
-    public ResponseEntity<Map<String, String>> handleUsuarioNaoEncontrado(UsuarioNaoEncontradoException ex) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
-                "erro", "USUARIO_NAO_ENCONTRADO",
-                "mensagem", ex.getMessage()
-        ));
+    public ResponseEntity<ErrorResponseDto> handleUsuarioNaoEncontrado(UsuarioNaoEncontradoException ex) {
+        return ResponseEntity
+            .status(HttpStatus.NOT_FOUND)
+            .body(ErrorResponseDto.builder()
+                .error("USUARIO_NAO_ENCONTRADO")
+                .message(ex.getMessage())
+                .build()
+            );
     }
 
     @ExceptionHandler(DocumentosObrigatoriosNaoConfiguradosException.class)
-    public ResponseEntity<Map<String, String>> handleDocumentosObrigatoriosNaoConfigurados(
+    public ResponseEntity<ErrorResponseDto> handleDocumentosObrigatoriosNaoConfigurados(
             DocumentosObrigatoriosNaoConfiguradosException ex
     ) {
-        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(Map.of(
-                "erro", "DOCUMENTOS_CONSENTIMENTO_INDISPONIVEIS",
-                "mensagem", ex.getMessage()
-        ));
+        return ResponseEntity
+            .status(HttpStatus.SERVICE_UNAVAILABLE)
+            .body(ErrorResponseDto.builder()
+                .error("DOCUMENTOS_CONSENTIMENTO_INDISPONIVEIS")
+                .message(ex.getMessage())
+                .build()
+            );
     }
 
     @ExceptionHandler(PermissaoNegadaException.class)
-    public ResponseEntity<Map<String, String>> handlePermissaoNegada(PermissaoNegadaException ex) {
-        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
-                "erro", "PERMISSAO_NEGADA",
-                "mensagem", ex.getMessage()
-        ));
+    public ResponseEntity<ErrorResponseDto> handlePermissaoNegada(PermissaoNegadaException ex) {
+        return ResponseEntity
+            .status(HttpStatus.FORBIDDEN)
+            .body(ErrorResponseDto.builder()
+                .error("PERMISSAO_NEGADA")
+                .message(ex.getMessage())
+                .build()
+        );
     }
 
     @ExceptionHandler(UsuarioJaAnonimizadoException.class)
-    public ResponseEntity<Map<String, String>> handleUsuarioJaAnonimizado(UsuarioJaAnonimizadoException ex) {
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
-                "erro", "USUARIO_JA_ANONIMIZADO",
-                "mensagem", ex.getMessage()
-        ));
+    public ResponseEntity<ErrorResponseDto> handleUsuarioJaAnonimizado(UsuarioJaAnonimizadoException ex) {
+        return ResponseEntity
+            .status(HttpStatus.CONFLICT)
+            .body(ErrorResponseDto.builder()
+                .error("USUARIO_JA_ANONIMIZADO")
+                .message(ex.getMessage())
+                .build()
+            );
     }
 
     @ExceptionHandler(LoginAuthenticationException.class)

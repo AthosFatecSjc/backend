@@ -19,6 +19,8 @@ import com.energia.backend.dto.Usuario;
 import com.energia.backend.dto.UsuarioCadastroRequest;
 import com.energia.backend.exception.EmailJaCadastradoException;
 import com.energia.backend.model.StatusUsuario;
+import com.energia.backend.model.user.AppUserModel;
+import com.energia.backend.model.user.UserRegistrationModel;
 import com.energia.backend.repository.AppUserJpaRepository;
 import com.energia.backend.repository.UsuarioCadastroRepository;
 
@@ -34,7 +36,7 @@ class UsuarioCadastroServiceTest {
 
         when(passwordEncoder.encode(any())).thenReturn("encoded_SenhaFuerte123");
         when(usuarioCadastroRepository.existsByEmail(anyString())).thenReturn(false);
-        when(usuarioCadastroRepository.save(any(Usuario.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(usuarioCadastroRepository.save(any(AppUserModel.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         UsuarioCadastroService service = new UsuarioCadastroService(
                 usuarioCadastroRepository,
@@ -44,22 +46,25 @@ class UsuarioCadastroServiceTest {
                 passwordEncoder
         );
 
-        UsuarioCadastroRequest request = new UsuarioCadastroRequest();
-        request.setNomeCompleto("Maria Silva");
-        request.setEmail("  MARIA@TESTE.COM ");
-        request.setSenha("SenhaFuerte123");
-        request.setTelefone(" 11999998888 ");
-        request.setTermsIds(List.of());
+        UserRegistrationModel model = UserRegistrationModel.builder()
+            .user(AppUserModel.builder()
+                .fullName("Maria Silva")
+                .email("  MARIA@TESTE.COM ")
+                .password("SenhaFuerte123")
+                .phone(" 11999998888 ")
+                .build())
+            .acceptedTerms(List.of())
+            .build();
 
-        Usuario usuario = service.cadastrar(request);
+        AppUserModel registeredUser = service.cadastrar(model);
 
-        assertEquals(StatusUsuario.PENDENTE, usuario.getStatus());
-        assertEquals("maria@teste.com", usuario.getEmail());
-        assertEquals("11999998888", usuario.getTelefone());
-        assertNotNull(usuario.getDataCadastro());
-        assertNotNull(usuario.getSenhaHash());
-        assertNotEquals("SenhaFuerte123", usuario.getSenhaHash());
-        assertEquals("encoded_SenhaFuerte123", usuario.getSenhaHash());
+        assertEquals(StatusUsuario.PENDENTE, registeredUser.getStatus());
+        assertEquals("maria@teste.com", registeredUser.getEmail());
+        assertEquals("11999998888", registeredUser.getPhone());
+        assertNotNull(registeredUser.getCreatedAt());
+        assertNotNull(registeredUser.getPassword());
+        assertNotEquals("SenhaFuerte123", registeredUser.getPassword());
+        assertEquals("encoded_SenhaFuerte123", registeredUser.getPassword());
         verifyNoInteractions(appUserRepository, termsService);
     }
 
@@ -81,15 +86,20 @@ class UsuarioCadastroServiceTest {
                 passwordEncoder
         );
 
-        UsuarioCadastroRequest request = new UsuarioCadastroRequest();
-        request.setNomeCompleto("Joao");
-        request.setEmail("DUPLICADO@TESTE.COM");
-        request.setSenha("SenhaFuerte123");
-        request.setTermsIds(List.of());
+        UserRegistrationModel model = UserRegistrationModel.builder()
+            .user(AppUserModel.builder()
+                .fullName("Joao")
+                .email("DUPLICADO@TESTE.COM")
+                .password("SenhaFuerte123")
+                .build())
+            .acceptedTerms(List.of())
+            .build();
+
+        AppUserModel registeredUser = service.cadastrar(model);
 
         EmailJaCadastradoException exception = assertThrows(
                 EmailJaCadastradoException.class,
-                () -> service.cadastrar(request)
+                () -> service.cadastrar(model)
         );
 
         assertEquals("E-mail ja cadastrado.", exception.getMessage());

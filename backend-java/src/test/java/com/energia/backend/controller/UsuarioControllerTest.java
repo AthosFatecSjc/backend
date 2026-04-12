@@ -24,12 +24,18 @@ import com.energia.backend.dto.MinhaContaUpdateRequest;
 import com.energia.backend.dto.Usuario;
 import com.energia.backend.dto.UsuarioCadastroRequest;
 import com.energia.backend.dto.UsuarioCadastroResponse;
+import com.energia.backend.dto.term.AcceptedTermRequestDto;
+import com.energia.backend.mapper.user.AppUserMapper;
 import com.energia.backend.model.StatusUsuario;
+import com.energia.backend.model.user.AppUserModel;
+import com.energia.backend.model.user.UserRegistrationModel;
 import com.energia.backend.repository.AppUserJpaRepository;
 import com.energia.backend.service.AnonimizacaoService;
 import com.energia.backend.service.MinhaContaService;
 import com.energia.backend.service.TermsService;
 import com.energia.backend.service.UsuarioCadastroService;
+
+import jakarta.servlet.http.HttpServletRequest;
 
 class UsuarioControllerTest {
 
@@ -40,12 +46,15 @@ class UsuarioControllerTest {
     ) {
         TermsService termsService = mock(TermsService.class);
         AppUserJpaRepository appUserRepository = mock(AppUserJpaRepository.class);
+        AppUserMapper appUserMapper = mock(AppUserMapper.class);
+        
         return new UsuarioController(
                 cadastroService,
                 minhaContaService,
                 anonimizacaoService,
                 termsService,
-                appUserRepository
+                appUserRepository,
+                appUserMapper
         );
     }
 
@@ -115,21 +124,36 @@ class UsuarioControllerTest {
         UsuarioCadastroService cadastroService = mock(UsuarioCadastroService.class);
         MinhaContaService minhaContaService = mock(MinhaContaService.class);
         AnonimizacaoService anonimizacaoService = mock(AnonimizacaoService.class);
+        HttpServletRequest httpRequest = mock(HttpServletRequest.class);
         UsuarioController controller = criarController(cadastroService, minhaContaService, anonimizacaoService);
 
-        Usuario usuario = new Usuario();
-        usuario.setEmail("novo@teste.com");
-        usuario.setStatus(StatusUsuario.PENDENTE);
+        AppUserModel user = AppUserModel.builder()
+                .email("novo@teste.com")
+                .status(StatusUsuario.PENDENTE)
+                .build();
 
-        when(cadastroService.cadastrar(any(UsuarioCadastroRequest.class))).thenReturn(usuario);
+        when(cadastroService.cadastrar(any(UserRegistrationModel.class))).thenReturn(user);
 
-        UsuarioCadastroRequest request = new UsuarioCadastroRequest();
-        request.setNomeCompleto("Novo Usuario");
-        request.setEmail("novo@teste.com");
-        request.setSenha("SenhaFuerte123");
-        request.setTermsIds(List.of(UUID.randomUUID()));
+        AcceptedTermRequestDto term1 = AcceptedTermRequestDto.builder()
+            .id(UUID.randomUUID())
+            .version(1)
+            .build();
 
-        ResponseEntity<UsuarioCadastroResponse> response = controller.cadastrar(request);
+        AcceptedTermRequestDto term2 = AcceptedTermRequestDto.builder()
+            .id(UUID.randomUUID())
+            .version(1)
+            .build();
+
+        UsuarioCadastroRequest request = UsuarioCadastroRequest.builder()
+                .nomeCompleto("Novo Usuario")
+                .email("novo@teste.com")
+                .senha("SenhaFuerte123")
+                .terms(List.of(term1, term2))
+                .build();
+        
+        when(httpRequest.getRemoteAddr()).thenReturn("127.0.0.1");
+
+        ResponseEntity<UsuarioCadastroResponse> response = controller.cadastrar(request, httpRequest);
 
         assertEquals(HttpStatus.CREATED, response.getStatusCode());
         assertEquals("Cadastro realizado com sucesso. Aguardando aprovacao do administrador.", response.getBody().getMensagem());
