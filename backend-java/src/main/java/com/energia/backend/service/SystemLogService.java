@@ -39,7 +39,7 @@ public class SystemLogService {
     private LogResponse toResponse(SystemLog log) {
         return LogResponse.builder()
                 .id(log.getId())
-                .timestamp(log.getCreatedAt())
+                .createdAt(log.getCreatedAt())
                 .actorRef(log.getActorRef())
                 .targetRef(log.getTargetRef())
                 .sourceType(log.getSourceType())

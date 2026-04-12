@@ -33,10 +33,10 @@ class SystemLogServiceTest {
         SystemLogRepository repository = mock(SystemLogRepository.class);
         SystemLogService service = new SystemLogService(repository);
 
-        LocalDateTime timestamp = LocalDateTime.of(2026, 4, 4, 10, 30);
+        LocalDateTime createdAt = LocalDateTime.of(2026, 4, 4, 10, 30);
         SystemLog log = SystemLog.builder()
                 .id(1L)
-                .createdAt(timestamp)
+                .createdAt(createdAt)
                 .actorRef("admin-1")
                 .sourceType(SourceType.SYSTEM)
                 .event(LogEvent.LOGIN_SUCCESS)
@@ -56,7 +56,7 @@ class SystemLogServiceTest {
         assertEquals(20, response.getSize());
         assertEquals(1, response.getTotalElements());
         assertEquals(1, response.getTotalPages());
-        assertEquals(timestamp, response.getContent().get(0).getTimestamp());
+        assertEquals(createdAt, response.getContent().get(0).getCreatedAt());
         assertEquals("admin-1", response.getContent().get(0).getActorRef());
         assertEquals("{\"ip\":\"127.0.0.1\"}", response.getContent().get(0).getMetadata());
     }
