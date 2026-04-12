@@ -72,6 +72,9 @@ public class JpaUsuarioCadastroRepository implements UsuarioCadastroRepository {
                 .build();
 
         userStatusRepository.save(userStatus);
+
+        savedUser.setStatuses(List.of(userStatus));
+
         return savedUser;
     }
 
