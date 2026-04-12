@@ -30,7 +30,7 @@ class UsuarioCadastroServiceTest {
     void deveCadastrarUsuarioComStatusPendenteESenhaHasheada() {
         UsuarioCadastroRepository usuarioCadastroRepository = mock(UsuarioCadastroRepository.class);
         AppUserJpaRepository appUserRepository = mock(AppUserJpaRepository.class);
-        TermsService termsService = mock(TermsService.class);
+        TermsUserService termsService = mock(TermsUserService.class);
         StatusJpaRepository statusRepository = mock(StatusJpaRepository.class);
         UserStatusJpaRepository userStatusRepository = mock(UserStatusJpaRepository.class);
         PasswordEncoder passwordEncoder = mock(PasswordEncoder.class);
@@ -71,7 +71,7 @@ class UsuarioCadastroServiceTest {
     void deveRejeitarEmailDuplicado() {
         UsuarioCadastroRepository usuarioCadastroRepository = mock(UsuarioCadastroRepository.class);
         AppUserJpaRepository appUserRepository = mock(AppUserJpaRepository.class);
-        TermsService termsService = mock(TermsService.class);
+        TermsUserService termsService = mock(TermsUserService.class);
         StatusJpaRepository statusRepository = mock(StatusJpaRepository.class);
         UserStatusJpaRepository userStatusRepository = mock(UserStatusJpaRepository.class);
         PasswordEncoder passwordEncoder = new MockPasswordEncoder();

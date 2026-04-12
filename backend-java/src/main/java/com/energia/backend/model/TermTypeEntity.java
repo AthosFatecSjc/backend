@@ -24,4 +24,7 @@ public class TermTypeEntity {
 
     @OneToMany(mappedBy = "termType", fetch = FetchType.LAZY)
     private List<TermsEntity> terms;
+
+    @Column(name = "is_required", nullable = false)
+    private Boolean isRequired;
 }

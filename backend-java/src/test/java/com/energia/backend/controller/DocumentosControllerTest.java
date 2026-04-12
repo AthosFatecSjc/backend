@@ -2,7 +2,7 @@ package com.energia.backend.controller;
 
 import com.energia.backend.dto.ConsentimentoDocumentoResponse;
 import com.energia.backend.dto.ConsentimentosVigentesResponse;
-import com.energia.backend.service.ConsentimentoVigenteService;
+import com.energia.backend.service.TermsService;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -18,7 +18,7 @@ class DocumentosControllerTest {
 
     @Test
     void deveRetornarConsentimentosVigentes() {
-        ConsentimentoVigenteService service = mock(ConsentimentoVigenteService.class);
+        TermsService service = mock(TermsService.class);
         DocumentosController controller = new DocumentosController(service);
 
         ConsentimentosVigentesResponse payload = new ConsentimentosVigentesResponse(

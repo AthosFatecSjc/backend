@@ -29,7 +29,7 @@ class UsuarioCadastroServiceAprovacaoRejeicaoTest {
 
     private UsuarioCadastroRepository usuarioCadastroRepository;
     private AppUserJpaRepository appUserRepository;
-    private TermsService termsService;
+    private TermsUserService termsService;
     private StatusJpaRepository statusRepository;
     private UserStatusJpaRepository userStatusRepository;
     private PasswordEncoder passwordEncoder;
@@ -44,7 +44,7 @@ class UsuarioCadastroServiceAprovacaoRejeicaoTest {
     void setup() {
         usuarioCadastroRepository = mock(UsuarioCadastroRepository.class);
         appUserRepository = mock(AppUserJpaRepository.class);
-        termsService = mock(TermsService.class);
+        termsService = mock(TermsUserService.class);
         statusRepository = mock(StatusJpaRepository.class);
         userStatusRepository = mock(UserStatusJpaRepository.class);
         passwordEncoder = mock(PasswordEncoder.class);

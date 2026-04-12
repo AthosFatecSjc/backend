@@ -17,6 +17,7 @@ import com.energia.backend.model.AppUserEntity;
 import com.energia.backend.model.StatusEntity;
 import com.energia.backend.model.StatusUsuario;
 import com.energia.backend.model.UserStatusEntity;
+import com.energia.backend.model.UserTermsAction;
 import com.energia.backend.repository.AppUserJpaRepository;
 import com.energia.backend.repository.StatusJpaRepository;
 import com.energia.backend.repository.UserStatusJpaRepository;
@@ -28,7 +29,7 @@ public class UsuarioCadastroService {
 
     private final UsuarioCadastroRepository usuarioCadastroRepository;
     private final AppUserJpaRepository appUserRepository;
-    private final TermsService termsService;
+    private final TermsUserService termsUserService;
     private final StatusJpaRepository statusRepository;
     private final UserStatusJpaRepository userStatusRepository;
     private final PasswordEncoder passwordEncoder;
@@ -36,14 +37,14 @@ public class UsuarioCadastroService {
     public UsuarioCadastroService(
             UsuarioCadastroRepository usuarioCadastroRepository,
             AppUserJpaRepository appUserRepository,
-            TermsService termsService,
+            TermsUserService termsUserService,
             StatusJpaRepository statusRepository,
             UserStatusJpaRepository userStatusRepository,
             PasswordEncoder passwordEncoder
     ) {
         this.usuarioCadastroRepository = usuarioCadastroRepository;
         this.appUserRepository = appUserRepository;
-        this.termsService = termsService;
+        this.termsUserService = termsUserService;
         this.statusRepository = statusRepository;
         this.userStatusRepository = userStatusRepository;
         this.passwordEncoder = passwordEncoder;
@@ -60,23 +61,24 @@ public class UsuarioCadastroService {
         }
 
         try {
-            Usuario usuario = new Usuario();
-            usuario.setNomeCompleto(request.getNomeCompleto().trim());
-            usuario.setEmail(emailNormalizado);
-            usuario.setSenhaHash(passwordEncoder.encode(request.getSenha()));
-            usuario.setTelefone(normalizarOpcional(request.getTelefone()));
-            usuario.setStatus(StatusUsuario.PENDENTE);
-            usuario.setDataCadastro(LocalDateTime.now());
+            if (request.getTermsIds() == null || request.getTermsIds().isEmpty())
+                {throw new IllegalStateException("Usuario cadastrado nao aceitou nenhum termo");}
+            else {
+                Usuario usuario = new Usuario();
+                usuario.setNomeCompleto(request.getNomeCompleto().trim());
+                usuario.setEmail(emailNormalizado);
+                usuario.setSenhaHash(passwordEncoder.encode(request.getSenha()));
+                usuario.setTelefone(normalizarOpcional(request.getTelefone()));
+                usuario.setStatus(StatusUsuario.PENDENTE);
+                usuario.setDataCadastro(LocalDateTime.now());
 
-            Usuario usuarioSalvo = usuarioCadastroRepository.save(usuario);
+                Usuario usuarioSalvo = usuarioCadastroRepository.save(usuario);
+                
+                termsUserService.aprovarTermos(request.getTermsIds(), usuarioSalvo.toEntity());
+                return usuarioSalvo;
 
-            if (request.getTermsIds() != null && !request.getTermsIds().isEmpty()) {
-                AppUserEntity appUserSalvo = appUserRepository.findByEmailIgnoreCase(usuarioSalvo.getEmail())
-                        .orElseThrow(() -> new IllegalStateException("Usuario cadastrado nao encontrado para registrar termos."));
-                termsService.registrarTermosAceitos(request.getTermsIds(), appUserSalvo);
             }
-
-            return usuarioSalvo;
+            
         } catch (DataIntegrityViolationException ex) {
             throw new EmailJaCadastradoException("E-mail ja cadastrado.");
         }
@@ -147,6 +149,10 @@ public class UsuarioCadastroService {
         }
         if (request.getSenha().trim().length() < 8) {
             throw new IllegalArgumentException("Senha deve ter no minimo 8 caracteres.");
+        }
+
+        if (!termsUserService.checkRequiredTerms(request.getTermsIds(), null, LocalDateTime.now())) {
+            throw new IllegalArgumentException("Usuario deve aceitar todos os termos obrigatorios.");
         }
     }
 

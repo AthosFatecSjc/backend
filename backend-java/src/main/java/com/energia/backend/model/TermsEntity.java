@@ -30,26 +30,21 @@ public class TermsEntity {
     @JoinColumn(name = "term_type_id", nullable = false)
     private TermTypeEntity termType;
 
-    @Column(nullable = false)
+    @Column(name = "version")
     private Integer version;
-
-    @Column(name = "created_at", nullable = false)
-    private LocalDateTime createdAt;
-
+    
     @Column(name = "effectivity_start_at", nullable = false)
     private LocalDateTime effectivityStartAt;
-
-    @Column(name = "effectivity_end_at")
-    private LocalDateTime effectivityEndAt;
-
+   
     @Column(nullable = false, columnDefinition = "TEXT")
     private String content;
 
     @OneToMany(mappedBy = "terms", fetch = FetchType.LAZY)
     private List<UserTermsEntity> userAcceptances;
 
-    @Column(name = "is_required", nullable = false)
-    private Boolean isRequired;
+    @Column(name = "is_active", nullable = false)
+    private Boolean isActive;
+
 
 
 }

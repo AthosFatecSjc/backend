@@ -1,76 +1,116 @@
 package com.energia.backend.service;
 
 import java.time.LocalDateTime;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import com.energia.backend.exception.TermoNaoEncontradoException;
-import com.energia.backend.model.AppUserEntity;
+import com.energia.backend.dto.ConsentimentoDocumentoResponse;
+import com.energia.backend.dto.ConsentimentosVigentesResponse;
+import com.energia.backend.dto.TermoRequest;
+import com.energia.backend.exception.DocumentosObrigatoriosNaoConfiguradosException;
+import com.energia.backend.model.TermTypeEntity;
 import com.energia.backend.model.TermsEntity;
-import com.energia.backend.model.UserTermsEntity;
+import com.energia.backend.repository.TermTypeRepository;
+import com.energia.backend.repository.TermsJpaRepository;
 import com.energia.backend.repository.TermsRepository;
-import com.energia.backend.repository.UserTermsRespository;
-
-import jakarta.transaction.Transactional;
 
 @Service
-@Transactional
 public class TermsService {
 
+    static final String TERMS_OF_USE = "TERMS_OF_USE";
+    static final String PRIVACY_POLICY = "PRIVACY_POLICY";
+    static final String MARKETING_COMMUNICATION = "MARKETING_COMMUNICATION";
+    
     private final TermsRepository termsRepository;
-    private final UserTermsRespository userTermsRespository;
+    private final TermsJpaRepository termsJpaRepository;
+    private final TermTypeRepository termTypeRepository;
 
-    public TermsService(TermsRepository termsRepository, UserTermsRespository userTermsRespository) {
+    public TermsService(TermsRepository termsRepository, TermsJpaRepository termsJpaRepository, TermTypeRepository termTypeRepository) {
         this.termsRepository = termsRepository;
-        this.userTermsRespository = userTermsRespository;
+        this.termsJpaRepository = termsJpaRepository;
+        this.termTypeRepository = termTypeRepository;
     }
 
-    public void registrarTermosAceitos(List<UUID> termosIds, AppUserEntity userEntity) {
-        if (termosIds == null || termosIds.isEmpty()) {
-            throw new TermoNaoEncontradoException("Lista de termos nao pode ser vazia.");
+    @Transactional(readOnly = true)
+    public ConsentimentosVigentesResponse buscarDocumentosVigentes() {
+        LocalDateTime agora = LocalDateTime.now();
+
+        List<TermsEntity> termosVigentes = termsRepository.findActiveByReferenceTime(agora);
+
+        Map<String, TermsEntity> termosPorTipo = termosVigentes.stream()
+            .collect(Collectors.toMap(
+                t -> t.getTermType().getName().toUpperCase(),
+                t -> t,
+                (existing, replacement) -> existing
+            ));
+
+        TermsEntity terms = termosPorTipo.get(TERMS_OF_USE);
+        TermsEntity privacy = termosPorTipo.get(PRIVACY_POLICY);
+        TermsEntity marketing = termosPorTipo.get(MARKETING_COMMUNICATION);
+
+        // valida obrigatórios
+        if (terms == null) {
+            throw new DocumentosObrigatoriosNaoConfiguradosException(
+                    "Documento obrigatorio nao configurado: " + TERMS_OF_USE
+            );
         }
 
-        List<TermsEntity> termosEnviados = termsRepository.findAllById(termosIds);
-
-        if (termosEnviados.size() != termosIds.size()) {
-            throw new TermoNaoEncontradoException("Um ou mais termos informados nao existem.");
+        if (privacy == null) {
+            throw new DocumentosObrigatoriosNaoConfiguradosException(
+                    "Documento obrigatorio nao configurado: " + PRIVACY_POLICY
+            );
         }
 
-        Map<String, TermsEntity> termosObrigatoriosVigentesPorTipo = termsRepository
-                .findActiveRequiredByReferenceTime(LocalDateTime.now())
-                .stream()
-                .collect(Collectors.toMap(
-                        t -> t.getTermType().getName(),
-                        t -> t,
-                        (existente, novo) -> existente.getVersion() > novo.getVersion() ? existente : novo));
-
-        Set<UUID> termosEnviadosIds = new HashSet<>(termosIds);
-
-        for (TermsEntity termoObrigatorio : termosObrigatoriosVigentesPorTipo.values()) {
-            if (!termosEnviadosIds.contains(termoObrigatorio.getId())) {
-                throw new TermoNaoEncontradoException(
-                        "Termo obrigatorio vigente nao aceito: " + termoObrigatorio.getTermType().getName());
-            }
-        }
-
-        try {
-            for (TermsEntity termo : termosEnviados) {
-                UserTermsEntity userTerms = new UserTermsEntity();
-                userTerms.setUser(userEntity);
-                userTerms.setTerms(termo);
-                userTerms.setAcceptedAt(LocalDateTime.now());
-                userTerms.setAcceptedFromIp("127.0.0.1");
-
-                userTermsRespository.save(userTerms);
-            }
-        } catch (Exception ex) {
-            throw new RuntimeException("Erro ao registrar aceite dos termos.", ex);
-        }
+        return new ConsentimentosVigentesResponse(
+                toResponse(terms),
+                toResponse(privacy),
+                marketing != null ? toResponse(marketing) : null
+        );
     }
+    
+
+    private ConsentimentoDocumentoResponse toResponse(TermsEntity term) {
+        return new ConsentimentoDocumentoResponse(
+                term.getId(),
+                term.getTermType().getName(),
+                term.getVersion(),
+                term.getContent(),
+                term.getTermType().getIsRequired()
+        );
+    }
+
+    @Transactional
+    public TermsEntity cadastrarNovoTermo(TermoRequest request) {
+    
+        TermTypeEntity termType = termTypeRepository
+            .findByNameIgnoreCase(request.getTermTypeName())
+            .orElseThrow(() -> new RuntimeException(
+                    "Tipo de termo não encontrado: " + request.getTermTypeName()
+            ));
+    
+        Integer maxVersion = termsJpaRepository.findMaxVersionByTermType(termType.getId());
+        int novaVersao = (maxVersion == null ? 1 : maxVersion + 1);
+    
+        termsJpaRepository.deactivateByType(termType.getId());
+    
+        TermsEntity novoTermo = new TermsEntity();
+        novoTermo.setTermType(termType);
+        novoTermo.setContent(request.getContent());
+        novoTermo.setVersion(novaVersao);
+        novoTermo.setIsActive(true);
+    
+        if (request.getEffectivityStartAt() != null) {
+            novoTermo.setEffectivityStartAt(request.getEffectivityStartAt());
+        } else {
+            novoTermo.setEffectivityStartAt(LocalDateTime.now());
+        }
+    
+        return termsRepository.save(novoTermo);
+    }
+
+
 }
