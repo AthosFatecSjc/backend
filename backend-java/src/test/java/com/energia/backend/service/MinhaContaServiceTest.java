@@ -1,19 +1,5 @@
 package com.energia.backend.service;
 
-import com.energia.backend.dto.MinhaContaResponse;
-import com.energia.backend.dto.MinhaContaUpdateRequest;
-import com.energia.backend.model.AppUserEntity;
-import com.energia.backend.model.StatusEntity;
-import com.energia.backend.model.StatusUsuario;
-import com.energia.backend.model.UserStatusEntity;
-import com.energia.backend.repository.AppUserJpaRepository;
-import com.energia.backend.repository.UserStatusJpaRepository;
-import org.junit.jupiter.api.Test;
-
-import java.time.LocalDateTime;
-import java.util.Optional;
-import java.util.UUID;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -23,75 +9,75 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.List;
+import java.time.LocalDateTime;
+import java.util.Optional;
+import java.util.UUID;
+
+import org.junit.jupiter.api.Test;
+
+import com.energia.backend.dto.AtualizarEmailRequest;
+import com.energia.backend.dto.MinhaContaResponse;
+import com.energia.backend.dto.MinhaContaUpdateRequest;
+import com.energia.backend.exception.PermissaoNegadaException;
+import com.energia.backend.model.AppUserEntity;
+import com.energia.backend.model.RoleEntity;
+import com.energia.backend.model.StatusUsuario;
+import com.energia.backend.repository.AppUserJpaRepository;
+
 class MinhaContaServiceTest {
 
     @Test
     void deveConsultarDadosDaMinhaConta() {
         AppUserJpaRepository appUserRepository = mock(AppUserJpaRepository.class);
-        UserStatusJpaRepository userStatusRepository = mock(UserStatusJpaRepository.class);
-        MinhaContaService service = new MinhaContaService(appUserRepository, userStatusRepository);
+        UserStatusService userStatusService = mock(UserStatusService.class);
+        MinhaContaService service = new MinhaContaService(appUserRepository, userStatusService);
 
         UUID userId = UUID.randomUUID();
+        LocalDateTime dataCadastro = LocalDateTime.now().minusDays(5);
+
         AppUserEntity user = AppUserEntity.builder()
                 .id(userId)
                 .name("Maria Silva")
                 .email("maria@teste.com")
                 .password("hash")
                 .phone("11999998888")
-                .build();
-
-        LocalDateTime dataCadastro = LocalDateTime.now().minusDays(5);
-        UserStatusEntity statusInicial = UserStatusEntity.builder()
-                .user(user)
-                .assignedAt(dataCadastro)
-                .status(StatusEntity.builder().name("PENDENTE").build())
-                .build();
-
-        UserStatusEntity statusAtual = UserStatusEntity.builder()
-                .user(user)
-                .assignedAt(LocalDateTime.now())
-                .status(StatusEntity.builder().name("PENDENTE").build())
+                .createdAt(dataCadastro)
                 .build();
 
         when(appUserRepository.findById(userId)).thenReturn(Optional.of(user));
-        when(userStatusRepository.findFirstByUserOrderByAssignedAtAsc(user)).thenReturn(Optional.of(statusInicial));
-        when(userStatusRepository.findFirstByUserOrderByAssignedAtDesc(user)).thenReturn(Optional.of(statusAtual));
+        when(userStatusService.resolveCurrentStatus(user)).thenReturn(StatusUsuario.PENDENTE);
 
         MinhaContaResponse response = service.consultar(userId);
 
         assertEquals("Maria Silva", response.getNomeCompleto());
         assertEquals("maria@teste.com", response.getEmail());
         assertEquals("11999998888", response.getTelefone());
-                assertEquals(StatusUsuario.PENDENTE, response.getStatus());
+        assertEquals(StatusUsuario.PENDENTE, response.getStatus());
         assertEquals(dataCadastro, response.getDataCadastro());
     }
 
     @Test
     void deveAtualizarApenasNomeETelefoneSemAlterarOutrosCampos() {
         AppUserJpaRepository appUserRepository = mock(AppUserJpaRepository.class);
-        UserStatusJpaRepository userStatusRepository = mock(UserStatusJpaRepository.class);
-        MinhaContaService service = new MinhaContaService(appUserRepository, userStatusRepository);
+        UserStatusService userStatusService = mock(UserStatusService.class);
+        MinhaContaService service = new MinhaContaService(appUserRepository, userStatusService);
 
         UUID userId = UUID.randomUUID();
+        LocalDateTime dataCadastro = LocalDateTime.now().minusDays(7);
+
         AppUserEntity user = AppUserEntity.builder()
                 .id(userId)
                 .name("Nome Antigo")
                 .email("maria@teste.com")
                 .password("hash-original")
                 .phone("11900000000")
-                .build();
-
-        LocalDateTime dataCadastro = LocalDateTime.now().minusDays(7);
-        UserStatusEntity status = UserStatusEntity.builder()
-                .user(user)
-                .assignedAt(dataCadastro)
-                .status(StatusEntity.builder().name("PENDENTE").build())
+                .createdAt(dataCadastro)
                 .build();
 
         when(appUserRepository.findById(userId)).thenReturn(Optional.of(user));
         when(appUserRepository.save(any(AppUserEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(userStatusRepository.findFirstByUserOrderByAssignedAtAsc(user)).thenReturn(Optional.of(status));
-        when(userStatusRepository.findFirstByUserOrderByAssignedAtDesc(user)).thenReturn(Optional.of(status));
+        when(userStatusService.resolveCurrentStatus(user)).thenReturn(StatusUsuario.PENDENTE);
 
         MinhaContaUpdateRequest request = new MinhaContaUpdateRequest();
         request.setNomeCompleto("Nome Novo");
@@ -110,28 +96,23 @@ class MinhaContaServiceTest {
     @Test
     void devePermitirLimparTelefoneQuandoVazio() {
         AppUserJpaRepository appUserRepository = mock(AppUserJpaRepository.class);
-        UserStatusJpaRepository userStatusRepository = mock(UserStatusJpaRepository.class);
-        MinhaContaService service = new MinhaContaService(appUserRepository, userStatusRepository);
+        UserStatusService userStatusService = mock(UserStatusService.class);
+        MinhaContaService service = new MinhaContaService(appUserRepository, userStatusService);
 
         UUID userId = UUID.randomUUID();
+
         AppUserEntity user = AppUserEntity.builder()
                 .id(userId)
                 .name("Maria")
                 .email("maria@teste.com")
                 .password("hash")
                 .phone("11900000000")
-                .build();
-
-        UserStatusEntity status = UserStatusEntity.builder()
-                .user(user)
-                .assignedAt(LocalDateTime.now().minusDays(1))
-                .status(StatusEntity.builder().name("PENDENTE").build())
+                .createdAt(LocalDateTime.now().minusDays(1))
                 .build();
 
         when(appUserRepository.findById(userId)).thenReturn(Optional.of(user));
         when(appUserRepository.save(any(AppUserEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(userStatusRepository.findFirstByUserOrderByAssignedAtAsc(user)).thenReturn(Optional.of(status));
-        when(userStatusRepository.findFirstByUserOrderByAssignedAtDesc(user)).thenReturn(Optional.of(status));
+        when(userStatusService.resolveCurrentStatus(user)).thenReturn(StatusUsuario.PENDENTE);
 
         MinhaContaUpdateRequest request = new MinhaContaUpdateRequest();
         request.setTelefone("   ");
@@ -144,8 +125,8 @@ class MinhaContaServiceTest {
     @Test
     void deveRejeitarUpdateSemCamposPermitidos() {
         AppUserJpaRepository appUserRepository = mock(AppUserJpaRepository.class);
-        UserStatusJpaRepository userStatusRepository = mock(UserStatusJpaRepository.class);
-        MinhaContaService service = new MinhaContaService(appUserRepository, userStatusRepository);
+        UserStatusService userStatusService = mock(UserStatusService.class);
+        MinhaContaService service = new MinhaContaService(appUserRepository, userStatusService);
 
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
@@ -154,5 +135,71 @@ class MinhaContaServiceTest {
 
         assertEquals("Informe ao menos nomeCompleto ou telefone para atualizar.", exception.getMessage());
         verify(appUserRepository, never()).save(any(AppUserEntity.class));
+    }
+
+    @Test
+    void devePermitirAdminAlterarEmailDeOutroUsuario() {
+        AppUserJpaRepository appUserRepository = mock(AppUserJpaRepository.class);
+        UserStatusService userStatusService = mock(UserStatusService.class);
+        MinhaContaService service = new MinhaContaService(appUserRepository, userStatusService);
+
+        UUID adminId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        RoleEntity adminRole = RoleEntity.builder().name("ADMIN").build();
+
+        AppUserEntity admin = AppUserEntity.builder()
+                .id(adminId)
+                .email("admin@teste.com")
+                .roles(List.of(adminRole))
+                .build();
+
+        AppUserEntity user = AppUserEntity.builder()
+                .id(userId)
+                .name("Maria")
+                .email("maria@teste.com")
+                .password("hash")
+                .createdAt(LocalDateTime.now().minusDays(1))
+                .build();
+
+        when(appUserRepository.findById(adminId)).thenReturn(Optional.of(admin));
+        when(appUserRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(appUserRepository.existsByEmailIgnoreCase("novo@teste.com")).thenReturn(false);
+        when(appUserRepository.save(any(AppUserEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(userStatusService.resolveCurrentStatus(user)).thenReturn(StatusUsuario.ATIVO);
+
+        AtualizarEmailRequest request = new AtualizarEmailRequest();
+        request.setNovoEmail("novo@teste.com");
+
+        MinhaContaResponse response = service.atualizarEmail(adminId, userId, request);
+
+        assertEquals("novo@teste.com", response.getEmail());
+    }
+
+    @Test
+    void deveRejeitarAlteracaoDeEmailQuandoSolicitanteNaoForAdmin() {
+        AppUserJpaRepository appUserRepository = mock(AppUserJpaRepository.class);
+        UserStatusService userStatusService = mock(UserStatusService.class);
+        MinhaContaService service = new MinhaContaService(appUserRepository, userStatusService);
+
+        UUID actorId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+
+        AppUserEntity actor = AppUserEntity.builder()
+                .id(actorId)
+                .email("user@teste.com")
+                .roles(List.of())
+                .build();
+
+        when(appUserRepository.findById(actorId)).thenReturn(Optional.of(actor));
+
+        AtualizarEmailRequest request = new AtualizarEmailRequest();
+        request.setNovoEmail("novo@teste.com");
+
+        PermissaoNegadaException exception = assertThrows(
+                PermissaoNegadaException.class,
+                () -> service.atualizarEmail(actorId, userId, request)
+        );
+
+        assertEquals("Apenas administradores podem alterar o e-mail do usuario.", exception.getMessage());
     }
 }

@@ -15,10 +15,28 @@ public interface TermsRepository extends JpaRepository<TermsEntity, UUID> {
             select t
             from TermsEntity t
             join fetch t.termType tt
+            where t.effectivityStartAt <= :referenceTime
+              and (t.effectivityEndAt is null or t.effectivityEndAt > :referenceTime)
+            order by tt.name asc, t.version desc, t.createdAt desc
+            """)
+    List<TermsEntity> findActiveByReferenceTime(@Param("referenceTime") LocalDateTime referenceTime);
+
+    @Query("""
+            select t
+            from TermsEntity t
+            join fetch t.termType tt
             where t.isRequired = true
               and t.effectivityStartAt <= :referenceTime
               and (t.effectivityEndAt is null or t.effectivityEndAt > :referenceTime)
             order by tt.name asc, t.version desc, t.createdAt desc
             """)
     List<TermsEntity> findActiveRequiredByReferenceTime(@Param("referenceTime") LocalDateTime referenceTime);
+
+    @Query("""
+            select t
+            from TermsEntity t
+            join fetch t.termType tt
+            where t.id in :ids
+            """)
+    List<TermsEntity> findAllWithTypeByIdIn(@Param("ids") List<UUID> ids);
 }

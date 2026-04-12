@@ -20,8 +20,6 @@ import com.energia.backend.dto.UsuarioCadastroRequest;
 import com.energia.backend.exception.EmailJaCadastradoException;
 import com.energia.backend.model.StatusUsuario;
 import com.energia.backend.repository.AppUserJpaRepository;
-import com.energia.backend.repository.StatusJpaRepository;
-import com.energia.backend.repository.UserStatusJpaRepository;
 import com.energia.backend.repository.UsuarioCadastroRepository;
 
 class UsuarioCadastroServiceTest {
@@ -31,8 +29,7 @@ class UsuarioCadastroServiceTest {
         UsuarioCadastroRepository usuarioCadastroRepository = mock(UsuarioCadastroRepository.class);
         AppUserJpaRepository appUserRepository = mock(AppUserJpaRepository.class);
         TermsService termsService = mock(TermsService.class);
-        StatusJpaRepository statusRepository = mock(StatusJpaRepository.class);
-        UserStatusJpaRepository userStatusRepository = mock(UserStatusJpaRepository.class);
+        UserStatusService userStatusService = mock(UserStatusService.class);
         PasswordEncoder passwordEncoder = mock(PasswordEncoder.class);
 
         when(passwordEncoder.encode(any())).thenReturn("encoded_SenhaFuerte123");
@@ -43,8 +40,7 @@ class UsuarioCadastroServiceTest {
                 usuarioCadastroRepository,
                 appUserRepository,
                 termsService,
-                statusRepository,
-                userStatusRepository,
+                userStatusService,
                 passwordEncoder
         );
 
@@ -72,8 +68,7 @@ class UsuarioCadastroServiceTest {
         UsuarioCadastroRepository usuarioCadastroRepository = mock(UsuarioCadastroRepository.class);
         AppUserJpaRepository appUserRepository = mock(AppUserJpaRepository.class);
         TermsService termsService = mock(TermsService.class);
-        StatusJpaRepository statusRepository = mock(StatusJpaRepository.class);
-        UserStatusJpaRepository userStatusRepository = mock(UserStatusJpaRepository.class);
+        UserStatusService userStatusService = mock(UserStatusService.class);
         PasswordEncoder passwordEncoder = new MockPasswordEncoder();
 
         when(usuarioCadastroRepository.existsByEmail("duplicado@teste.com")).thenReturn(true);
@@ -82,8 +77,7 @@ class UsuarioCadastroServiceTest {
                 usuarioCadastroRepository,
                 appUserRepository,
                 termsService,
-                statusRepository,
-                userStatusRepository,
+                userStatusService,
                 passwordEncoder
         );
 

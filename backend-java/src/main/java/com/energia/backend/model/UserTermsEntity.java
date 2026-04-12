@@ -37,8 +37,11 @@ public class UserTermsEntity {
     @Column(name = "accepted_from_ip", nullable = false, length = 45)
     private String acceptedFromIp;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "event_type", nullable = false, length = 20)
+    private UserTermsEventType eventType;
+
     @Column(name = "revoked_at")
     private LocalDateTime revokedAt;
-
 
 }
