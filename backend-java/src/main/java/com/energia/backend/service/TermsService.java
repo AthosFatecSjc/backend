@@ -18,6 +18,7 @@ import com.energia.backend.dto.TermosPendentesResponse;
 import com.energia.backend.exception.TermoNaoEncontradoException;
 import com.energia.backend.model.AppUserEntity;
 import com.energia.backend.model.TermsEntity;
+import com.energia.backend.model.term.AcceptedTermModel;
 import com.energia.backend.model.UserTermsEventType;
 import com.energia.backend.model.UserTermsEntity;
 import com.energia.backend.repository.TermsRepository;
@@ -36,8 +37,8 @@ public class TermsService {
         this.userTermsRespository = userTermsRespository;
     }
 
-    public void registrarTermosAceitos(List<UUID> termosIds, AppUserEntity userEntity) {
-        registrarTermosAceitos(termosIds, userEntity, "127.0.0.1");
+    public void registrarTermosAceitos(List<AcceptedTermModel> acceptedTerms, AppUserEntity userEntity) {
+        registrarTermosAceitos(acceptedTerms.stream().map(AcceptedTermModel::getId).toList(), userEntity, "127.0.0.1");
     }
 
     public void registrarTermosAceitos(List<UUID> termosIds, AppUserEntity userEntity, String ipOrigem) {
