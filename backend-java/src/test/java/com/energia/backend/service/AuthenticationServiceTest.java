@@ -264,6 +264,10 @@ class AuthenticationServiceTest {
 
         assertEquals("TERMS_REVIEW_REQUIRED", exception.getErrorCode());
         assertEquals(403, exception.getHttpStatus());
+        assertEquals(
+                "Usuario deve revisar e aceitar os termos mais recentes antes de acessar a plataforma",
+                exception.getMessage()
+        );
         assertNotNull(exception.getDetails());
     }
 
