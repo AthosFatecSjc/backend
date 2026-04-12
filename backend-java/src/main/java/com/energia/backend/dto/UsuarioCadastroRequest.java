@@ -1,15 +1,18 @@
 package com.energia.backend.dto;
 
+import com.energia.backend.dto.term.AcceptedTermRequestDto;
+
 import java.util.List;
-import java.util.UUID;
 
 import lombok.Data;
+import lombok.Builder;
 
 @Data
+@Builder
 public class UsuarioCadastroRequest {
     private String nomeCompleto;
     private String email;
     private String senha;
     private String telefone;
-    private List<UUID> termsIds; 
+    private List<AcceptedTermRequestDto> terms; 
 }
