@@ -50,15 +50,15 @@ public class BackupRestoreReconciliationService {
             } catch (RuntimeException ex) {
                 failedCount++;
                 logService.log(
-                        "system",
-                        registry.getEntityId().toString(),
-                        SourceType.JOB,
-                        LogEvent.BACKUP_RESTORE_RECONCILIATION,
-                        ResultType.FAIL,
-                        LogCategory.TECHNICAL,
-                        "Falha ao reaplicar anonymization para registro individual.",
-                        "error=" + sanitizeMetadata(ex.getMessage()),
-                        MODULE_NAME
+                    "system",
+                    registry.getEntityId().toString(),
+                    SourceType.JOB,
+                    LogEvent.BACKUP_RESTORE_RECONCILIATION,
+                    ResultType.FAIL,
+                    LogCategory.TECHNICAL,
+                    "Falha ao reaplicar anonymization para registro individual.",
+                    String.format("{\"error\":%s}", ex.getMessage() == null ? "null" : '"' + ex.getMessage().replace("\"", "'") + '"'),
+                    MODULE_NAME
                 );
             }
         }
@@ -80,7 +80,5 @@ public class BackupRestoreReconciliationService {
         return reappliedCount;
     }
 
-    private String sanitizeMetadata(String value) {
-        return value == null ? "unknown" : value.replace(";", ",");
-    }
+
 }

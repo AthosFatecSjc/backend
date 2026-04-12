@@ -14,12 +14,8 @@ import com.energia.backend.dto.UsuarioCadastroRequest;
 import com.energia.backend.exception.EmailJaCadastradoException;
 import com.energia.backend.exception.PermissaoNegadaException;
 import com.energia.backend.model.AppUserEntity;
-import com.energia.backend.model.StatusEntity;
 import com.energia.backend.model.StatusUsuario;
-import com.energia.backend.model.UserStatusEntity;
 import com.energia.backend.repository.AppUserJpaRepository;
-import com.energia.backend.repository.StatusJpaRepository;
-import com.energia.backend.repository.UserStatusJpaRepository;
 import com.energia.backend.repository.UsuarioCadastroRepository;
 
 @Service
@@ -29,23 +25,20 @@ public class UsuarioCadastroService {
     private final UsuarioCadastroRepository usuarioCadastroRepository;
     private final AppUserJpaRepository appUserRepository;
     private final TermsService termsService;
-    private final StatusJpaRepository statusRepository;
-    private final UserStatusJpaRepository userStatusRepository;
+    private final UserStatusService userStatusService;
     private final PasswordEncoder passwordEncoder;
 
     public UsuarioCadastroService(
             UsuarioCadastroRepository usuarioCadastroRepository,
             AppUserJpaRepository appUserRepository,
             TermsService termsService,
-            StatusJpaRepository statusRepository,
-            UserStatusJpaRepository userStatusRepository,
+            UserStatusService userStatusService,
             PasswordEncoder passwordEncoder
     ) {
         this.usuarioCadastroRepository = usuarioCadastroRepository;
         this.appUserRepository = appUserRepository;
         this.termsService = termsService;
-        this.statusRepository = statusRepository;
-        this.userStatusRepository = userStatusRepository;
+        this.userStatusService = userStatusService;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -84,18 +77,6 @@ public class UsuarioCadastroService {
 
     @Transactional
     public void alterarStatusUsuario(UUID usuarioId, UUID adminId, StatusUsuario novoStatus, String motivo) {
-        validarDependenciasStatus();
-
-        if (novoStatus == null) {
-            throw new IllegalArgumentException("Status desejado e obrigatorio.");
-        }
-        if (novoStatus != StatusUsuario.APROVADO && novoStatus != StatusUsuario.REJEITADO) {
-            throw new IllegalArgumentException("Status deve ser APROVADO ou REJEITADO.");
-        }
-        if (novoStatus == StatusUsuario.REJEITADO && isBlank(motivo)) {
-            throw new IllegalArgumentException("Motivo da rejeicao e obrigatorio.");
-        }
-
         AppUserEntity usuario = appUserRepository.findById(usuarioId)
                 .orElseThrow(() -> new IllegalArgumentException("Usuario nao encontrado."));
         AppUserEntity admin = appUserRepository.findById(adminId)
@@ -107,26 +88,7 @@ public class UsuarioCadastroService {
             throw new PermissaoNegadaException("Apenas administradores podem alterar o status de usuarios.");
         }
 
-        UserStatusEntity statusAtual = userStatusRepository.findFirstByUserOrderByAssignedAtDesc(usuario)
-                .orElse(null);
-        if (statusAtual == null
-                || statusAtual.getStatus() == null
-                || !"PENDENTE".equalsIgnoreCase(statusAtual.getStatus().getName())) {
-            throw new IllegalStateException("So e permitido aprovar ou rejeitar usuarios com status PENDENTE.");
-        }
-
-        StatusEntity statusEntity = statusRepository.findByNameIgnoreCase(novoStatus.name())
-                .orElseThrow(() -> new IllegalArgumentException("Status " + novoStatus + " nao encontrado."));
-
-        UserStatusEntity novoUserStatus = UserStatusEntity.builder()
-                .user(usuario)
-                .status(statusEntity)
-                .assignedBy(admin)
-                .assignedAt(LocalDateTime.now())
-                .rationaleForRejection(novoStatus == StatusUsuario.REJEITADO ? motivo.trim() : null)
-                .build();
-
-        userStatusRepository.save(novoUserStatus);
+        userStatusService.transitionFromPending(usuario, admin, novoStatus, motivo);
     }
 
     private void validarRequest(UsuarioCadastroRequest request) {
@@ -162,9 +124,4 @@ public class UsuarioCadastroService {
         return value == null || value.trim().isEmpty();
     }
 
-    private void validarDependenciasStatus() {
-        if (statusRepository == null || userStatusRepository == null || appUserRepository == null) {
-            throw new IllegalStateException("DependÃªncias nÃ£o inicializadas para operaÃ§Ã£o de status.");
-        }
-    }
 }

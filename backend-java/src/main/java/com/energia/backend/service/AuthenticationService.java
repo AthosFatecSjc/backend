@@ -14,11 +14,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.energia.backend.dto.LoginRequest;
 import com.energia.backend.dto.LoginResponse;
+import com.energia.backend.dto.ResolverPendenciasTermosLoginRequest;
+import com.energia.backend.dto.TermosPendentesResponse;
 import com.energia.backend.exception.LoginAuthenticationException;
 import com.energia.backend.model.AppUserEntity;
+import com.energia.backend.model.StatusUsuario;
 import com.energia.backend.model.UserStatusEntity;
 import com.energia.backend.repository.AppUserJpaRepository;
-import com.energia.backend.repository.UserStatusJpaRepository;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
@@ -29,8 +31,9 @@ import io.jsonwebtoken.security.Keys;
 public class AuthenticationService {
 
     private final AppUserJpaRepository userRepository;
-    private final UserStatusJpaRepository userStatusRepository;
+    private final UserStatusService userStatusService;
     private final PasswordEncoder passwordEncoder;
+    private final TermsService termsService;
 
     @Value("${jwt.secret:sua-chave-secreta-muito-longa-com-pelo-menos-256-bits-de-comprimento-para-hs512}")
     private String jwtSecret;
@@ -40,26 +43,55 @@ public class AuthenticationService {
 
     public AuthenticationService(
             AppUserJpaRepository userRepository,
-            UserStatusJpaRepository userStatusRepository,
-            PasswordEncoder passwordEncoder
+            UserStatusService userStatusService,
+            PasswordEncoder passwordEncoder,
+            TermsService termsService
     ) {
         this.userRepository = userRepository;
-        this.userStatusRepository = userStatusRepository;
+        this.userStatusService = userStatusService;
         this.passwordEncoder = passwordEncoder;
+        this.termsService = termsService;
     }
 
     @Transactional(readOnly = true)
     public LoginResponse authenticate(LoginRequest request) {
         validarRequest(request);
 
-        AppUserEntity user = userRepository.findByEmailIgnoreCase(request.getEmail())
+        AppUserEntity user = autenticarCredenciais(request.getEmail(), request.getSenha());
+        validarStatusParaAcesso(user);
+        List<TermosPendentesResponse> pendingTerms = termsService.listarPendenciasDeAcesso(user.getId());
+        validarPendenciasDeTermos(pendingTerms);
+
+        return gerarRespostaDeLogin(user);
+    }
+
+    @Transactional
+    public LoginResponse resolverPendenciasETokenizar(ResolverPendenciasTermosLoginRequest request, String ipOrigem) {
+        validarRequest(new LoginRequest(
+                request != null ? request.getEmail() : null,
+                request != null ? request.getSenha() : null
+        ));
+
+        AppUserEntity user = autenticarCredenciais(request.getEmail(), request.getSenha());
+        validarStatusParaAcesso(user);
+        termsService.registrarDecisoesPendentes(
+                user,
+                request.getRequiredTermsIds(),
+                request.getOptionalAcceptedTermsIds(),
+                ipOrigem
+        );
+        return gerarRespostaDeLogin(user);
+    }
+
+    private AppUserEntity autenticarCredenciais(String email, String senha) {
+        AppUserEntity user = userRepository.findByEmailIgnoreCase(email)
                 .orElseThrow(() -> new LoginAuthenticationException(
                         "Invalid email or password",
                         "INVALID_CREDENTIALS",
                         HttpStatus.UNAUTHORIZED.value()
                 ));
 
-        if (!passwordEncoder.matches(request.getSenha(), user.getPassword())) {
+        if (!passwordEncoder.matches(senha, user.getPassword())) {
             throw new LoginAuthenticationException(
                     "Invalid email or password",
                     "INVALID_CREDENTIALS",
@@ -67,16 +99,21 @@ public class AuthenticationService {
             );
         }
 
-        UserStatusEntity userStatus = userStatusRepository.findFirstByUserOrderByAssignedAtDesc(user)
+        return user;
+    }
+
+    private void validarStatusParaAcesso(AppUserEntity user) {
+        UserStatusEntity userStatus = userStatusService.resolveCurrentStatusEntry(user)
                 .orElseThrow(() -> new LoginAuthenticationException(
                         "User account has no status assigned",
                         "USER_NO_STATUS",
                         HttpStatus.FORBIDDEN.value()
                 ));
 
-        String statusName = userStatus.getStatus().getName();
+        String statusName = userStatus.getStatus() != null ? userStatus.getStatus().getName() : null;
+        StatusUsuario status = userStatusService.toOfficialStatus(statusName);
 
-        if ("PENDENTE".equals(statusName)) {
+        if (status == StatusUsuario.PENDENTE) {
             throw new LoginAuthenticationException(
                     "User account is pending administrator approval",
                     "USER_PENDING_APPROVAL",
@@ -84,7 +121,7 @@ public class AuthenticationService {
             );
         }
 
-        if ("REJEITADO".equals(statusName)) {
+        if (status == StatusUsuario.REJEITADO) {
             String reason = userStatus.getRationaleForRejection() != null
                     ? userStatus.getRationaleForRejection()
                     : "No reason provided";
@@ -96,14 +133,16 @@ public class AuthenticationService {
             );
         }
 
-        if (!"APROVADO".equals(statusName) && !"ATIVO".equals(statusName)) {
+        if (status != StatusUsuario.ATIVO) {
             throw new LoginAuthenticationException(
                     "User account status is invalid: " + statusName,
                     "INVALID_USER_STATUS",
                     HttpStatus.FORBIDDEN.value()
             );
         }
+    }
 
+    private LoginResponse gerarRespostaDeLogin(AppUserEntity user) {
         List<String> roles = user.getRoles() != null
                 ? user.getRoles().stream()
                     .map(role -> role.getName().toLowerCase().replaceAll("role_", ""))
@@ -112,6 +151,23 @@ public class AuthenticationService {
 
         String token = generateTokenWithRoles(user.getId(), user.getEmail(), user.getName(), roles);
         return new LoginResponse(token, user.getId(), user.getEmail(), user.getName());
+    }
+
+    private void validarPendenciasDeTermos(List<TermosPendentesResponse> pendingTerms) {
+        if (pendingTerms.isEmpty()) {
+            return;
+        }
+
+        throw new LoginAuthenticationException(
+                "User must review the latest terms before accessing the platform",
+                "TERMS_REVIEW_REQUIRED",
+                HttpStatus.FORBIDDEN.value(),
+                "LATEST_TERMS_PENDING",
+                Map.of(
+                        "redirect", "/consentimentos-pendentes",
+                        "pendingTerms", pendingTerms
+                )
+        );
     }
 
     private void validarRequest(LoginRequest request) {

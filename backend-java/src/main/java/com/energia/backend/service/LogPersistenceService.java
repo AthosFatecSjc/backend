@@ -6,18 +6,39 @@ import com.energia.backend.repository.LogRepository;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
+import java.util.Map;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Service
+
 @RequiredArgsConstructor
 class LogPersistenceService {
-
     private final LogRepository logRepository;
+    private final LogMetadataSanitizer logMetadataSanitizer;
+
 
     @Transactional
     public void persist(@Valid LogRequest request) {
+        String sanitizedMetadata = null;
+        if (request.getMetadata() != null) {
+            Map<String, Object> metaMap = new java.util.HashMap<>();
+            try {
+                com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                metaMap = mapper.readValue(request.getMetadata(), java.util.Map.class);
+            } catch (Exception e) {
+                metaMap.put("_raw", request.getMetadata());
+            }
+            sanitizedMetadata = null;
+            try {
+                sanitizedMetadata = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(logMetadataSanitizer.sanitize(metaMap));
+            } catch (Exception e) {
+                sanitizedMetadata = "{\"_error\":\"metadata sanitization failed\"}";
+            }
+        }
         SystemLog systemLog = SystemLog.builder()
                 .actorRef(normalizeOptional(request.getActor()))
                 .sourceType(request.getSourceType())
@@ -25,7 +46,7 @@ class LogPersistenceService {
                 .result(request.getResult())
                 .logCategory(request.getLogCategory())
                 .description(normalizeRequired(request.getDescription()))
-                .metadata(normalizeOptional(request.getMetadata()))
+                .metadata(sanitizedMetadata)
                 .targetRef(normalizeOptional(request.getTargetRef()))
                 .createdByModule(normalizeRequired(request.getModule()))
                 .build();
@@ -52,7 +73,6 @@ class LogPersistenceService {
         if (value == null) {
             return null;
         }
-
         String normalized = value.trim();
         return normalized.isEmpty() ? null : normalized;
     }
