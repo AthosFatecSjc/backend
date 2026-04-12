@@ -17,7 +17,6 @@ import com.energia.backend.model.AppUserEntity;
 import com.energia.backend.model.StatusEntity;
 import com.energia.backend.model.StatusUsuario;
 import com.energia.backend.model.UserStatusEntity;
-import com.energia.backend.model.UserTermsAction;
 import com.energia.backend.repository.AppUserJpaRepository;
 import com.energia.backend.repository.StatusJpaRepository;
 import com.energia.backend.repository.UserStatusJpaRepository;
@@ -61,7 +60,7 @@ public class UsuarioCadastroService {
         }
 
         try {
-            if (request.getTermsIds() == null || request.getTermsIds().isEmpty())
+            if (request.getTermsNames() == null || request.getTermsNames().isEmpty())
                 {throw new IllegalStateException("Usuario cadastrado nao aceitou nenhum termo");}
             else {
                 Usuario usuario = new Usuario();
@@ -74,7 +73,7 @@ public class UsuarioCadastroService {
 
                 Usuario usuarioSalvo = usuarioCadastroRepository.save(usuario);
                 
-                termsUserService.aprovarTermos(request.getTermsIds(), usuarioSalvo.toEntity());
+                termsUserService.aprovarTermos(request.getTermsNames(), usuarioSalvo.toEntity());
                 return usuarioSalvo;
 
             }
@@ -151,7 +150,7 @@ public class UsuarioCadastroService {
             throw new IllegalArgumentException("Senha deve ter no minimo 8 caracteres.");
         }
 
-        if (!termsUserService.checkRequiredTerms(request.getTermsIds(), null, LocalDateTime.now())) {
+        if (!termsUserService.checkRequiredTerms(request.getTermsNames(), null, LocalDateTime.now())) {
             throw new IllegalArgumentException("Usuario deve aceitar todos os termos obrigatorios.");
         }
     }

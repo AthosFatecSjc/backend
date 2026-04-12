@@ -2,6 +2,7 @@ package com.energia.backend.repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -45,4 +46,12 @@ public interface TermsRepository extends JpaRepository<TermsEntity, UUID> {
       order by tt.name asc
     """)
     List<TermsEntity> findActiveByReferenceTime(@Param("referenceTime") LocalDateTime referenceTime);
+
+    @Query("""
+      select t
+      from TermsEntity
+      join fetch t.termType tt
+      where tt.name in :names
+    """)
+    List<TermsEntity> findByTermTypeNames(@Param("names") Set<String> names);
 }

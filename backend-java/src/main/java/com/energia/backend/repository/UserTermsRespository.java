@@ -17,4 +17,9 @@ public interface UserTermsRespository extends JpaRepository<UserTermsEntity, UUI
             AppUserEntity user,
             LocalDateTime referenceTime
     );    
+
+    List<UserTermsEntity> findByUserAndTermsOrderByActionAtDesc(
+        AppUserEntity user,
+        TermsEntity terms
+    );
 }

@@ -16,12 +16,10 @@ import org.mockito.ArgumentCaptor;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
@@ -54,14 +52,14 @@ class TermsUserServiceTest {
 
     @Test
     void aprovarTermos_deveFalharQuandoAlgumTermoNaoExistir() {
-        UUID termoId = UUID.randomUUID();
+        String termoName = "Termo1";
 
         when(termsRepository.findAllById(any()))
                 .thenReturn(List.of());
 
         TermoNaoEncontradoException exception = assertThrows(
                 TermoNaoEncontradoException.class,
-                () -> service.aprovarTermos(List.of(termoId), new AppUserEntity())
+                () -> service.aprovarTermos(List.of(termoName), new AppUserEntity())
         );
 
         assertTrue(exception.getMessage().startsWith("Um ou mais termos informados nao existem."));
@@ -92,10 +90,10 @@ class TermsUserServiceTest {
 
         TermoNaoEncontradoException exception = assertThrows(
                 TermoNaoEncontradoException.class,
-                () -> service.aprovarTermos(List.of(requiredTerm.getId(), notActiveTerm.getId()), user)
+                () -> service.aprovarTermos(List.of(requiredTerm.getTermType().getName(), notActiveTerm.getTermType().getName()), user)
         );
 
-        assertEquals("Termo enviado nao é vigente: " + notActiveTerm.getId(), exception.getMessage());
+        assertEquals("Termo enviado nao é vigente: " + notActiveTerm.getTermType().getName(), exception.getMessage());
         verify(userTermsRespository, never()).save(any());
     }
 
@@ -131,7 +129,7 @@ class TermsUserServiceTest {
     
         DocumentosObrigatoriosNaoConfiguradosException exception = assertThrows(
                 DocumentosObrigatoriosNaoConfiguradosException.class,
-                () -> service.aprovarTermos(List.of(outroTermo.getId()), user)
+                () -> service.aprovarTermos(List.of(outroTermo.getTermType().getName()), user)
         );
     
         assertEquals("Termo obrigatorio vigente nao aceito", exception.getMessage());
@@ -156,7 +154,7 @@ class TermsUserServiceTest {
         when(userTermsRespository.findByUserAndActionAtLessThanEqual(eq(user), any(LocalDateTime.class)))
                 .thenReturn(List.of());
 
-        service.aprovarTermos(List.of(requiredTerm.getId()), user);
+        service.aprovarTermos(List.of(requiredTerm.getTermType().getName()), user);
 
         ArgumentCaptor<UserTermsEntity> captor = ArgumentCaptor.forClass(UserTermsEntity.class);
         verify(userTermsRespository, times(1)).save(captor.capture());
@@ -184,14 +182,14 @@ class TermsUserServiceTest {
 
     @Test
     void revogarTermos_deveFalharQuandoTermoNaoExistir() {
-        UUID termoId = UUID.randomUUID();
+        String termoName = "Termo1";
 
         when(termsRepository.findAllById(any()))
                 .thenReturn(List.of());
 
         assertThrows(
                 TermoNaoEncontradoException.class,
-                () -> service.revogarTermos(List.of(termoId), new AppUserEntity())
+                () -> service.revogarTermos(List.of(termoName), new AppUserEntity())
         );
 
         verify(userTermsRespository, never()).save(any());
@@ -212,10 +210,10 @@ class TermsUserServiceTest {
 
         TermoNaoEncontradoException exception = assertThrows(
                 TermoNaoEncontradoException.class,
-                () -> service.revogarTermos(List.of(optionalTerm.getId()), user)
+                () -> service.revogarTermos(List.of(optionalTerm.getTermType().getName()), user)
         );
 
-        assertEquals("Termo enviado nao é vigente: " + optionalTerm.getId(), exception.getMessage());
+        assertEquals("Termo enviado nao é vigente: " + optionalTerm.getTermType().getName(), exception.getMessage());
         verify(userTermsRespository, never()).save(any());
     }
 
@@ -234,7 +232,7 @@ class TermsUserServiceTest {
 
         IllegalStateException exception = assertThrows(
                 IllegalStateException.class,
-                () -> service.revogarTermos(List.of(requiredTerm.getId()), user)
+                () -> service.revogarTermos(List.of(requiredTerm.getTermType().getName()), user)
         );
 
         assertEquals(
@@ -257,7 +255,7 @@ class TermsUserServiceTest {
         when(termsRepository.findActiveByReferenceTime(any(LocalDateTime.class)))
                 .thenReturn(List.of(optionalTerm));
 
-        service.revogarTermos(List.of(optionalTerm.getId()), user);
+        service.revogarTermos(List.of(optionalTerm.getTermType().getName()), user);
 
         ArgumentCaptor<UserTermsEntity> captor = ArgumentCaptor.forClass(UserTermsEntity.class);
         verify(userTermsRespository, times(1)).save(captor.capture());
@@ -284,14 +282,14 @@ class TermsUserServiceTest {
 
     @Test
     void registrarCienciaTermos_deveFalharQuandoTermoNaoExistir() {
-        UUID termoId = UUID.randomUUID();
+        String termoName = "Termo1";
 
         when(termsRepository.findAllById(any()))
                 .thenReturn(List.of());
 
         assertThrows(
                 TermoNaoEncontradoException.class,
-                () -> service.registrarCienciaTermos(List.of(termoId), new AppUserEntity())
+                () -> service.registrarCienciaTermos(List.of(termoName), new AppUserEntity())
         );
 
         verify(userTermsRespository, never()).save(any());
@@ -312,10 +310,10 @@ class TermsUserServiceTest {
 
         TermoNaoEncontradoException exception = assertThrows(
                 TermoNaoEncontradoException.class,
-                () -> service.registrarCienciaTermos(List.of(optionalTerm.getId()), user)
+                () -> service.registrarCienciaTermos(List.of(optionalTerm.getTermType().getName()), user)
         );
 
-        assertEquals("Termo enviado nao é vigente: " + optionalTerm.getId(), exception.getMessage());
+        assertEquals("Termo enviado nao é vigente: " + optionalTerm.getTermType().getName(), exception.getMessage());
         verify(userTermsRespository, never()).save(any());
     }
 
@@ -334,7 +332,7 @@ class TermsUserServiceTest {
 
         IllegalStateException exception = assertThrows(
                 IllegalStateException.class,
-                () -> service.registrarCienciaTermos(List.of(requiredTerm.getId()), user)
+                () -> service.registrarCienciaTermos(List.of(requiredTerm.getTermType().getName()), user)
         );
 
         assertEquals(
@@ -357,7 +355,7 @@ class TermsUserServiceTest {
         when(termsRepository.findActiveByReferenceTime(any(LocalDateTime.class)))
                 .thenReturn(List.of(optionalTerm));
 
-        service.registrarCienciaTermos(List.of(optionalTerm.getId()), user);
+        service.registrarCienciaTermos(List.of(optionalTerm.getTermType().getName()), user);
 
         ArgumentCaptor<UserTermsEntity> captor = ArgumentCaptor.forClass(UserTermsEntity.class);
         verify(userTermsRespository, times(1)).save(captor.capture());
@@ -379,7 +377,7 @@ class TermsUserServiceTest {
                 .thenReturn(List.of(requiredTerm));
 
         boolean result = service.checkRequiredTerms(
-                List.of(requiredTerm.getId()),
+                List.of(requiredTerm.getTermType().getName()),
                 user,
                 LocalDateTime.now()
         );

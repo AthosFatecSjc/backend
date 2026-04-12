@@ -34,30 +34,30 @@ public class TermsUserService {
         this.userTermsRespository = userTermsRespository;
     }
 
-    public void aprovarTermos(List<UUID> termosIds, AppUserEntity userEntity) {
-        validarTermosEnviados(termosIds);
+    public void aprovarTermos(List<String> termosNames, AppUserEntity userEntity) {
+        validarTermosEnviados(termosNames);
 
-        if (!checkRequiredTerms(termosIds, userEntity, LocalDateTime.now())) {
+        if (!checkRequiredTerms(termosNames, userEntity, LocalDateTime.now())) {
             throw new DocumentosObrigatoriosNaoConfiguradosException(
                 "Termo obrigatorio vigente nao aceito"
             );
         }
 
-        Set<UUID> termosEnviadosIds = new HashSet<>(termosIds);
-        List<TermsEntity> termosEnviados = termsRepository.findAllById(termosEnviadosIds);
+        Set<String> termosEnviadosIds = new HashSet<>(termosNames);
+        List<TermsEntity> termosEnviados = termsRepository.findByTermTypeNames(termosEnviadosIds);
 
         validarTermosVigentes(termosEnviadosIds);
 
         salvarTermos(userEntity, termosEnviados, UserTermsAction.ACCEPTED);
     }
 
-    public void revogarTermos(List<UUID> termosIds, AppUserEntity userEntity) {
-        validarTermosEnviados(termosIds);
+    public void revogarTermos(List<String> termosNames, AppUserEntity userEntity) {
+        validarTermosEnviados(termosNames);
 
-        Set<UUID> termosEnviadosIds = new HashSet<>(termosIds);
-        List<TermsEntity> termosEnviados = termsRepository.findAllById(termosEnviadosIds);
+        Set<String> termosEnviadosNames = new HashSet<>(termosNames);
+        List<TermsEntity> termosEnviados = termsRepository.findByTermTypeNames(termosEnviadosNames);
 
-        validarTermosVigentes(termosEnviadosIds);
+        validarTermosVigentes(termosEnviadosNames);
 
         for (TermsEntity termo : termosEnviados) {
             if (termo.getTermType().getIsRequired()) {
@@ -71,13 +71,13 @@ public class TermsUserService {
         salvarTermos(userEntity, termosEnviados, UserTermsAction.REVOKED);
     }
 
-    public void registrarCienciaTermos(List<UUID> termosIds, AppUserEntity userEntity) {
-        validarTermosEnviados(termosIds);
+    public void registrarCienciaTermos(List<String> termosNames, AppUserEntity userEntity) {
+        validarTermosEnviados(termosNames);
 
-        Set<UUID> termosEnviadosIds = new HashSet<>(termosIds);
-        List<TermsEntity> termosEnviados = termsRepository.findAllById(termosEnviadosIds);
+        Set<String> termosEnviadosNames = new HashSet<>(termosNames);
+        List<TermsEntity> termosEnviados = termsRepository.findByTermTypeNames(termosEnviadosNames);
 
-        validarTermosVigentes(termosEnviadosIds);
+        validarTermosVigentes(termosEnviadosNames);
 
         for (TermsEntity termo : termosEnviados) {
             if (termo.getTermType().getIsRequired()) {
@@ -91,25 +91,23 @@ public class TermsUserService {
         salvarTermos(userEntity, termosEnviados, UserTermsAction.ACKNOWLEDGED);
     }
 
-    private void validarTermosEnviados(List<UUID> termosIds) {
-        if (termosIds == null || termosIds.isEmpty()) {
+    private void validarTermosEnviados(List<String> termosNames) {
+        if (termosNames == null || termosNames.isEmpty()) {
             throw new NenhumTermoPassadoException("Lista de termos nao pode ser vazia.");
         }
 
-        Set<UUID> termosEnviadosIds = new HashSet<>(termosIds);
-        List<TermsEntity> termosEnviados = termsRepository.findAllById(termosEnviadosIds);
+        Set<String> termosEnviadosIds = new HashSet<>(termosNames);
+        List<TermsEntity> termosEnviados = termsRepository.findByTermTypeNames(termosEnviadosIds);
 
         if (termosEnviados.size() != termosEnviadosIds.size()) {
             throw new TermoNaoEncontradoException(
                 "Um ou mais termos informados nao existem."
-                + "••• termosEnviadosIds: " + termosEnviadosIds
-                + " | termosEnviados: " + termosEnviados
             );
         }
     }
 
-    private void validarTermosVigentes(Set<UUID> termosEnviadosIds) {
-        Set<UUID> idsVigentes = termsRepository
+    private void validarTermosVigentes(Set<String> termosEnviadosNames) {
+        Set<String> namesVigentes = termsRepository
             .findActiveByReferenceTime(LocalDateTime.now())
             .stream()
             .collect(Collectors.toMap(
@@ -119,15 +117,13 @@ public class TermsUserService {
             ))
             .values()
             .stream()
-            .map(TermsEntity::getId)
+            .map(term -> term.getTermType().getName())
             .collect(Collectors.toSet());
 
-        for (UUID idEnviado : termosEnviadosIds) {
-            if (!idsVigentes.contains(idEnviado)) {
+        for (String nameEnviado : termosEnviadosNames) {
+            if (!namesVigentes.contains(nameEnviado)) {
                 throw new TermoNaoEncontradoException(
-                    "Termo enviado nao é vigente: " + idEnviado
-                    // + ";;; idsVigentes: " + idsVigentes
-                    // + ";;; termosEnviadosIds: " + termosEnviadosIds
+                    "Termo enviado nao é vigente: " + nameEnviado
                 );
             }
         }
@@ -153,17 +149,18 @@ public class TermsUserService {
         }
     }
 
-    public boolean checkRequiredTerms(List<UUID> termosIds, AppUserEntity user, LocalDateTime referenceTime) {
-        
-        Set<UUID> enviados = (termosIds == null)
-            ? new HashSet<>()
-            : new HashSet<>(termosIds);
+    public Boolean checkRequiredTerms(List<String> termosNames, AppUserEntity user, LocalDateTime referenceTime) {
+        // return true;
 
-        List<UUID> obrigatoriosIds = termsRepository
-        .findActiveRequiredByReferenceTime(referenceTime)
-        .stream()
-        .map(TermsEntity::getId)
-        .toList();
+        Set<String> aceitos = (termosNames == null)
+            ? new HashSet<>()
+            : new HashSet<>(termosNames);
+
+        List<String> obrigatoriosNames = termsRepository
+            .findActiveRequiredByReferenceTime(referenceTime)
+            .stream()
+            .map(term -> term.getTermType().getName())
+            .toList();
 
         if (user != null) {
             List<UserTermsEntity> activeUserTerms = findActiveUserTermsAtTime (
@@ -171,17 +168,21 @@ public class TermsUserService {
                 referenceTime
             );
             for (UserTermsEntity userTerm : activeUserTerms) {
-                UUID termId = userTerm.getTerms().getId();
-        
-                if (obrigatoriosIds.contains(termId)) {
-                    enviados.add(termId);
+                String termName = userTerm.getTerms().getTermType().getName();
+
+                if (obrigatoriosNames.contains(termName)) {
+                    aceitos.add(termName);
                 }
             }
         }
 
-        boolean isMissing = obrigatoriosIds.stream()
-        .anyMatch(id -> !enviados.contains(id));
-    
+        boolean isMissing = obrigatoriosNames.stream()
+            .anyMatch(name -> !aceitos.contains(name));
+
+        // throw new Error(
+        //     "| enviados: " + aceitos + " | obrigatorios: " + obrigatoriosNames
+        // );
+
         return !isMissing;
     }
 

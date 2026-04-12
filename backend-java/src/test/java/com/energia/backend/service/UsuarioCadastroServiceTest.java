@@ -21,6 +21,7 @@ import com.energia.backend.exception.EmailJaCadastradoException;
 import com.energia.backend.model.StatusUsuario;
 import com.energia.backend.repository.AppUserJpaRepository;
 import com.energia.backend.repository.StatusJpaRepository;
+import com.energia.backend.repository.TermsRepository;
 import com.energia.backend.repository.UserStatusJpaRepository;
 import com.energia.backend.repository.UsuarioCadastroRepository;
 
@@ -30,19 +31,22 @@ class UsuarioCadastroServiceTest {
     void deveCadastrarUsuarioComStatusPendenteESenhaHasheada() {
         UsuarioCadastroRepository usuarioCadastroRepository = mock(UsuarioCadastroRepository.class);
         AppUserJpaRepository appUserRepository = mock(AppUserJpaRepository.class);
-        TermsUserService termsService = mock(TermsUserService.class);
+        TermsUserService termsUserService = mock(TermsUserService.class);
         StatusJpaRepository statusRepository = mock(StatusJpaRepository.class);
         UserStatusJpaRepository userStatusRepository = mock(UserStatusJpaRepository.class);
         PasswordEncoder passwordEncoder = mock(PasswordEncoder.class);
+        TermsRepository termsRepository = mock(TermsRepository.class);
 
         when(passwordEncoder.encode(any())).thenReturn("encoded_SenhaFuerte123");
         when(usuarioCadastroRepository.existsByEmail(anyString())).thenReturn(false);
         when(usuarioCadastroRepository.save(any(Usuario.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(termsRepository.findActiveRequiredByReferenceTime(any())).thenReturn(List.of());
+        when(termsUserService.checkRequiredTerms(any(), any(), any())).thenReturn(true);
 
         UsuarioCadastroService service = new UsuarioCadastroService(
                 usuarioCadastroRepository,
                 appUserRepository,
-                termsService,
+                termsUserService,
                 statusRepository,
                 userStatusRepository,
                 passwordEncoder
@@ -53,7 +57,7 @@ class UsuarioCadastroServiceTest {
         request.setEmail("  MARIA@TESTE.COM ");
         request.setSenha("SenhaFuerte123");
         request.setTelefone(" 11999998888 ");
-        request.setTermsIds(List.of());
+        request.setTermsNames(List.of("TERMS_OF_USE", "PRIVACY_POLICY"));
 
         Usuario usuario = service.cadastrar(request);
 
@@ -64,24 +68,25 @@ class UsuarioCadastroServiceTest {
         assertNotNull(usuario.getSenhaHash());
         assertNotEquals("SenhaFuerte123", usuario.getSenhaHash());
         assertEquals("encoded_SenhaFuerte123", usuario.getSenhaHash());
-        verifyNoInteractions(appUserRepository, termsService);
+        verifyNoInteractions(appUserRepository, termsUserService);
     }
 
     @Test
     void deveRejeitarEmailDuplicado() {
         UsuarioCadastroRepository usuarioCadastroRepository = mock(UsuarioCadastroRepository.class);
         AppUserJpaRepository appUserRepository = mock(AppUserJpaRepository.class);
-        TermsUserService termsService = mock(TermsUserService.class);
+        TermsUserService termsUserService = mock(TermsUserService.class);
         StatusJpaRepository statusRepository = mock(StatusJpaRepository.class);
         UserStatusJpaRepository userStatusRepository = mock(UserStatusJpaRepository.class);
         PasswordEncoder passwordEncoder = new MockPasswordEncoder();
 
         when(usuarioCadastroRepository.existsByEmail("duplicado@teste.com")).thenReturn(true);
+        when(termsUserService.checkRequiredTerms(any(), any(), any())).thenReturn(true);
 
         UsuarioCadastroService service = new UsuarioCadastroService(
                 usuarioCadastroRepository,
                 appUserRepository,
-                termsService,
+                termsUserService,
                 statusRepository,
                 userStatusRepository,
                 passwordEncoder
@@ -91,7 +96,7 @@ class UsuarioCadastroServiceTest {
         request.setNomeCompleto("Joao");
         request.setEmail("DUPLICADO@TESTE.COM");
         request.setSenha("SenhaFuerte123");
-        request.setTermsIds(List.of());
+        request.setTermsNames(List.of("TERMS_OF_USE", "PRIVACY_POLICY"));
 
         EmailJaCadastradoException exception = assertThrows(
                 EmailJaCadastradoException.class,
