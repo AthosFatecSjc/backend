@@ -159,7 +159,7 @@ public class AuthenticationService {
         }
 
         throw new LoginAuthenticationException(
-                "User must review the latest terms before accessing the platform",
+                "Usuario deve revisar e aceitar os termos mais recentes antes de acessar a plataforma",
                 "TERMS_REVIEW_REQUIRED",
                 HttpStatus.FORBIDDEN.value(),
                 "LATEST_TERMS_PENDING",
