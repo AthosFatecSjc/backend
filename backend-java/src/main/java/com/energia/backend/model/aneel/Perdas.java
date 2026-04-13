@@ -30,32 +30,11 @@ public class Perdas {
     @Column(name = "ano", nullable = false)
     private Long ano;
 
-    @Column(name = "tme")
-    private Double tme;
-
-	@Column(name = "perdas_rede_basica")
-    private Double perdasRedeBasica;
-
-	@Column(name = "custo_perdas_rede_basica")
-    private Double custoPerdasRedeBasica;
-
-	@Column(name = "perdas_tec")
-    private Double perdasTec;
-
-	@Column(name = "custo_perdas_tec")
-    private Double custoPerdasTec;
-
 	@Column(name = "perdas_nao_tec")
     private Double perdasNaoTec;
 
 	@Column(name = "custo_perdas_nao_tec")
     private Double custoPerdasNaoTec;
-
-	@Column(name = "parcela_b")
-    private Double parcelaB;
-
-	@Column(name = "receita_req")
-    private Double receitaReq;
 
     @PrePersist
     @PreUpdate

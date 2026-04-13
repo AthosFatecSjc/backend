@@ -1,0 +1,5 @@
+ALTER TABLE aneel.limites
+ALTER COLUMN dec_lim DROP NOT NULL;
+
+ALTER TABLE aneel.limites
+ALTER COLUMN fec_lim DROP NOT NULL;
