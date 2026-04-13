@@ -29,3 +29,9 @@ MONGO_CONFIG = {
 
 MONGO_DATABASE = os.getenv("MONGO_DATABASE", "energia_analytics")
 PORT = int(os.getenv("PORT", "8000"))
+
+INTERNAL_LOG_URL = os.getenv(
+    "INTERNAL_LOG_URL",
+    "http://backend-java:8181/internal/jobs/aneel/logs",
+)
+INTERNAL_LOG_API_KEY = os.getenv("INTERNAL_LOG_API_KEY", "")
