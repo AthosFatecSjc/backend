@@ -72,7 +72,8 @@ public class AppUserEntity {
 
     // ONE USER → MANY USER_STATUS
     @OneToMany(mappedBy = "user", fetch = FetchType.LAZY)
-    private List<UserStatusEntity> statuses;
+    @Builder.Default
+    private List<UserStatusEntity> statuses = new ArrayList<>();;
 
     // ONE USER → MANY USER_TERMS
     @OneToMany(mappedBy = "user", fetch = FetchType.LAZY)

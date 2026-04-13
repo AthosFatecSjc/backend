@@ -1,8 +1,5 @@
 package com.energia.backend.model;
 
-import com.energia.backend.model.TermsEntity;
-import com.energia.backend.model.AppUserEntity;
-
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -35,11 +32,4 @@ public class UserTermsEntity {
 
     @Column(name = "action_at", nullable = false)
     private LocalDateTime actionAt;
-
-    @PrePersist
-    public void prePersist() {
-        if (this.actionAt == null) {
-            this.actionAt = LocalDateTime.now();
-        }
-    }
 }

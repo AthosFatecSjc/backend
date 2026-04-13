@@ -22,6 +22,7 @@ import com.energia.backend.model.TermsEntity;
 import com.energia.backend.repository.TermTypeRepository;
 import com.energia.backend.repository.TermsJpaRepository;
 import com.energia.backend.repository.TermsRepository;
+import com.energia.backend.repository.UserTermsRepository;
 
 class TermsServiceBuscarDocsVigentesTest {
 
@@ -30,10 +31,12 @@ class TermsServiceBuscarDocsVigentesTest {
         TermsRepository termsRepository = mock(TermsRepository.class);
         TermsJpaRepository termsJpaRepository = mock(TermsJpaRepository.class);
         TermTypeRepository termTypeRepository = mock(TermTypeRepository.class);
+        UserTermsRepository userTermsRepository = mock(UserTermsRepository.class);
         TermsService service = new TermsService(
                 termsRepository,
                 termsJpaRepository,
-                termTypeRepository
+                termTypeRepository,
+                userTermsRepository
         );
 
         when(termsRepository.findActiveByReferenceTime(any(LocalDateTime.class)))
@@ -67,10 +70,12 @@ class TermsServiceBuscarDocsVigentesTest {
         TermsRepository termsRepository = mock(TermsRepository.class);
         TermsJpaRepository termsJpaRepository = mock(TermsJpaRepository.class);
         TermTypeRepository termTypeRepository = mock(TermTypeRepository.class);
+        UserTermsRepository userTermsRepository = mock(UserTermsRepository.class);
         TermsService service = new TermsService(
                 termsRepository,
                 termsJpaRepository,
-                termTypeRepository
+                termTypeRepository,
+                userTermsRepository
         );
 
         when(termsRepository.findActiveByReferenceTime(any(LocalDateTime.class)))
@@ -89,11 +94,14 @@ class TermsServiceBuscarDocsVigentesTest {
         TermsRepository termsRepository = mock(TermsRepository.class);
         TermsJpaRepository termsJpaRepository = mock(TermsJpaRepository.class);
         TermTypeRepository termTypeRepository = mock(TermTypeRepository.class);
+        UserTermsRepository userTermsRepository = mock(UserTermsRepository.class);
         TermsService service = new TermsService(
                 termsRepository,
                 termsJpaRepository,
-                termTypeRepository
+                termTypeRepository,
+                userTermsRepository
         );
+
 
         when(termsRepository.findActiveByReferenceTime(any(LocalDateTime.class)))
         .thenReturn(List.of());

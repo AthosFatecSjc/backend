@@ -20,7 +20,8 @@ ON terms (term_type_id)
 WHERE is_active = true;
 
 ALTER TABLE user_terms
-DROP COLUMN accepted_from_ip;
+DROP COLUMN accepted_from_ip,
+DROP COLUMN event_type;
 
 ALTER TABLE user_terms
 ADD COLUMN action VARCHAR(20);

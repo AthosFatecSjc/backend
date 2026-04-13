@@ -1,7 +1,5 @@
 package com.energia.backend.model;
 
-import com.energia.backend.model.TermsEntity;
-
 import jakarta.persistence.*;
 import lombok.*;
 

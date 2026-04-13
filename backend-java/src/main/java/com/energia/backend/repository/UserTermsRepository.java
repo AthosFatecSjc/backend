@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import com.energia.backend.model.AppUserEntity;
@@ -12,7 +13,7 @@ import com.energia.backend.model.TermsEntity;
 import com.energia.backend.model.UserTermsEntity;
 
 
-public interface UserTermsRespository extends JpaRepository<UserTermsEntity, UUID>{
+public interface UserTermsRepository extends JpaRepository<UserTermsEntity, UUID>{
     List<UserTermsEntity> findByUserAndActionAtLessThanEqual(
             AppUserEntity user,
             LocalDateTime referenceTime
@@ -22,4 +23,13 @@ public interface UserTermsRespository extends JpaRepository<UserTermsEntity, UUI
         AppUserEntity user,
         TermsEntity terms
     );
+
+    @Query("""
+        select ut
+        from UserTermsEntity ut
+        join fetch ut.terms t
+        where ut.user.id = :userId
+        order by ut.actionAt desc
+    """)
+    List<UserTermsEntity> findHistoryByUserId(@Param("userId") UUID userId);
 }

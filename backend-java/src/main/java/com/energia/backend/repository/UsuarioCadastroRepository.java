@@ -1,8 +1,9 @@
 package com.energia.backend.repository;
 
-import com.energia.backend.dto.Usuario;
+import com.energia.backend.model.user.AppUserModel;
+import com.energia.backend.model.AppUserEntity;
 
 public interface UsuarioCadastroRepository {
     boolean existsByEmail(String email);
-    Usuario save(Usuario usuario);
+    AppUserEntity save(AppUserModel user);
 }

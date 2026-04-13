@@ -18,7 +18,7 @@ import com.energia.backend.model.TermsEntity;
 import com.energia.backend.model.UserTermsAction;
 import com.energia.backend.model.UserTermsEntity;
 import com.energia.backend.repository.TermsRepository;
-import com.energia.backend.repository.UserTermsRespository;
+import com.energia.backend.repository.UserTermsRepository;
 
 import jakarta.transaction.Transactional;
 
@@ -27,9 +27,9 @@ import jakarta.transaction.Transactional;
 public class TermsUserService {
 
     private final TermsRepository termsRepository;
-    private final UserTermsRespository userTermsRespository;
+    private final UserTermsRepository userTermsRespository;
 
-    public TermsUserService(TermsRepository termsRepository, UserTermsRespository userTermsRespository) {
+    public TermsUserService(TermsRepository termsRepository, UserTermsRepository userTermsRespository) {
         this.termsRepository = termsRepository;
         this.userTermsRespository = userTermsRespository;
     }
@@ -43,10 +43,10 @@ public class TermsUserService {
             );
         }
 
-        Set<String> termosEnviadosIds = new HashSet<>(termosNames);
-        List<TermsEntity> termosEnviados = termsRepository.findByTermTypeNames(termosEnviadosIds);
+        Set<String> termosEnviadosNames = new HashSet<>(termosNames);
+        List<TermsEntity> termosEnviados = termsRepository.findByTermTypeNames(termosEnviadosNames);
 
-        validarTermosVigentes(termosEnviadosIds);
+        validarTermosVigentes(termosEnviadosNames);
 
         salvarTermos(userEntity, termosEnviados, UserTermsAction.ACCEPTED);
     }
@@ -96,10 +96,10 @@ public class TermsUserService {
             throw new NenhumTermoPassadoException("Lista de termos nao pode ser vazia.");
         }
 
-        Set<String> termosEnviadosIds = new HashSet<>(termosNames);
-        List<TermsEntity> termosEnviados = termsRepository.findByTermTypeNames(termosEnviadosIds);
+        Set<String> termosEnviadosNames = new HashSet<>(termosNames);
+        List<TermsEntity> termosEnviados = termsRepository.findByTermTypeNames(termosEnviadosNames);
 
-        if (termosEnviados.size() != termosEnviadosIds.size()) {
+        if (termosEnviados.size() != termosEnviadosNames.size()) {
             throw new TermoNaoEncontradoException(
                 "Um ou mais termos informados nao existem."
             );

@@ -21,195 +21,221 @@ import org.springframework.web.server.ResponseStatusException;
 import com.energia.backend.dto.AprovacaoRejeicaoUsuarioRequest;
 import com.energia.backend.dto.MinhaContaResponse;
 import com.energia.backend.dto.MinhaContaUpdateRequest;
-import com.energia.backend.dto.Usuario;
 import com.energia.backend.dto.UsuarioCadastroRequest;
 import com.energia.backend.dto.UsuarioCadastroResponse;
+import com.energia.backend.model.AppUserEntity;
 import com.energia.backend.model.StatusUsuario;
+import com.energia.backend.repository.AppUserJpaRepository;
 import com.energia.backend.service.AnonimizacaoService;
 import com.energia.backend.service.MinhaContaService;
+import com.energia.backend.service.TermsService;
+import com.energia.backend.service.TermsUserService;
 import com.energia.backend.service.UsuarioCadastroService;
+
+import jakarta.servlet.http.HttpServletRequest;
 
 class UsuarioControllerTest {
 
-    @Test
-    void deveAlterarStatusPorPatchUnico() {
-        UsuarioCadastroService cadastroService = mock(UsuarioCadastroService.class);
-        MinhaContaService minhaContaService = mock(MinhaContaService.class);
-        AnonimizacaoService anonimizacaoService = mock(AnonimizacaoService.class);
-        UsuarioController controller = new UsuarioController(cadastroService, minhaContaService, anonimizacaoService);
+        private UsuarioController criarController(
+                        UsuarioCadastroService cadastroService,
+                        MinhaContaService minhaContaService,
+                        AnonimizacaoService anonimizacaoService) {
+                AppUserJpaRepository appUserRepository = mock(AppUserJpaRepository.class);
+                TermsService termsService = mock(TermsService.class);
+                TermsUserService termsUserService = mock(TermsUserService.class);
 
-        UUID usuarioId = UUID.randomUUID();
-        UUID adminId = UUID.randomUUID();
-        AprovacaoRejeicaoUsuarioRequest request = new AprovacaoRejeicaoUsuarioRequest();
-        request.setStatus(StatusUsuario.APROVADO);
+                return new UsuarioController(
+                                cadastroService,
+                                minhaContaService,
+                                anonimizacaoService,
+                                appUserRepository,
+                                termsService,
+                                termsUserService);
+        }
 
-        ResponseEntity<String> response = controller.alterarStatusUsuario(usuarioId, request, () -> adminId.toString());
+        @Test
+        void deveAlterarStatusPorPatchUnico() {
+                UsuarioCadastroService cadastroService = mock(UsuarioCadastroService.class);
+                MinhaContaService minhaContaService = mock(MinhaContaService.class);
+                AnonimizacaoService anonimizacaoService = mock(AnonimizacaoService.class);
+                UsuarioController controller = criarController(cadastroService, minhaContaService, anonimizacaoService);
 
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals("Status do usuario atualizado com sucesso.", response.getBody());
-        verify(cadastroService).alterarStatusUsuario(eq(usuarioId), eq(adminId), eq(StatusUsuario.APROVADO), eq(null));
-    }
+                UUID usuarioId = UUID.randomUUID();
+                UUID adminId = UUID.randomUUID();
+                AprovacaoRejeicaoUsuarioRequest request = new AprovacaoRejeicaoUsuarioRequest();
+                request.setStatus(StatusUsuario.ATIVO);
 
-    @Test
-    void devePropagarErroDoServiceQuandoMotivoForInvalidoNoPatchDeStatus() {
-        UsuarioCadastroService cadastroService = mock(UsuarioCadastroService.class);
-        MinhaContaService minhaContaService = mock(MinhaContaService.class);
-        AnonimizacaoService anonimizacaoService = mock(AnonimizacaoService.class);
-        UsuarioController controller = new UsuarioController(cadastroService, minhaContaService, anonimizacaoService);
+                ResponseEntity<String> response = controller.alterarStatusUsuario(usuarioId, request,
+                                () -> adminId.toString());
 
-        AprovacaoRejeicaoUsuarioRequest request = new AprovacaoRejeicaoUsuarioRequest();
-        request.setStatus(StatusUsuario.REJEITADO);
-        request.setMotivo("   ");
+                assertEquals(HttpStatus.OK, response.getStatusCode());
+                assertEquals("Status do usuario atualizado com sucesso.", response.getBody());
+                verify(cadastroService).alterarStatusUsuario(eq(usuarioId), eq(adminId), eq(StatusUsuario.ATIVO),
+                                eq(null));
+        }
 
-        doThrow(new IllegalArgumentException("Motivo da rejeicao e obrigatorio."))
-                .when(cadastroService)
-                .alterarStatusUsuario(any(UUID.class), any(UUID.class), eq(StatusUsuario.REJEITADO), eq("   "));
+        @Test
+        void devePropagarErroDoServiceQuandoMotivoForInvalidoNoPatchDeStatus() {
+                UsuarioCadastroService cadastroService = mock(UsuarioCadastroService.class);
+                MinhaContaService minhaContaService = mock(MinhaContaService.class);
+                AnonimizacaoService anonimizacaoService = mock(AnonimizacaoService.class);
+                UsuarioController controller = criarController(cadastroService, minhaContaService, anonimizacaoService);
 
-        IllegalArgumentException exception = assertThrows(
-                IllegalArgumentException.class,
-                () -> controller.alterarStatusUsuario(UUID.randomUUID(), request, () -> UUID.randomUUID().toString())
-        );
+                AprovacaoRejeicaoUsuarioRequest request = new AprovacaoRejeicaoUsuarioRequest();
+                request.setStatus(StatusUsuario.REJEITADO);
+                request.setMotivo("   ");
 
-        assertEquals("Motivo da rejeicao e obrigatorio.", exception.getMessage());
-    }
+                doThrow(new IllegalArgumentException("Motivo da rejeicao e obrigatorio."))
+                                .when(cadastroService)
+                                .alterarStatusUsuario(any(UUID.class), any(UUID.class), eq(StatusUsuario.REJEITADO),
+                                                eq("   "));
 
-    @Test
-    void deveRetornarUnauthorizedQuandoPrincipalForInvalidoNoPatchDeStatus() {
-        UsuarioCadastroService cadastroService = mock(UsuarioCadastroService.class);
-        MinhaContaService minhaContaService = mock(MinhaContaService.class);
-        AnonimizacaoService anonimizacaoService = mock(AnonimizacaoService.class);
-        UsuarioController controller = new UsuarioController(cadastroService, minhaContaService, anonimizacaoService);
+                IllegalArgumentException exception = assertThrows(
+                                IllegalArgumentException.class,
+                                () -> controller.alterarStatusUsuario(UUID.randomUUID(), request,
+                                                () -> UUID.randomUUID().toString()));
 
-        AprovacaoRejeicaoUsuarioRequest request = new AprovacaoRejeicaoUsuarioRequest();
-        request.setStatus(StatusUsuario.APROVADO);
+                assertEquals("Motivo da rejeicao e obrigatorio.", exception.getMessage());
+        }
 
-        ResponseStatusException exception = assertThrows(
-                ResponseStatusException.class,
-                () -> controller.alterarStatusUsuario(UUID.randomUUID(), request, () -> "admin@email.com")
-        );
+        @Test
+        void deveRetornarUnauthorizedQuandoPrincipalForInvalidoNoPatchDeStatus() {
+                UsuarioCadastroService cadastroService = mock(UsuarioCadastroService.class);
+                MinhaContaService minhaContaService = mock(MinhaContaService.class);
+                AnonimizacaoService anonimizacaoService = mock(AnonimizacaoService.class);
+                UsuarioController controller = criarController(cadastroService, minhaContaService, anonimizacaoService);
 
-        assertEquals(HttpStatus.UNAUTHORIZED, exception.getStatusCode());
-        assertEquals("Identificador do usuario autenticado invalido.", exception.getReason());
-    }
+                AprovacaoRejeicaoUsuarioRequest request = new AprovacaoRejeicaoUsuarioRequest();
+                request.setStatus(StatusUsuario.ATIVO);
 
-    @Test
-    void deveRetornarCreatedComMensagemDeSucesso() {
-        UsuarioCadastroService cadastroService = mock(UsuarioCadastroService.class);
-        MinhaContaService minhaContaService = mock(MinhaContaService.class);
-        AnonimizacaoService anonimizacaoService = mock(AnonimizacaoService.class);
-        UsuarioController controller = new UsuarioController(cadastroService, minhaContaService, anonimizacaoService);
+                ResponseStatusException exception = assertThrows(
+                                ResponseStatusException.class,
+                                () -> controller.alterarStatusUsuario(UUID.randomUUID(), request,
+                                                () -> "admin@email.com"));
 
-        Usuario usuario = new Usuario();
-        usuario.setEmail("novo@teste.com");
-        usuario.setStatus(StatusUsuario.PENDENTE);
+                assertEquals(HttpStatus.UNAUTHORIZED, exception.getStatusCode());
+                assertEquals("Identificador do usuario autenticado invalido.", exception.getReason());
+        }
 
-        when(cadastroService.cadastrar(any(UsuarioCadastroRequest.class))).thenReturn(usuario);
+        @Test
+        void deveRetornarCreatedComMensagemDeSucesso() {
+                UsuarioCadastroService cadastroService = mock(UsuarioCadastroService.class);
+                MinhaContaService minhaContaService = mock(MinhaContaService.class);
+                AnonimizacaoService anonimizacaoService = mock(AnonimizacaoService.class);
+                HttpServletRequest httpRequest = mock(HttpServletRequest.class);
+                UsuarioController controller = criarController(cadastroService, minhaContaService, anonimizacaoService);
 
-        UsuarioCadastroRequest request = new UsuarioCadastroRequest();
-        request.setNomeCompleto("Novo Usuario");
-        request.setEmail("novo@teste.com");
-        request.setSenha("SenhaFuerte123");
-        request.setTermsNames(List.of("Termo1", "Termo2"));
+                AppUserEntity user = AppUserEntity.builder()
+                                .name("Novo Usuario")
+                                .email("novo@teste.com")
+                                .password("SenhaFuerte123")
+                                .build();
 
-        ResponseEntity<UsuarioCadastroResponse> response = controller.cadastrar(request);
+                when(cadastroService.cadastrar(any(UsuarioCadastroRequest.class))).thenReturn(user);
 
-        assertEquals(HttpStatus.CREATED, response.getStatusCode());
-        assertEquals("Cadastro realizado com sucesso. Aguardando aprovacao do administrador.", response.getBody().getMensagem());
-        assertEquals("novo@teste.com", response.getBody().getEmail());
-        assertEquals(StatusUsuario.PENDENTE, response.getBody().getStatus());
-    }
+                UsuarioCadastroRequest request = new UsuarioCadastroRequest();
+                request.setNomeCompleto("Novo Usuario");
+                request.setEmail("novo@teste.com");
+                request.setSenha("SenhaFuerte123");
+                request.setTermsNames(List.of("Termo1", "Termo2"));
 
-    @Test
-    void deveConsultarMinhaContaDoUsuarioAutenticado() {
-        UsuarioCadastroService cadastroService = mock(UsuarioCadastroService.class);
-        MinhaContaService minhaContaService = mock(MinhaContaService.class);
-        AnonimizacaoService anonimizacaoService = mock(AnonimizacaoService.class);
-        UsuarioController controller = new UsuarioController(cadastroService, minhaContaService, anonimizacaoService);
-        UUID userId = UUID.randomUUID();
+                ResponseEntity<UsuarioCadastroResponse> response = controller.cadastrar(request, httpRequest);
 
-        LocalDateTime dataCadastro = LocalDateTime.now().minusDays(2);
-        MinhaContaResponse conta = new MinhaContaResponse(
-                "Maria Silva",
-                "maria@teste.com",
-                "11999998888",
-                StatusUsuario.PENDENTE,
-                dataCadastro
-        );
+                assertEquals(HttpStatus.CREATED, response.getStatusCode());
+                assertEquals("Registration completed successfully. Awaiting administrator approval",
+                                response.getBody().getMensagem());
 
-        when(minhaContaService.consultar(userId)).thenReturn(conta);
+                assertEquals("novo@teste.com", response.getBody().getEmail());
+                assertEquals(List.of(StatusUsuario.PENDENTE), response.getBody().getStatus());
+        }
 
-        Principal principal = () -> userId.toString();
-        ResponseEntity<MinhaContaResponse> response = controller.consultarMinhaConta(principal);
+        @Test
+        void deveConsultarMinhaContaDoUsuarioAutenticado() {
+                UsuarioCadastroService cadastroService = mock(UsuarioCadastroService.class);
+                MinhaContaService minhaContaService = mock(MinhaContaService.class);
+                AnonimizacaoService anonimizacaoService = mock(AnonimizacaoService.class);
+                UsuarioController controller = criarController(cadastroService, minhaContaService, anonimizacaoService);
+                UUID userId = UUID.randomUUID();
 
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals("maria@teste.com", response.getBody().getEmail());
-        assertEquals(StatusUsuario.PENDENTE, response.getBody().getStatus());
-        assertEquals(dataCadastro, response.getBody().getDataCadastro());
-    }
+                LocalDateTime dataCadastro = LocalDateTime.now().minusDays(2);
+                MinhaContaResponse conta = new MinhaContaResponse(
+                                "Maria Silva",
+                                "maria@teste.com",
+                                "11999998888",
+                                StatusUsuario.PENDENTE,
+                                dataCadastro);
 
-    @Test
-    void deveAtualizarSomenteCamposPermitidosDaMinhaConta() {
-        UsuarioCadastroService cadastroService = mock(UsuarioCadastroService.class);
-        MinhaContaService minhaContaService = mock(MinhaContaService.class);
-        AnonimizacaoService anonimizacaoService = mock(AnonimizacaoService.class);
-        UsuarioController controller = new UsuarioController(cadastroService, minhaContaService, anonimizacaoService);
-        UUID userId = UUID.randomUUID();
+                when(minhaContaService.consultar(userId)).thenReturn(conta);
 
-        LocalDateTime dataCadastroOriginal = LocalDateTime.now().minusDays(10);
-        MinhaContaResponse contaAtualizada = new MinhaContaResponse(
-                "Maria Atualizada",
-                "maria@teste.com",
-                "11911112222",
-                StatusUsuario.PENDENTE,
-                dataCadastroOriginal
-        );
+                Principal principal = () -> userId.toString();
+                ResponseEntity<MinhaContaResponse> response = controller.consultarMinhaConta(principal);
 
-        when(minhaContaService.atualizar(any(UUID.class), any(MinhaContaUpdateRequest.class)))
-                .thenReturn(contaAtualizada);
+                assertEquals(HttpStatus.OK, response.getStatusCode());
+                assertEquals("maria@teste.com", response.getBody().getEmail());
+                assertEquals(StatusUsuario.PENDENTE, response.getBody().getStatus());
+                assertEquals(dataCadastro, response.getBody().getDataCadastro());
+        }
 
-        MinhaContaUpdateRequest request = new MinhaContaUpdateRequest();
-        request.setNomeCompleto("Maria Atualizada");
-        request.setTelefone("11911112222");
+        @Test
+        void deveAtualizarSomenteCamposPermitidosDaMinhaConta() {
+                UsuarioCadastroService cadastroService = mock(UsuarioCadastroService.class);
+                MinhaContaService minhaContaService = mock(MinhaContaService.class);
+                AnonimizacaoService anonimizacaoService = mock(AnonimizacaoService.class);
+                UsuarioController controller = criarController(cadastroService, minhaContaService, anonimizacaoService);
+                UUID userId = UUID.randomUUID();
 
-        Principal principal = () -> userId.toString();
-        ResponseEntity<MinhaContaResponse> response = controller.atualizarMinhaConta(principal, request);
+                LocalDateTime dataCadastroOriginal = LocalDateTime.now().minusDays(10);
+                MinhaContaResponse contaAtualizada = new MinhaContaResponse(
+                                "Maria Atualizada",
+                                "maria@teste.com",
+                                "11911112222",
+                                StatusUsuario.PENDENTE,
+                                dataCadastroOriginal);
 
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals("Maria Atualizada", response.getBody().getNomeCompleto());
-        assertEquals("11911112222", response.getBody().getTelefone());
-        assertEquals("maria@teste.com", response.getBody().getEmail());
-        assertEquals(StatusUsuario.PENDENTE, response.getBody().getStatus());
-        assertEquals(dataCadastroOriginal, response.getBody().getDataCadastro());
-    }
+                when(minhaContaService.atualizar(any(UUID.class), any(MinhaContaUpdateRequest.class)))
+                                .thenReturn(contaAtualizada);
 
-    @Test
-    void deveRetornarUnauthorizedQuandoPrincipalNaoExisteNaMinhaConta() {
-        UsuarioCadastroService cadastroService = mock(UsuarioCadastroService.class);
-        MinhaContaService minhaContaService = mock(MinhaContaService.class);
-        AnonimizacaoService anonimizacaoService = mock(AnonimizacaoService.class);
-        UsuarioController controller = new UsuarioController(cadastroService, minhaContaService, anonimizacaoService);
+                MinhaContaUpdateRequest request = new MinhaContaUpdateRequest();
+                request.setNomeCompleto("Maria Atualizada");
+                request.setTelefone("11911112222");
 
-        ResponseStatusException exception = assertThrows(
-                ResponseStatusException.class,
-                () -> controller.consultarMinhaConta(null)
-        );
+                Principal principal = () -> userId.toString();
+                ResponseEntity<MinhaContaResponse> response = controller.atualizarMinhaConta(principal, request);
 
-        assertEquals(HttpStatus.UNAUTHORIZED, exception.getStatusCode());
-    }
+                assertEquals(HttpStatus.OK, response.getStatusCode());
+                assertEquals("Maria Atualizada", response.getBody().getNomeCompleto());
+                assertEquals("11911112222", response.getBody().getTelefone());
+                assertEquals("maria@teste.com", response.getBody().getEmail());
+                assertEquals(StatusUsuario.PENDENTE, response.getBody().getStatus());
+                assertEquals(dataCadastroOriginal, response.getBody().getDataCadastro());
+        }
 
-    @Test
-    void deveRetornarUnauthorizedQuandoPrincipalNaoPossuiUuidValido() {
-        UsuarioCadastroService cadastroService = mock(UsuarioCadastroService.class);
-        MinhaContaService minhaContaService = mock(MinhaContaService.class);
-        AnonimizacaoService anonimizacaoService = mock(AnonimizacaoService.class);
-        UsuarioController controller = new UsuarioController(cadastroService, minhaContaService, anonimizacaoService);
+        @Test
+        void deveRetornarUnauthorizedQuandoPrincipalNaoExisteNaMinhaConta() {
+                UsuarioCadastroService cadastroService = mock(UsuarioCadastroService.class);
+                MinhaContaService minhaContaService = mock(MinhaContaService.class);
+                AnonimizacaoService anonimizacaoService = mock(AnonimizacaoService.class);
+                UsuarioController controller = criarController(cadastroService, minhaContaService, anonimizacaoService);
 
-        ResponseStatusException exception = assertThrows(
-                ResponseStatusException.class,
-                () -> controller.consultarMinhaConta(() -> "maria@teste.com")
-        );
+                ResponseStatusException exception = assertThrows(
+                                ResponseStatusException.class,
+                                () -> controller.consultarMinhaConta(null));
 
-        assertEquals(HttpStatus.UNAUTHORIZED, exception.getStatusCode());
-        assertEquals("Identificador do usuario autenticado invalido.", exception.getReason());
-    }
+                assertEquals(HttpStatus.UNAUTHORIZED, exception.getStatusCode());
+        }
+
+        @Test
+        void deveRetornarUnauthorizedQuandoPrincipalNaoPossuiUuidValido() {
+                UsuarioCadastroService cadastroService = mock(UsuarioCadastroService.class);
+                MinhaContaService minhaContaService = mock(MinhaContaService.class);
+                AnonimizacaoService anonimizacaoService = mock(AnonimizacaoService.class);
+                UsuarioController controller = criarController(cadastroService, minhaContaService, anonimizacaoService);
+
+                ResponseStatusException exception = assertThrows(
+                                ResponseStatusException.class,
+                                () -> controller.consultarMinhaConta(() -> "maria@teste.com"));
+
+                assertEquals(HttpStatus.UNAUTHORIZED, exception.getStatusCode());
+                assertEquals("Identificador do usuario autenticado invalido.", exception.getReason());
+        }
 }

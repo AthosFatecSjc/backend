@@ -9,7 +9,7 @@ import com.energia.backend.model.TermsEntity;
 import com.energia.backend.model.UserTermsAction;
 import com.energia.backend.model.UserTermsEntity;
 import com.energia.backend.repository.TermsRepository;
-import com.energia.backend.repository.UserTermsRespository;
+import com.energia.backend.repository.UserTermsRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -26,13 +26,13 @@ import static org.mockito.Mockito.*;
 class TermsUserServiceTest {
 
     private TermsRepository termsRepository;
-    private UserTermsRespository userTermsRespository;
+    private UserTermsRepository userTermsRespository;
     private TermsUserService service;
 
     @BeforeEach
     void setUp() {
         termsRepository = mock(TermsRepository.class);
-        userTermsRespository = mock(UserTermsRespository.class);
+        userTermsRespository = mock(UserTermsRepository.class);
         service = new TermsUserService(termsRepository, userTermsRespository);
     }
 
@@ -54,7 +54,7 @@ class TermsUserServiceTest {
     void aprovarTermos_deveFalharQuandoAlgumTermoNaoExistir() {
         String termoName = "Termo1";
 
-        when(termsRepository.findAllById(any()))
+        when(termsRepository.findByTermTypeNames(any()))
                 .thenReturn(List.of());
 
         TermoNaoEncontradoException exception = assertThrows(
@@ -76,7 +76,7 @@ class TermsUserServiceTest {
         TermTypeEntity optionalType = termType(UUID.randomUUID(), "PRIVACY_POLICY", false);
         TermsEntity notActiveTerm = term(UUID.randomUUID(), optionalType, 1, "outro", true);
 
-        when(termsRepository.findAllById(any()))
+        when(termsRepository.findByTermTypeNames(any()))
                 .thenReturn(List.of(requiredTerm, notActiveTerm));
 
         when(termsRepository.findActiveRequiredByReferenceTime(any(LocalDateTime.class)))
@@ -114,7 +114,7 @@ class TermsUserServiceTest {
                 true
         );
     
-        when(termsRepository.findAllById(any()))
+        when(termsRepository.findByTermTypeNames(any()))
                 .thenReturn(List.of(outroTermo));
     
         // existe um termo obrigatório vigente
@@ -142,7 +142,7 @@ class TermsUserServiceTest {
         TermTypeEntity requiredType = termType(UUID.randomUUID(), "TERMS_OF_USE", true);
         TermsEntity requiredTerm = term(UUID.randomUUID(), requiredType, 1, "conteudo", true);
 
-        when(termsRepository.findAllById(any()))
+        when(termsRepository.findByTermTypeNames(any()))
                 .thenReturn(List.of(requiredTerm));
 
         when(termsRepository.findActiveRequiredByReferenceTime(any(LocalDateTime.class)))
@@ -184,7 +184,7 @@ class TermsUserServiceTest {
     void revogarTermos_deveFalharQuandoTermoNaoExistir() {
         String termoName = "Termo1";
 
-        when(termsRepository.findAllById(any()))
+        when(termsRepository.findByTermTypeNames(any()))
                 .thenReturn(List.of());
 
         assertThrows(
@@ -202,7 +202,7 @@ class TermsUserServiceTest {
         TermTypeEntity optionalType = termType(UUID.randomUUID(), "MARKETING_COMMUNICATION", false);
         TermsEntity optionalTerm = term(UUID.randomUUID(), optionalType, 1, "conteudo", false);
 
-        when(termsRepository.findAllById(any()))
+        when(termsRepository.findByTermTypeNames(any()))
                 .thenReturn(List.of(optionalTerm));
 
         when(termsRepository.findActiveByReferenceTime(any(LocalDateTime.class)))
@@ -224,7 +224,7 @@ class TermsUserServiceTest {
         TermTypeEntity requiredType = termType(UUID.randomUUID(), "TERMS_OF_USE", true);
         TermsEntity requiredTerm = term(UUID.randomUUID(), requiredType, 1, "conteudo", true);
 
-        when(termsRepository.findAllById(any()))
+        when(termsRepository.findByTermTypeNames(any()))
                 .thenReturn(List.of(requiredTerm));
 
         when(termsRepository.findActiveByReferenceTime(any(LocalDateTime.class)))
@@ -249,7 +249,7 @@ class TermsUserServiceTest {
         TermTypeEntity optionalType = termType(UUID.randomUUID(), "MARKETING_COMMUNICATION", false);
         TermsEntity optionalTerm = term(UUID.randomUUID(), optionalType, 1, "conteudo", false);
 
-        when(termsRepository.findAllById(any()))
+        when(termsRepository.findByTermTypeNames(any()))
                 .thenReturn(List.of(optionalTerm));
 
         when(termsRepository.findActiveByReferenceTime(any(LocalDateTime.class)))
@@ -284,7 +284,7 @@ class TermsUserServiceTest {
     void registrarCienciaTermos_deveFalharQuandoTermoNaoExistir() {
         String termoName = "Termo1";
 
-        when(termsRepository.findAllById(any()))
+        when(termsRepository.findByTermTypeNames(any()))
                 .thenReturn(List.of());
 
         assertThrows(
@@ -302,7 +302,7 @@ class TermsUserServiceTest {
         TermTypeEntity optionalType = termType(UUID.randomUUID(), "MARKETING_COMMUNICATION", false);
         TermsEntity optionalTerm = term(UUID.randomUUID(), optionalType, 1, "conteudo", false);
 
-        when(termsRepository.findAllById(any()))
+        when(termsRepository.findByTermTypeNames(any()))
                 .thenReturn(List.of(optionalTerm));
 
         when(termsRepository.findActiveByReferenceTime(any(LocalDateTime.class)))
@@ -324,7 +324,7 @@ class TermsUserServiceTest {
         TermTypeEntity requiredType = termType(UUID.randomUUID(), "TERMS_OF_USE", true);
         TermsEntity requiredTerm = term(UUID.randomUUID(), requiredType, 1, "conteudo", true);
 
-        when(termsRepository.findAllById(any()))
+        when(termsRepository.findByTermTypeNames(any()))
                 .thenReturn(List.of(requiredTerm));
 
         when(termsRepository.findActiveByReferenceTime(any(LocalDateTime.class)))
@@ -349,7 +349,7 @@ class TermsUserServiceTest {
         TermTypeEntity optionalType = termType(UUID.randomUUID(), "MARKETING_COMMUNICATION", false);
         TermsEntity optionalTerm = term(UUID.randomUUID(), optionalType, 1, "conteudo", false);
 
-        when(termsRepository.findAllById(any()))
+        when(termsRepository.findByTermTypeNames(any()))
                 .thenReturn(List.of(optionalTerm));
 
         when(termsRepository.findActiveByReferenceTime(any(LocalDateTime.class)))

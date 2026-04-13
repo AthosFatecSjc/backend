@@ -74,15 +74,16 @@ public class UserPrivacyAnonymizationService {
         registryRepository.save(registry);
 
         logService.log(
-                actorRef,
-                userId.toString(),
-                SourceType.SYSTEM,
-                LogEvent.USER_ANONYMIZED,
-                ResultType.SUCCESS,
-                LogCategory.AUDIT,
-                "Anonimizacao registrada com protecao contra reativacao por restore.",
-                "reason=" + sanitizeMetadata(reason) + ";strategyVersion=" + STRATEGY_VERSION,
-                MODULE_NAME
+            actorRef,
+            userId.toString(),
+            SourceType.SYSTEM,
+            LogEvent.USER_ANONYMIZED,
+            ResultType.SUCCESS,
+            LogCategory.AUDIT,
+            "Anonimizacao registrada com protecao contra reativacao por restore.",
+            String.format("{\"reason\":%s,\"strategyVersion\":%d}",
+                reason == null ? "null" : '"' + reason.replace("\"", "'") + '"', STRATEGY_VERSION),
+            MODULE_NAME
         );
     }
 
@@ -105,7 +106,7 @@ public class UserPrivacyAnonymizationService {
             appUserRepository.save(user);
             registry.setLastReappliedAt(now);
 
-            logService.log(
+                logService.log(
                     "system",
                     registry.getEntityId().toString(),
                     SourceType.JOB,
@@ -113,9 +114,9 @@ public class UserPrivacyAnonymizationService {
                     ResultType.SUCCESS,
                     LogCategory.TECHNICAL,
                     "Anonimizacao reaplicada apos reconciliacao de restore.",
-                    "strategyVersion=" + registry.getStrategyVersion(),
+                    String.format("{\"strategyVersion\":%d}", registry.getStrategyVersion()),
                     MODULE_NAME
-            );
+                );
         }
 
         registry.setLastReconciledAt(now);
@@ -157,7 +158,5 @@ public class UserPrivacyAnonymizationService {
                 && email.startsWith("u");
     }
 
-    private String sanitizeMetadata(String value) {
-        return value == null ? "" : value.replace(";", ",");
-    }
+
 }
