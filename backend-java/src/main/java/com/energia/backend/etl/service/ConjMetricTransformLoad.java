@@ -68,7 +68,6 @@ public class ConjMetricTransformLoad {
 
                 LocalDate dataColeta = LocalDate.now();
             
-                // CONJUNTO
                 Conjunto conjunto = conjuntoRepository
                 .findByIdeConjUndConsumidoras(ideConjUndConsumidoras)
                 .orElse(null);
@@ -103,7 +102,6 @@ public class ConjMetricTransformLoad {
                     coletaDadosRepository.save(coleta);
                 }
                 
-                // INDICADOR
                 IndicadorType tipo = IndicadorType.valueOf(
                     sigIndicador.trim().toUpperCase()
                 );
@@ -112,7 +110,6 @@ public class ConjMetricTransformLoad {
                 .findByIndicadorType(tipo)
                 .orElseThrow();
                 
-                // MÉTRICAS (COM MÉDIA)
                 Optional<Metricas> opt = metricasRepository
                     .findByConjuntoAndSigIndicadorAndNumPeriodoIndiceAndAnoIndice(
                         conjunto, indicador, numPeriodoIndice, anoIndice

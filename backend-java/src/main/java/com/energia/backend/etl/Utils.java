@@ -85,7 +85,7 @@ public class Utils {
         if (raw == null || raw.isBlank()) return null;
 
         String normalizado = Normalizer.normalize(raw, Normalizer.Form.NFD)
-                .replaceAll("\\p{InCombiningDiacriticalMarks}+", "") // remove acentos
+                .replaceAll("\\p{InCombiningDiacriticalMarks}+", "") 
                 .toUpperCase()
                 .trim();
 

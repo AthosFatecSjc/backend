@@ -15,7 +15,6 @@ public class LimitesImport {
     public String importar() throws UnsupportedEncodingException {
         String url = "https://dadosabertos.aneel.gov.br/dataset/d5f0712e-62f6-4736-8dff-9991f10758a7/resource/fd69e1dd-fd66-4269-b60c-cc0b7eb221b4/download/indicadores-continuidade-coletivos-limite.csv";
                  
-        // Chamada HTTP
         RestTemplate restTemplate = new RestTemplate();
         String response = restTemplate.getForObject(url, String.class);
 
