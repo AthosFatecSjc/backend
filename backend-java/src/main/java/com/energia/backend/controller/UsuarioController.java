@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.energia.backend.dto.AlterarRoleUsuarioRequest;
 import com.energia.backend.dto.AnonimizarUsuarioRequest;
 import com.energia.backend.dto.AnonimizarUsuarioResponse;
 import com.energia.backend.dto.AprovacaoRejeicaoUsuarioRequest;
@@ -37,6 +38,7 @@ import com.energia.backend.service.AnonimizacaoService;
 import com.energia.backend.service.MinhaContaService;
 import com.energia.backend.service.TermsService;
 import com.energia.backend.service.UsuarioCadastroService;
+import com.energia.backend.service.UserRoleService;
 import com.energia.backend.mapper.user.AppUserMapper;
 
 import jakarta.validation.Valid;
@@ -54,6 +56,7 @@ public class UsuarioController {
     private final TermsService termsService;
     private final AppUserJpaRepository appUserRepository;
     private final AppUserMapper appUserMapper;
+    private final UserRoleService userRoleService;
 
     public UsuarioController(
             UsuarioCadastroService cadastroService,
@@ -61,7 +64,8 @@ public class UsuarioController {
             AnonimizacaoService anonimizacaoService,
             TermsService termsService,
             AppUserJpaRepository appUserRepository,
-            AppUserMapper appUserMapper
+            AppUserMapper appUserMapper,
+            UserRoleService userRoleService
     ) {
         this.cadastroService = cadastroService;
         this.minhaContaService = minhaContaService;
@@ -69,6 +73,7 @@ public class UsuarioController {
         this.termsService = termsService;
         this.appUserRepository = appUserRepository;
         this.appUserMapper = appUserMapper;
+        this.userRoleService = userRoleService;
     }
 
     @PatchMapping("/{id}/status")
@@ -81,6 +86,18 @@ public class UsuarioController {
         UUID adminId = obterUid(principal);
         cadastroService.alterarStatusUsuario(usuarioId, adminId, request.getStatus(), request.getMotivo());
         return ResponseEntity.ok("Status do usuario atualizado com sucesso.");
+    }
+
+    @PatchMapping("/{id}/role")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<String> alterarRoleUsuario(
+            @PathVariable("id") UUID usuarioId,
+            @RequestBody AlterarRoleUsuarioRequest request,
+            Principal principal
+    ) {
+        UUID adminId = obterUid(principal);
+        userRoleService.alterarRoleUsuario(usuarioId, adminId, request.getRoleName());
+        return ResponseEntity.ok("Role do usuario atualizado com sucesso.");
     }
 
     @PostMapping(
