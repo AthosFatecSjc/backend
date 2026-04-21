@@ -22,6 +22,7 @@ import com.energia.backend.exception.UsuarioNaoEncontradoException;
 import com.energia.backend.repository.AppUserJpaRepository;
 import com.energia.backend.service.AnonimizacaoService;
 import com.energia.backend.service.TermsService;
+import com.energia.backend.service.UserRoleService;
 
 class UsuarioControllerAnonimizacaoTest {
 
@@ -35,6 +36,7 @@ class UsuarioControllerAnonimizacaoTest {
         TermsService termsService = mock(TermsService.class);
         AppUserJpaRepository appUserRepository = mock(AppUserJpaRepository.class);
         AppUserMapper appUserMapper = mock(AppUserMapper.class);
+        UserRoleService userRoleService = mock(UserRoleService.class);
 
         UsuarioController controller = new UsuarioController(
                 cadastroService,
@@ -42,7 +44,8 @@ class UsuarioControllerAnonimizacaoTest {
                 anonimizacaoService,
                 termsService,
                 appUserRepository,
-                appUserMapper
+                appUserMapper,
+                userRoleService
         );
 
         UUID adminId = UUID.randomUUID();
@@ -77,6 +80,7 @@ class UsuarioControllerAnonimizacaoTest {
         TermsService termsService = mock(TermsService.class);
         AppUserJpaRepository appUserRepository = mock(AppUserJpaRepository.class);
         AppUserMapper appUserMapper = mock(AppUserMapper.class);
+        UserRoleService userRoleService = mock(UserRoleService.class);
 
         UsuarioController controller = new UsuarioController(
                 cadastroService,
@@ -84,7 +88,8 @@ class UsuarioControllerAnonimizacaoTest {
                 anonimizacaoService,
                 termsService,
                 appUserRepository,
-                appUserMapper
+                appUserMapper,
+                userRoleService
         );
 
         UUID userId = UUID.randomUUID();
@@ -110,6 +115,7 @@ class UsuarioControllerAnonimizacaoTest {
         TermsService termsService = mock(TermsService.class);
         AppUserJpaRepository appUserRepository = mock(AppUserJpaRepository.class);
         AppUserMapper appUserMapper = mock(AppUserMapper.class);
+        UserRoleService userRoleService = mock(UserRoleService.class);
 
         UsuarioController controller = new UsuarioController(
                 cadastroService,
@@ -117,7 +123,8 @@ class UsuarioControllerAnonimizacaoTest {
                 anonimizacaoService,
                 termsService,
                 appUserRepository,
-                appUserMapper
+                appUserMapper,
+                userRoleService
         );
 
         UUID adminId = UUID.randomUUID();
@@ -143,6 +150,7 @@ class UsuarioControllerAnonimizacaoTest {
         TermsService termsService = mock(TermsService.class);
         AppUserJpaRepository appUserRepository = mock(AppUserJpaRepository.class);
         AppUserMapper appUserMapper = mock(AppUserMapper.class);
+        UserRoleService userRoleService = mock(UserRoleService.class);
 
         UsuarioController controller = new UsuarioController(
                 cadastroService,
@@ -150,7 +158,8 @@ class UsuarioControllerAnonimizacaoTest {
                 anonimizacaoService,
                 termsService,
                 appUserRepository,
-                appUserMapper
+                appUserMapper,
+                userRoleService
         );
 
         UUID adminId = UUID.randomUUID();
