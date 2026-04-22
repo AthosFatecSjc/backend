@@ -14,6 +14,7 @@ import com.energia.backend.etl.service.ConjuntoMetricasImport;
 import com.energia.backend.etl.LimitesCsvParser.LimiteFiltrado;
 import com.energia.backend.etl.service.ConjMetricTransformLoad;
 import com.energia.backend.etl.service.AnelExtractionLoggingService;
+import com.energia.backend.etl.exception.DuplicatesDetectedException;
 
 @Configuration
 public class EtlRunner {
@@ -53,24 +54,10 @@ public class EtlRunner {
                     List<String> cnpjs = List.of("97578090000134");
                     String json = conjService.importar(cnpjs);
                     conjTransformService.processarJson(json);
+                } catch (DuplicatesDetectedException e) {
+                    loggingService.logExtractionFailDuplicata(e.getCount());
                 } catch (Exception e) {
-                    String msg = e.getMessage() != null ? e.getMessage() : "";
-
-                    if (msg.contains("duplicatas ignoradas")) {
-
-                        try {
-                            String[] parts = msg.split("duplicatas ignoradas");
-                            if (parts.length > 0) {
-                                String numStr = parts[0].replaceAll("[^0-9]", "");
-                                int numDuplicas = Integer.parseInt(numStr);
-                                loggingService.logExtractionFailDuplicata(numDuplicas);
-                            }
-                        } catch (Exception ex) {
-                            loggingService.addError("Erro ao processar métricas de conjunto (duplicatas): " + msg);
-                        }
-                    } else {
-                        loggingService.addError("Erro ao processar métricas de conjunto: " + msg);
-                    }
+                    loggingService.addError("Erro ao processar métricas de conjunto: " + e.getMessage());
                 }
 
                 try {
