@@ -3,6 +3,7 @@ package com.energia.backend.etl.service;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import java.util.ArrayList;
 
 import java.util.Optional;
 
@@ -15,6 +16,7 @@ import com.energia.backend.model.aneel.IndicadorType;
 import com.energia.backend.model.aneel.Metricas;
 import com.energia.backend.model.aneel.SigIndicador;
 import com.energia.backend.model.aneel.DataKey;
+import com.energia.backend.etl.exception.DuplicatesDetectedException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.energia.backend.repository.aneel.ColetaDadosRepository;
 import com.energia.backend.repository.aneel.ConjuntoRepository;
@@ -36,120 +38,123 @@ public class ConjMetricTransformLoad {
     private final DistribuidoraRepository distribuidoraRepository;
     private final SigIndicadorRepository sigIndicadorRepository;
 
-    @Transactional
-    public void processarJson(String json) {
-        try {
-            ObjectMapper mapper = new ObjectMapper();
-        
-            Map<String, Object> response = mapper.readValue(json, Map.class);
-        
-            Map<String, Object> result = (Map<String, Object>) response.get("result");
-        
-            List<Map<String, Object>> registros =
-                    (List<Map<String, Object>>) result.get("records");
+    @Transactional(dontRollbackOn = DuplicatesDetectedException.class)
+    public void processarJson(String json) throws com.fasterxml.jackson.core.JsonProcessingException {
+        ObjectMapper mapper = new ObjectMapper();
 
-            for (Map<String, Object> row : registros) {
-            
-                Long ideConjUndConsumidoras = Long.valueOf(row.get("IdeConjUndConsumidoras").toString());
-                String dscConjUndConsumidoras = row.get("DscConjUndConsumidoras").toString();
-                String numCnpj = row.get("NumCNPJ").toString().replaceAll("[^0-9]", "");
-                
-                String sigIndicador = row.get("SigIndicador").toString();
-                Long numPeriodoIndice = Long.valueOf(row.get("NumPeriodoIndice").toString());
-                Long anoIndice = Long.valueOf(row.get("AnoIndice").toString());
-                Double vlrIndiceEnviado = Double.valueOf(
-                    row.get("VlrIndiceEnviado")
-                       .toString()
-                       .replace(",", ".")
-                );
-                LocalDate dataGeracaoConjDados = LocalDate.parse(
-                    row.get("DatGeracaoConjuntoDados").toString()
-                );
+        Map<String, Object> response = mapper.readValue(json, Map.class);
 
-                LocalDate dataColeta = LocalDate.now();
-            
-                Conjunto conjunto = conjuntoRepository
-                .findByIdeConjUndConsumidoras(ideConjUndConsumidoras)
-                .orElse(null);
-            
-                boolean created = false;
-            
-                if (conjunto == null) {
+        Map<String, Object> result = (Map<String, Object>) response.get("result");
 
-            
-                    Distribuidora dist = distribuidoraRepository
-                        .findByNumCnpj(numCnpj)
-                        .orElseThrow();
-                    
-                    conjunto = new Conjunto();
-                    conjunto.setIdeConjUndConsumidoras(ideConjUndConsumidoras);
-                    conjunto.setDscConjUndConsumidoras(dscConjUndConsumidoras);
-                    conjunto.setDistribuidora(dist);
-                    
-                    conjunto = conjuntoRepository.save(conjunto);
-                    
-                    created = true;
-                }
+        List<Map<String, Object>> registros =
+                (List<Map<String, Object>>) result.get("records");
 
-                if (created) {
-                    ColetaDados coleta = new ColetaDados();
-                    coleta.setDataColeta(dataColeta);
-                    coleta.setDataGeracao(dataGeracaoConjDados);
-                    coleta.setDataKey(DataKey.CONJUNTO);
-                    coleta.setIdData(conjunto.getId());
-                    coleta.setLink("https://dadosabertos.aneel.gov.br/dataset/indicadores-coletivos-de-continuidade-dec-e-fec");
+        List<String> errosDuplicatas = new ArrayList<>();
 
-                    coletaDadosRepository.save(coleta);
-                }
-                
-                IndicadorType tipo = IndicadorType.valueOf(
-                    sigIndicador.trim().toUpperCase()
-                );
+        for (Map<String, Object> row : registros) {
 
-                SigIndicador indicador = sigIndicadorRepository
-                .findByIndicadorType(tipo)
-                .orElseThrow();
-                
-                Optional<Metricas> opt = metricasRepository
-                    .findByConjuntoAndSigIndicadorAndNumPeriodoIndiceAndAnoIndice(
-                        conjunto, indicador, numPeriodoIndice, anoIndice
-                    );
-                
-                if (!opt.isPresent()) {
-                    Metricas metricaNova = new Metricas();
-                    metricaNova.setConjunto(conjunto);
-                    metricaNova.setSigIndicador(indicador);
-                    metricaNova.setNumPeriodoIndice(numPeriodoIndice);
-                    metricaNova.setAnoIndice(anoIndice);
-                    metricaNova.setDataGeracaoConjDados(dataGeracaoConjDados);
-                    metricaNova.setVlrIndiceEnviado(vlrIndiceEnviado);
-                
-                    metricasRepository.save(metricaNova);
-                    ColetaDados coleta = new ColetaDados();
-                    coleta.setDataColeta(dataColeta);
-                    coleta.setDataGeracao(dataGeracaoConjDados);
-                    coleta.setDataKey(DataKey.METRICAS);
-                    coleta.setIdData(metricaNova.getId());
-                    coleta.setLink("https://dadosabertos.aneel.gov.br/dataset/indicadores-coletivos-de-continuidade-dec-e-fec");
+            Long ideConjUndConsumidoras = Long.valueOf(row.get("IdeConjUndConsumidoras").toString());
+            String dscConjUndConsumidoras = row.get("DscConjUndConsumidoras").toString();
+            String numCnpj = row.get("NumCNPJ").toString().replaceAll("[^0-9]", "");
 
-                    coletaDadosRepository.save(coleta);
-                
-                } else {
-                
-                    throw new RuntimeException(
-                        String.format(
-                            "Métrica já existe para Conjunto %d, Indicador %s, Período %d, Ano %d",
-                            conjunto.getId(),
-                            indicador.getIndicadorType(),
-                            numPeriodoIndice,
-                            anoIndice
-                        )
-                    );
-                }
+            String sigIndicador = row.get("SigIndicador").toString();
+            Long numPeriodoIndice = Long.valueOf(row.get("NumPeriodoIndice").toString());
+            Long anoIndice = Long.valueOf(row.get("AnoIndice").toString());
+            Double vlrIndiceEnviado = Double.valueOf(
+                row.get("VlrIndiceEnviado")
+                   .toString()
+                   .replace(",", ".")
+            );
+            LocalDate dataGeracaoConjDados = LocalDate.parse(
+                row.get("DatGeracaoConjuntoDados").toString()
+            );
+
+            LocalDate dataColeta = LocalDate.now();
+
+            Conjunto conjunto = conjuntoRepository
+            .findByIdeConjUndConsumidoras(ideConjUndConsumidoras)
+            .orElse(null);
+
+            boolean created = false;
+
+            if (conjunto == null) {
+
+
+                Distribuidora dist = distribuidoraRepository
+                    .findByNumCnpj(numCnpj)
+                    .orElseThrow();
+
+                conjunto = new Conjunto();
+                conjunto.setIdeConjUndConsumidoras(ideConjUndConsumidoras);
+                conjunto.setDscConjUndConsumidoras(dscConjUndConsumidoras);
+                conjunto.setDistribuidora(dist);
+
+                conjunto = conjuntoRepository.save(conjunto);
+
+                created = true;
             }
-        
-        } catch (Exception e) {
-            e.printStackTrace();
+
+            if (created) {
+                ColetaDados coleta = new ColetaDados();
+                coleta.setDataColeta(dataColeta);
+                coleta.setDataGeracao(dataGeracaoConjDados);
+                coleta.setDataKey(DataKey.CONJUNTO);
+                coleta.setIdData(conjunto.getId());
+                coleta.setLink("https://dadosabertos.aneel.gov.br/dataset/indicadores-coletivos-de-continuidade-dec-e-fec");
+
+                coletaDadosRepository.save(coleta);
+            }
+
+            IndicadorType tipo = IndicadorType.valueOf(
+                sigIndicador.trim().toUpperCase()
+            );
+
+            SigIndicador indicador = sigIndicadorRepository
+            .findByIndicadorType(tipo)
+            .orElseThrow();
+
+            Optional<Metricas> opt = metricasRepository
+                .findByConjuntoAndSigIndicadorAndNumPeriodoIndiceAndAnoIndice(
+                    conjunto, indicador, numPeriodoIndice, anoIndice
+                );
+
+            if (!opt.isPresent()) {
+                Metricas metricaNova = new Metricas();
+                metricaNova.setConjunto(conjunto);
+                metricaNova.setSigIndicador(indicador);
+                metricaNova.setNumPeriodoIndice(numPeriodoIndice);
+                metricaNova.setAnoIndice(anoIndice);
+                metricaNova.setDataGeracaoConjDados(dataGeracaoConjDados);
+                metricaNova.setVlrIndiceEnviado(vlrIndiceEnviado);
+
+                metricasRepository.save(metricaNova);
+                ColetaDados coleta = new ColetaDados();
+                coleta.setDataColeta(dataColeta);
+                coleta.setDataGeracao(dataGeracaoConjDados);
+                coleta.setDataKey(DataKey.METRICAS);
+                coleta.setIdData(metricaNova.getId());
+                coleta.setLink("https://dadosabertos.aneel.gov.br/dataset/indicadores-coletivos-de-continuidade-dec-e-fec");
+
+                coletaDadosRepository.save(coleta);
+
+            } else {
+                // Registra duplicata mas continua processando
+                String msgDuplicata = String.format(
+                    "Métrica duplicada pulada - Conjunto %d, Indicador %s, Período %d, Ano %d",
+                    conjunto.getId(),
+                    indicador.getIndicadorType(),
+                    numPeriodoIndice,
+                    anoIndice
+                );
+                errosDuplicatas.add(msgDuplicata);
+            }
+        }
+
+        if (!errosDuplicatas.isEmpty()) {
+            throw new DuplicatesDetectedException(
+                errosDuplicatas.size(),
+                String.join("; ", errosDuplicatas)
+            );
         }
     }
     
