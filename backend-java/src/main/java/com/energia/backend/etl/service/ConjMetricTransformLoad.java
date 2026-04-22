@@ -16,6 +16,7 @@ import com.energia.backend.model.aneel.IndicadorType;
 import com.energia.backend.model.aneel.Metricas;
 import com.energia.backend.model.aneel.SigIndicador;
 import com.energia.backend.model.aneel.DataKey;
+import com.energia.backend.etl.exception.DuplicatesDetectedException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.energia.backend.repository.aneel.ColetaDadosRepository;
 import com.energia.backend.repository.aneel.ConjuntoRepository;
@@ -150,12 +151,9 @@ public class ConjMetricTransformLoad {
         }
 
         if (!errosDuplicatas.isEmpty()) {
-            throw new RuntimeException(
-                String.format(
-                    "Processamento concluído com %d duplicatas ignoradas: %s",
-                    errosDuplicatas.size(),
-                    String.join("; ", errosDuplicatas)
-                )
+            throw new DuplicatesDetectedException(
+                errosDuplicatas.size(),
+                String.join("; ", errosDuplicatas)
             );
         }
     }
