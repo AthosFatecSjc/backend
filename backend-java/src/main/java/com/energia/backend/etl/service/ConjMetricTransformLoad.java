@@ -38,7 +38,7 @@ public class ConjMetricTransformLoad {
     private final DistribuidoraRepository distribuidoraRepository;
     private final SigIndicadorRepository sigIndicadorRepository;
 
-    @Transactional
+    @Transactional(dontRollbackOn = DuplicatesDetectedException.class)
     public void processarJson(String json) throws com.fasterxml.jackson.core.JsonProcessingException {
         ObjectMapper mapper = new ObjectMapper();
 
