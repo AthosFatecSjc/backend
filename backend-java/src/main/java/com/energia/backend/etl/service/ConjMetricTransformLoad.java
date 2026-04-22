@@ -49,7 +49,6 @@ public class ConjMetricTransformLoad {
                 (List<Map<String, Object>>) result.get("records");
 
         List<String> errosDuplicatas = new ArrayList<>();
-        int sucessosProcessados = 0;
 
         for (Map<String, Object> row : registros) {
 
@@ -136,7 +135,6 @@ public class ConjMetricTransformLoad {
                 coleta.setLink("https://dadosabertos.aneel.gov.br/dataset/indicadores-coletivos-de-continuidade-dec-e-fec");
 
                 coletaDadosRepository.save(coleta);
-                sucessosProcessados++;
 
             } else {
                 // Registra duplicata mas continua processando
