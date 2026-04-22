@@ -8,6 +8,7 @@ import java.util.Optional;
 
 import com.energia.backend.model.aneel.*;
 import com.energia.backend.repository.aneel.*;
+import com.energia.backend.etl.exception.DuplicatesDetectedException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -61,7 +62,7 @@ class ConjMetricTransformLoadTest {
     }
 
     @Test
-    void deveLancarExcecaoQuandoEncontraDuplicata() throws com.fasterxml.jackson.core.JsonProcessingException {
+    void deveLancarExcecaoQuandoEncontraDuplicata() {
         String json = createValidJson(1);
 
         Distribuidora distribuidora = createMockDistribuidora();
@@ -75,12 +76,11 @@ class ConjMetricTransformLoadTest {
                 conjunto, indicador, 1L, 2024L
         )).thenReturn(Optional.of(metricaExistente));
 
-        RuntimeException exception = assertThrows(RuntimeException.class, () -> {
+        DuplicatesDetectedException exception = assertThrows(DuplicatesDetectedException.class, () -> {
             service.processarJson(json);
         });
 
-        assertTrue(exception.getMessage().contains("duplicatas ignoradas"));
-        assertTrue(exception.getMessage().contains("1"));
+        assertEquals(1, exception.getCount());
     }
 
     @Test
@@ -98,11 +98,11 @@ class ConjMetricTransformLoadTest {
                 any(), any(), anyLong(), anyLong()
         )).thenReturn(Optional.of(metricaExistente));
 
-        RuntimeException exception = assertThrows(RuntimeException.class, () -> {
+        DuplicatesDetectedException exception = assertThrows(DuplicatesDetectedException.class, () -> {
             service.processarJson(json);
         });
 
-        assertTrue(exception.getMessage().contains("duplicatas ignoradas"));
+        assertEquals(2, exception.getCount());
     }
 
     @Test
