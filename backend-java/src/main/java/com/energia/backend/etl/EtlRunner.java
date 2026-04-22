@@ -14,7 +14,7 @@ import com.energia.backend.etl.service.LimitesTransformLoad;
 import com.energia.backend.etl.service.ConjuntoMetricasImport;
 import com.energia.backend.etl.LimitesCsvParser.LimiteFiltrado;
 import com.energia.backend.etl.service.ConjMetricTransformLoad;
-import com.energia.backend.etl.service.AnelExtractionLoggingService;
+import com.energia.backend.etl.service.AneelExtractionLoggingService;
 import com.energia.backend.etl.exception.DuplicatesDetectedException;
 
 @Configuration
@@ -27,7 +27,7 @@ public class EtlRunner {
         LimitesImport limService,
         LimitesTransformLoad limitesTransformLoad,
         ConjMetricTransformLoad conjTransformService,
-        AnelExtractionLoggingService loggingService){
+        AneelExtractionLoggingService loggingService){
         return args -> {
             if (Arrays.stream(args).noneMatch(arg -> arg.equalsIgnoreCase("etl"))) {
                 System.out.println("ARGS: " + Arrays.toString(args));

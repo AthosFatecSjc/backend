@@ -6,15 +6,15 @@ import com.energia.backend.service.LogService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-class AnelExtractionLoggingServiceTest {
+class AneelExtractionLoggingServiceTest {
 
     private LogService logService;
-    private AnelExtractionLoggingService service;
+    private AneelExtractionLoggingService service;
 
     @BeforeEach
     void setup() {
         logService = mock(LogService.class);
-        service = new AnelExtractionLoggingService(logService);
+        service = new AneelExtractionLoggingService(logService);
     }
 
     @Test

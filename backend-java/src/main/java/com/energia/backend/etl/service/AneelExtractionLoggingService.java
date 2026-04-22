@@ -8,12 +8,12 @@ import com.energia.backend.service.LogService;
 import org.springframework.stereotype.Service;
 
 @Service
-public class AnelExtractionLoggingService {
+public class AneelExtractionLoggingService {
 
     private static final String MODULE_NAME = "aneel-etl";
     private final LogService logService;
 
-    public AnelExtractionLoggingService(LogService logService) {
+    public AneelExtractionLoggingService(LogService logService) {
         this.logService = logService;
     }
 
