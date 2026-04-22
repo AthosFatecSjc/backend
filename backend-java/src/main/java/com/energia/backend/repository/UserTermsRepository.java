@@ -2,6 +2,7 @@ package com.energia.backend.repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -32,4 +33,9 @@ public interface UserTermsRepository extends JpaRepository<UserTermsEntity, UUID
         order by ut.actionAt desc
     """)
     List<UserTermsEntity> findHistoryByUserId(@Param("userId") UUID userId);
+
+    Optional<UserTermsEntity> findTopByUserAndTermsIdOrderByActionAtDesc(
+        AppUserEntity user,
+        UUID termsId
+    );
 }

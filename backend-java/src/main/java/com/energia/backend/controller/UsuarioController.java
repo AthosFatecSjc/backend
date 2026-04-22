@@ -26,7 +26,7 @@ import com.energia.backend.dto.HistoricoTermoResponse;
 import com.energia.backend.dto.MinhaContaResponse;
 import com.energia.backend.dto.MinhaContaUpdateRequest;
 import com.energia.backend.dto.RegistrarTermosRequest;
-import com.energia.backend.dto.TermosPendentesResponse;
+import com.energia.backend.dto.TermosResponse;
 import com.energia.backend.dto.UsuarioCadastroRequest;
 import com.energia.backend.dto.UsuarioCadastroResponse;
 import com.energia.backend.exception.UsuarioNaoEncontradoException;
@@ -134,12 +134,18 @@ public class UsuarioController {
 
     @GetMapping("/meus-termos/historico")
     public ResponseEntity<List<HistoricoTermoResponse>> listarHistoricoTermos(Principal principal) {
-        return ResponseEntity.ok(termsService.listarHistorico(obterUid(principal)));
+        return ResponseEntity.ok(termsUserService.listarHistorico(obterUid(principal)));
     }
 
     @GetMapping("/meus-termos/pendentes")
-    public ResponseEntity<List<TermosPendentesResponse>> listarTermosPendentes(Principal principal) {
-        return ResponseEntity.ok(termsService.listarPendenciasDeAcesso(obterUid(principal)));
+    public ResponseEntity<List<TermosResponse>> listarTermosPendentes(Principal principal) {
+        List<TermosResponse> termosResponses = termsUserService
+            .listarTermosPendentes(obterUid(principal), false)
+            .stream()
+            .map(termsService::toTermosResponse)
+            .toList();
+
+    return ResponseEntity.ok(termosResponses);
     }
 
     @PostMapping("/meus-termos/aceites")
@@ -148,19 +154,19 @@ public class UsuarioController {
             @RequestBody RegistrarTermosRequest request,
             HttpServletRequest httpRequest) {
         termsUserService.aprovarTermos(
-                request.getTermsNames(),
+                request.getTermsIds(),
                 obterUsuario(principal));
         return ResponseEntity.noContent().build();
     }
 
-    @PostMapping("/meus-termos/{termName}/revogacao")
+    @PostMapping("/meus-termos/revogacao")
     public ResponseEntity<Void> revogarTermoOpcional(
             Principal principal,
-            @PathVariable String termName,
+            @RequestBody RegistrarTermosRequest request,
             HttpServletRequest httpRequest) {
         termsUserService.revogarTermos(
-                List.of(termName),
-                obterUsuario(principal));
+            request.getTermsIds(),
+            obterUsuario(principal));
         return ResponseEntity.noContent().build();
     }
 

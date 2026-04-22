@@ -137,7 +137,6 @@ class UsuarioControllerTest {
                 request.setNomeCompleto("Novo Usuario");
                 request.setEmail("novo@teste.com");
                 request.setSenha("SenhaFuerte123");
-                request.setTermsNames(List.of("Termo1", "Termo2"));
 
                 ResponseEntity<UsuarioCadastroResponse> response = controller.cadastrar(request, httpRequest);
 

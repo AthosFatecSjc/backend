@@ -2,10 +2,9 @@ package com.energia.backend.dto;
 
 import java.util.UUID;
 
-public record TermosPendentesResponse(
+public record TermosResponse(
         UUID termId,
-        String type,
-        Integer version,
+        String typeName,
         boolean required
 ) {
 }

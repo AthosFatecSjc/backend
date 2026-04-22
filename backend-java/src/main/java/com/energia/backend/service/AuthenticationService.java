@@ -1,5 +1,6 @@
 package com.energia.backend.service;
 
+import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -16,7 +17,8 @@ import org.springframework.transaction.annotation.Transactional;
 import com.energia.backend.dto.LoginRequest;
 import com.energia.backend.dto.LoginResponse;
 import com.energia.backend.dto.ResolverPendenciasTermosLoginRequest;
-import com.energia.backend.dto.TermosPendentesResponse;
+import com.energia.backend.dto.TermosResponse;
+import com.energia.backend.exception.DocumentosObrigatoriosNaoConfiguradosException;
 import com.energia.backend.exception.LoginAuthenticationException;
 import com.energia.backend.model.AppUserEntity;
 import com.energia.backend.model.StatusUsuario;
@@ -62,9 +64,12 @@ public class AuthenticationService {
 
         AppUserEntity user = autenticarCredenciais(request.getEmail(), request.getSenha());
         validarStatusParaAcesso(user);
-        List<TermosPendentesResponse> pendingTerms = termsService.listarPendenciasDeAcesso(user.getId());
-        validarPendenciasDeTermos(pendingTerms);
 
+        if (!termsUserService.checkRequiredTerms(null, user, LocalDateTime.now())) {
+            throw new DocumentosObrigatoriosNaoConfiguradosException(
+                    "Existem termos obrigatórios pendentes de aceite");
+        }
+       
         return gerarRespostaDeLogin(user);
     }
 
@@ -77,8 +82,8 @@ public class AuthenticationService {
         AppUserEntity user = autenticarCredenciais(request.getEmail(), request.getSenha());
         validarStatusParaAcesso(user);
         termsUserService.aprovarTermos(
-                Stream.concat(request.getRequiredTermsNames().stream(),
-                        request.getOptionalAcceptedTermsNames().stream()).collect(Collectors.toList()),
+                Stream.concat(request.getRequiredTermsIds().stream(),
+                        request.getOptionalAcceptedTermsIds().stream()).collect(Collectors.toList()),
                 user);
         return gerarRespostaDeLogin(user);
     }
@@ -145,21 +150,6 @@ public class AuthenticationService {
 
         String token = generateTokenWithRoles(user.getId(), user.getEmail(), user.getName(), roles);
         return new LoginResponse(token, user.getId(), user.getEmail(), user.getName());
-    }
-
-    private void validarPendenciasDeTermos(List<TermosPendentesResponse> pendingTerms) {
-        if (pendingTerms.isEmpty()) {
-            return;
-        }
-
-        throw new LoginAuthenticationException(
-                "Usuario deve revisar e aceitar os termos mais recentes antes de acessar a plataforma",
-                "TERMS_REVIEW_REQUIRED",
-                HttpStatus.FORBIDDEN.value(),
-                "LATEST_TERMS_PENDING",
-                Map.of(
-                        "redirect", "/consentimentos-pendentes",
-                        "pendingTerms", pendingTerms));
     }
 
     private void validarRequest(LoginRequest request) {

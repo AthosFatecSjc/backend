@@ -1,12 +1,13 @@
 package com.energia.backend.dto;
 
 import java.util.List;
+import java.util.UUID;
 
 public class ResolverPendenciasTermosLoginRequest {
     private String email;
     private String senha;
-    private List<String> requiredTermsNames;
-    private List<String> optionalAcceptedTermsNames;
+    private List<UUID> requiredTermsIds;
+    private List<UUID> optionalAcceptedTermsIds;
 
     public String getEmail() {
         return email;
@@ -24,19 +25,19 @@ public class ResolverPendenciasTermosLoginRequest {
         this.senha = senha;
     }
 
-    public List<String> getRequiredTermsNames() {
-        return requiredTermsNames;
+    public List<UUID> getRequiredTermsIds() {
+        return requiredTermsIds;
     }
 
-    public void setRequiredTermsNames(List<String> requiredTermsNames) {
-        this.requiredTermsNames = requiredTermsNames;
+    public void setRequiredTermsIds(List<UUID> requiredTermsIds) {
+        this.requiredTermsIds = requiredTermsIds;
     }
 
-    public List<String> getOptionalAcceptedTermsNames() {
-        return optionalAcceptedTermsNames;
+    public List<UUID> getOptionalAcceptedTermsIds() {
+        return optionalAcceptedTermsIds;
     }
 
-    public void setOptionalAcceptedTermsNames(List<String> optionalAcceptedTermsNames) {
-        this.optionalAcceptedTermsNames = optionalAcceptedTermsNames;
+    public void setOptionalAcceptedTermsNames(List<UUID> optionalAcceptedTermsIds) {
+        this.optionalAcceptedTermsIds = optionalAcceptedTermsIds;
     }
 }

@@ -1,15 +1,16 @@
 package com.energia.backend.dto;
 
 import java.util.List;
+import java.util.UUID;
 
 public class RegistrarTermosRequest {
-    private List<String> termsNames;
+    private List<UUID> termsIds;
 
-    public List<String> getTermsNames() {
-        return termsNames;
+    public List<UUID> getTermsIds() {
+        return termsIds;
     }
 
-    public void setTermsNames(List<String> termsNames) {
-        this.termsNames = termsNames;
+    public void setTermsIds(List<UUID> termsIds) {
+        this.termsIds = termsIds;
     }
 }

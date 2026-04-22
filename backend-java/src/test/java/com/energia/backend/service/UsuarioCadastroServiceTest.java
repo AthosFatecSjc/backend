@@ -82,14 +82,15 @@ class UsuarioCadastroServiceTest {
                 userStatusService,
                 passwordEncoder,
                 jpaUsuarioCadastroRepository,
-                roleJpaRepository);
+                roleJpaRepository,
+                userStatusRepository);
 
         UsuarioCadastroRequest request = new UsuarioCadastroRequest();
         request.setNomeCompleto("Maria Silva");
         request.setEmail("  MARIA@TESTE.COM ");
         request.setSenha("SenhaFuerte123");
         request.setTelefone(" 11999998888 ");
-        request.setTermsNames(List.of("TERMS_OF_USE", "PRIVACY_POLICY"));
+        request.setTermsIds(List.of(UUID.randomUUID(), UUID.randomUUID()));
 
         AppUserEntity registeredUser = service.cadastrar(request);
 
@@ -136,14 +137,15 @@ class UsuarioCadastroServiceTest {
                 userStatusService,
                 passwordEncoder,
                 jpaUsuarioCadastroRepository,
-                roleJpaRepository);
+                roleJpaRepository,
+                userStatusRepository);
 
         UsuarioCadastroRequest request = new UsuarioCadastroRequest();
         request.setNomeCompleto("Joao");
         request.setEmail("DUPLICADO@TESTE.COM");
         request.setSenha("SenhaFuerte123");
-        request.setTermsNames(List.of("TERMS_OF_USE", "PRIVACY_POLICY"));
-
+        request.setTermsIds(List.of(UUID.randomUUID(), UUID.randomUUID()));
+        
         EmailJaCadastradoException exception = assertThrows(
                 EmailJaCadastradoException.class,
                 () -> service.cadastrar(request));

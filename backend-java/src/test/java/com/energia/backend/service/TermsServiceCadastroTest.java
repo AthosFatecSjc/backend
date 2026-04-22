@@ -2,9 +2,9 @@ package com.energia.backend.service;
 
 import com.energia.backend.dto.TermoRequest;
 import com.energia.backend.model.TermTypeEntity;
+import com.energia.backend.model.TermTypeName;
 import com.energia.backend.model.TermsEntity;
 import com.energia.backend.repository.TermTypeRepository;
-import com.energia.backend.repository.TermsJpaRepository;
 import com.energia.backend.repository.TermsRepository;
 import com.energia.backend.repository.UserTermsRepository;
 
@@ -16,150 +16,132 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 class TermsServiceCadastroTest {
 
-    private TermsRepository termsRepository;
-    private TermsJpaRepository termsJpaRepository;
-    private TermTypeRepository termTypeRepository;
-    private UserTermsRepository userTermsRepository;
-    private TermsService service;
+        private TermsRepository termsRepository;
+        private TermTypeRepository termTypeRepository;
+        private UserTermsRepository userTermsRepository;
+        private TermsService service;
 
-    @BeforeEach
-    void setUp() {
-        termsRepository = mock(TermsRepository.class);
-        termsJpaRepository = mock(TermsJpaRepository.class);
-        termTypeRepository = mock(TermTypeRepository.class);
-        userTermsRepository = mock(UserTermsRepository.class);
+        @BeforeEach
+        void setUp() {
+                termsRepository = mock(TermsRepository.class);
+                termTypeRepository = mock(TermTypeRepository.class);
+                userTermsRepository = mock(UserTermsRepository.class);
 
-        service = new TermsService(
-            termsRepository,
-            termsJpaRepository,
-            termTypeRepository,
-            userTermsRepository
-        );
-    }
+                service = new TermsService(
+                                termsRepository,
+                                termTypeRepository,
+                                userTermsRepository);
+        }
 
-    @Test
-    void deveCriarPrimeiraVersaoQuandoNaoExisteAnterior() {
+        @Test
+        void deveCriarPrimeiroTermoQuandoNaoExisteNenhum() {
 
-        TermoRequest request = new TermoRequest();
-        request.setTermTypeName("TERMS_OF_USE");
-        request.setContent("conteudo");
+                TermoRequest request = new TermoRequest();
+                request.setTermTypeName("TERMS_OF_USE");
+                request.setContent("conteudo");
 
-        TermTypeEntity type = new TermTypeEntity();
-        type.setId(UUID.randomUUID());
-        type.setName("TERMS_OF_USE");
+                TermTypeEntity type = new TermTypeEntity();
+                type.setId(UUID.randomUUID());
+                type.setName(TermTypeName.TERMS_OF_USE);
 
-        when(termTypeRepository.findByNameIgnoreCase("TERMS_OF_USE"))
-                .thenReturn(Optional.of(type));
+                when(termTypeRepository.findByName(TermTypeName.TERMS_OF_USE))
+                                .thenReturn(Optional.of(type));
 
-        when(termsJpaRepository.findMaxVersionByTermType(type.getId()))
-                .thenReturn(null);
+                when(termsRepository.findMaxClauseByTermType(type.getId()))
+                                .thenReturn(0); 
 
-        when(termsRepository.save(any()))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+                when(termsRepository.save(any()))
+                                .thenAnswer(invocation -> invocation.getArgument(0));
 
-        TermsEntity result = service.cadastrarNovoTermo(request);
+                TermsEntity result = service.cadastrarNovoTermo(request);
 
-        assertEquals(1, result.getVersion());
-        assertTrue(result.getIsActive());
-        assertNotNull(result.getEffectivityStartAt());
+                assertEquals(1, result.getClause());
+                assertEquals("conteudo", result.getContent());
+                assertEquals(type, result.getTermType());
+                assertNotNull(result.getEffectivityStartAt());
+                assertNull(result.getEffectivityEndAt());
 
-        verify(termsJpaRepository).deactivateByType(type.getId());
-        verify(termsRepository).save(any());
-    }
+                verify(termsRepository).save(any());
+        }
 
-    @Test
-    void deveIncrementarVersaoQuandoJaExisteVersaoAnterior() {
+        @Test
+        void deveIncrementarClauseQuandoJaExiste() {
 
-        TermoRequest request = new TermoRequest();
-        request.setTermTypeName("PRIVACY_POLICY");
-        request.setContent("conteudo");
+                TermoRequest request = new TermoRequest();
+                request.setTermTypeName("PRIVACY_POLICY");
+                request.setContent("conteudo");
 
-        TermTypeEntity type = new TermTypeEntity();
-        type.setId(UUID.randomUUID());
+                TermTypeEntity type = new TermTypeEntity();
+                type.setId(UUID.randomUUID());
+                type.setName(TermTypeName.PRIVACY_POLICY);
 
-        when(termTypeRepository.findByNameIgnoreCase("PRIVACY_POLICY"))
-                .thenReturn(Optional.of(type));
+                when(termTypeRepository.findByName(TermTypeName.PRIVACY_POLICY))
+                                .thenReturn(Optional.of(type));
 
-        when(termsJpaRepository.findMaxVersionByTermType(type.getId()))
-                .thenReturn(3);
+                when(termsRepository.findMaxClauseByTermType(type.getId()))
+                                .thenReturn(3);
 
-        when(termsRepository.save(any()))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+                when(termsRepository.save(any()))
+                                .thenAnswer(invocation -> invocation.getArgument(0));
 
-        TermsEntity result = service.cadastrarNovoTermo(request);
+                TermsEntity result = service.cadastrarNovoTermo(request);
 
-        assertEquals(4, result.getVersion());
-    }
+                assertEquals(4, result.getClause());
+        }
 
-    @Test
-    void deveFalharQuandoTipoNaoExiste() {
+        @Test
+        void deveUsarEffectivityStartAtDoRequestQuandoInformado() {
 
-        TermoRequest request = new TermoRequest();
-        request.setTermTypeName("NAO_EXISTE");
+                LocalDateTime inicio = LocalDateTime.now().minusDays(10);
 
-        when(termTypeRepository.findByNameIgnoreCase("NAO_EXISTE"))
-                .thenReturn(Optional.empty());
+                TermoRequest request = new TermoRequest();
+                request.setTermTypeName("TERMS_OF_USE");
+                request.setContent("conteudo");
+                request.setEffectivityStartAt(inicio);
 
-        RuntimeException exception = assertThrows(
-                RuntimeException.class,
-                () -> service.cadastrarNovoTermo(request)
-        );
+                TermTypeEntity type = new TermTypeEntity();
+                type.setId(UUID.randomUUID());
 
-        assertEquals(
-                "Tipo de termo não encontrado: NAO_EXISTE",
-                exception.getMessage()
-        );
+                when(termTypeRepository.findByName(any()))
+                                .thenReturn(Optional.of(type));
 
-        verifyNoInteractions(termsRepository);
-        verifyNoInteractions(termsJpaRepository);
-    }
+                when(termsRepository.findMaxClauseByTermType(any()))
+                                .thenReturn(0);
 
-    @Test
-    void deveUsarEffectivityStartAtDoRequestQuandoInformado() {
+                when(termsRepository.save(any()))
+                                .thenAnswer(invocation -> invocation.getArgument(0));
 
-        LocalDateTime inicio = LocalDateTime.now().minusDays(10);
+                TermsEntity result = service.cadastrarNovoTermo(request);
 
-        TermoRequest request = new TermoRequest();
-        request.setTermTypeName("TERMS_OF_USE");
-        request.setContent("conteudo");
-        request.setEffectivityStartAt(inicio);
+                assertEquals(inicio, result.getEffectivityStartAt());
+        }
 
-        TermTypeEntity type = new TermTypeEntity();
-        type.setId(UUID.randomUUID());
+        @Test
+        void deveUsarDataAtualQuandoEffectivityNaoInformado() {
 
-        when(termTypeRepository.findByNameIgnoreCase(any()))
-                .thenReturn(Optional.of(type));
+                TermoRequest request = new TermoRequest();
+                request.setTermTypeName("TERMS_OF_USE");
+                request.setContent("conteudo");
 
-        when(termsRepository.save(any()))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+                TermTypeEntity type = new TermTypeEntity();
+                type.setId(UUID.randomUUID());
 
-        TermsEntity result = service.cadastrarNovoTermo(request);
+                when(termTypeRepository.findByName(any()))
+                                .thenReturn(Optional.of(type));
 
-        assertEquals(inicio, result.getEffectivityStartAt());
-    }
+                when(termsRepository.findMaxClauseByTermType(any()))
+                                .thenReturn(0);
 
-    @Test
-    void deveUsarDataAtualQuandoEffectivityNaoInformado() {
+                when(termsRepository.save(any()))
+                                .thenAnswer(invocation -> invocation.getArgument(0));
 
-        TermoRequest request = new TermoRequest();
-        request.setTermTypeName("TERMS_OF_USE");
-        request.setContent("conteudo");
+                TermsEntity result = service.cadastrarNovoTermo(request);
 
-        TermTypeEntity type = new TermTypeEntity();
-        type.setId(UUID.randomUUID());
-
-        when(termTypeRepository.findByNameIgnoreCase(any()))
-                .thenReturn(Optional.of(type));
-
-        when(termsRepository.save(any()))
-                .thenAnswer(invocation -> invocation.getArgument(0));
-
-        TermsEntity result = service.cadastrarNovoTermo(request);
-
-        assertNotNull(result.getEffectivityStartAt());
-    }
+                assertNotNull(result.getEffectivityStartAt());
+        }
 }

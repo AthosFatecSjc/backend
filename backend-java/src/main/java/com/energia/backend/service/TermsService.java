@@ -1,8 +1,10 @@
 package com.energia.backend.service;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -12,13 +14,15 @@ import org.springframework.transaction.annotation.Transactional;
 import com.energia.backend.dto.ConsentimentoDocumentoResponse;
 import com.energia.backend.dto.ConsentimentosVigentesResponse;
 import com.energia.backend.dto.TermoRequest;
+import com.energia.backend.dto.TermosResponse;
 import com.energia.backend.exception.DocumentosObrigatoriosNaoConfiguradosException;
+import com.energia.backend.exception.NenhumTermoPassadoException;
+import com.energia.backend.exception.TermoNaoEncontradoException;
 import com.energia.backend.model.TermTypeEntity;
+import com.energia.backend.model.TermTypeName;
 import com.energia.backend.model.TermsEntity;
 import com.energia.backend.repository.TermTypeRepository;
-import com.energia.backend.repository.TermsJpaRepository;
 import com.energia.backend.dto.HistoricoTermoResponse;
-import com.energia.backend.dto.TermosPendentesResponse;
 import com.energia.backend.model.UserTermsEntity;
 import com.energia.backend.repository.TermsRepository;
 import com.energia.backend.repository.UserTermsRepository;
@@ -31,81 +35,78 @@ public class TermsService {
     static final String MARKETING_COMMUNICATION = "MARKETING_COMMUNICATION";
 
     private final TermsRepository termsRepository;
-    private final TermsJpaRepository termsJpaRepository;
     private final TermTypeRepository termTypeRepository;
     private final UserTermsRepository userTermsRespository;
 
     public TermsService(
             TermsRepository termsRepository,
-            TermsJpaRepository termsJpaRepository,
             TermTypeRepository termTypeRepository,
             UserTermsRepository userTermsRespository) {
         this.termsRepository = termsRepository;
-        this.termsJpaRepository = termsJpaRepository;
         this.termTypeRepository = termTypeRepository;
         this.userTermsRespository = userTermsRespository;
     }
 
     @Transactional(readOnly = true)
     public ConsentimentosVigentesResponse buscarDocumentosVigentes() {
+
         LocalDateTime agora = LocalDateTime.now();
 
         List<TermsEntity> termosVigentes = termsRepository.findActiveByReferenceTime(agora);
 
-        Map<String, TermsEntity> termosPorTipo = termosVigentes.stream()
-                .collect(Collectors.toMap(
-                        t -> t.getTermType().getName().toUpperCase(),
-                        t -> t,
-                        (existing, replacement) -> existing));
+        Map<String, List<TermsEntity>> termosPorTipo = termosVigentes.stream()
+                .collect(Collectors.groupingBy(
+                        t -> t.getTermType().getName().name().toUpperCase()));
 
-        TermsEntity terms = termosPorTipo.get(TERMS_OF_USE);
-        TermsEntity privacy = termosPorTipo.get(PRIVACY_POLICY);
-        TermsEntity marketing = termosPorTipo.get(MARKETING_COMMUNICATION);
+        List<TermsEntity> terms = termosPorTipo.get(TERMS_OF_USE);
+        List<TermsEntity> privacy = termosPorTipo.get(PRIVACY_POLICY);
+        List<TermsEntity> marketing = termosPorTipo.get(MARKETING_COMMUNICATION);
 
-        // valida obrigatórios
-        if (terms == null) {
+        if (terms == null || terms.isEmpty()) {
             throw new DocumentosObrigatoriosNaoConfiguradosException(
                     "Documento obrigatorio nao configurado: " + TERMS_OF_USE);
         }
 
-        if (privacy == null) {
+        if (privacy == null || privacy.isEmpty()) {
             throw new DocumentosObrigatoriosNaoConfiguradosException(
                     "Documento obrigatorio nao configurado: " + PRIVACY_POLICY);
         }
 
         return new ConsentimentosVigentesResponse(
-                toResponse(terms),
-                toResponse(privacy),
-                marketing != null ? toResponse(marketing) : null);
+                toResponseList(terms),
+                toResponseList(privacy),
+                marketing != null ? toResponseList(marketing) : null);
     }
 
-    private ConsentimentoDocumentoResponse toResponse(TermsEntity term) {
-        return new ConsentimentoDocumentoResponse(
-                term.getId(),
-                term.getTermType().getName(),
-                term.getVersion(),
-                term.getContent(),
-                term.getTermType().getIsRequired());
+    private List<ConsentimentoDocumentoResponse> toResponseList(List<TermsEntity> terms) {
+        return terms.stream()
+                .map(term -> new ConsentimentoDocumentoResponse(
+                        term.getId(),
+                        term.getTermType().getName().name(),
+                        term.getContent(),
+                        term.getTermType().getIsRequired(),
+                        term.getClause()))
+                .toList();
     }
 
     @Transactional
     public TermsEntity cadastrarNovoTermo(TermoRequest request) {
 
         TermTypeEntity termType = termTypeRepository
-                .findByNameIgnoreCase(request.getTermTypeName())
+                .findByName(TermTypeName.valueOf(request.getTermTypeName()))
                 .orElseThrow(() -> new RuntimeException(
                         "Tipo de termo não encontrado: " + request.getTermTypeName()));
 
-        Integer maxVersion = termsJpaRepository.findMaxVersionByTermType(termType.getId());
-        int novaVersao = (maxVersion == null ? 1 : maxVersion + 1);
-
-        termsJpaRepository.deactivateByType(termType.getId());
+        Integer maxClause = termsRepository.findMaxClauseByTermType(termType.getId());
+        if(maxClause==null) {
+            maxClause = 0;
+        }
+        int novaClause = maxClause + 1;
 
         TermsEntity novoTermo = new TermsEntity();
         novoTermo.setTermType(termType);
         novoTermo.setContent(request.getContent());
-        novoTermo.setVersion(novaVersao);
-        novoTermo.setIsActive(true);
+        novoTermo.setClause(novaClause);
 
         if (request.getEffectivityStartAt() != null) {
             novoTermo.setEffectivityStartAt(request.getEffectivityStartAt());
@@ -116,60 +117,79 @@ public class TermsService {
         return termsRepository.save(novoTermo);
     }
 
-    public List<HistoricoTermoResponse> listarHistorico(UUID userId) {
-        return userTermsRespository.findHistoryByUserId(userId).stream()
-                .map(this::toHistoricoResponse)
-                .toList();
+    @Transactional
+    public TermsEntity desativarTermo(UUID termoId) {
+        TermsEntity termo = termsRepository.findById(termoId)
+                .orElseThrow(() -> new RuntimeException("Termo não encontrado: " + termoId));
+
+        if (termo.getEffectivityEndAt() != null) {
+            throw new RuntimeException("Termo já está encerrado");
+        }
+
+        termo.setEffectivityEndAt(LocalDateTime.now());
+        return termsRepository.save(termo);
     }
 
-    public List<TermosPendentesResponse> listarPendenciasDeAcesso(UUID userId) {
-        return construirPendencias(userId, carregarTermosVigentesPorTipo(false), false);
+    @Transactional
+    public TermsEntity editarTermo(UUID termoId, TermoRequest request) {
+
+        TermsEntity termoAtual = desativarTermo(termoId);
+
+        TermTypeEntity termType = termoAtual.getTermType();
+
+        TermsEntity novoTermo = new TermsEntity();
+        novoTermo.setTermType(termType);
+        novoTermo.setContent(request.getContent());
+        novoTermo.setClause(termoAtual.getClause());
+        novoTermo.setEffectivityStartAt(LocalDateTime.now());
+
+        return termsRepository.save(novoTermo);
     }
 
-    public List<TermosPendentesResponse> listarPendenciasObrigatorias(UUID userId) {
-        return construirPendencias(userId, carregarTermosVigentesPorTipo(true), true);
-    }
-
-    public boolean hasPendingRequiredTerms(UUID userId) {
-        return !listarPendenciasObrigatorias(userId).isEmpty();
-    }
-
-    public boolean hasPendingTermsForAccess(UUID userId) {
-        return !listarPendenciasDeAcesso(userId).isEmpty();
-    }
-
-    private Map<String, TermsEntity> carregarTermosVigentesPorTipo(boolean apenasObrigatorios) {
+    public Map<String, TermsEntity> carregarTermosVigentesPorTipo(boolean apenasObrigatorios) {
         List<TermsEntity> termos = apenasObrigatorios
                 ? termsRepository.findActiveRequiredByReferenceTime(LocalDateTime.now())
                 : termsRepository.findActiveByReferenceTime(LocalDateTime.now());
 
         return termos.stream()
                 .collect(Collectors.toMap(
-                        t -> t.getTermType().getName(),
-                        t -> t,
-                        this::selectHigherVersion));
+                        t -> t.getTermType().getName() + "_" + t.getClause(),
+                        t -> t));
     }
 
-    private List<TermosPendentesResponse> construirPendencias(
-            UUID userId,
-            Map<String, TermsEntity> vigentesPorTipo,
-            boolean apenasAceiteObrigatorio) {
-        return List.of();
+    public void validarTermosEnviados(List<UUID> termosIds) {
+        if (termosIds == null || termosIds.isEmpty()) {
+            throw new NenhumTermoPassadoException("Lista de termos nao pode ser vazia.");
+        }
+
+        Set<UUID> termosEnviadosIds = new HashSet<>(termosIds);
+        List<TermsEntity> termosEnviados = termsRepository.findAllById(termosEnviadosIds);
+
+        if (termosEnviados.size() != termosEnviadosIds.size()) {
+            throw new TermoNaoEncontradoException(
+                    "Um ou mais termos informados nao existem.");
+        }
+
+        Set<UUID> idsVigentes = termsRepository
+                .findActiveByReferenceTime(LocalDateTime.now())
+                .stream()
+                .map(TermsEntity::getId)
+                .collect(Collectors.toSet());
+
+        for (UUID idEnviado : termosEnviadosIds) {
+            if (!idsVigentes.contains(idEnviado)) {
+                throw new TermoNaoEncontradoException(
+                        "Termo enviado nao é vigente");
+            }
+        }
 
     }
 
-    private HistoricoTermoResponse toHistoricoResponse(UserTermsEntity item) {
-        return new HistoricoTermoResponse(
+    public TermosResponse toTermosResponse(TermsEntity item) {
+        return new TermosResponse(
                 item.getId(),
-                item.getTerms().getId(),
-                item.getTerms().getTermType().getName(),
-                item.getTerms().getVersion(),
-                item.getTerms().getTermType().getIsRequired(),
-                item.getAction().name(),
-                item.getActionAt());
+                item.getTermType().getName().name(),
+                item.getTermType().getIsRequired());
     }
 
-    private TermsEntity selectHigherVersion(TermsEntity existente, TermsEntity novo) {
-        return existente.getVersion() > novo.getVersion() ? existente : novo;
-    }
 }

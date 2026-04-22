@@ -10,6 +10,8 @@ import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 
+import com.energia.backend.dto.HistoricoTermoResponse;
+import com.energia.backend.dto.TermosResponse;
 import com.energia.backend.exception.DocumentosObrigatoriosNaoConfiguradosException;
 import com.energia.backend.exception.NenhumTermoPassadoException;
 import com.energia.backend.exception.TermoNaoEncontradoException;
@@ -19,6 +21,7 @@ import com.energia.backend.model.UserTermsAction;
 import com.energia.backend.model.UserTermsEntity;
 import com.energia.backend.repository.TermsRepository;
 import com.energia.backend.repository.UserTermsRepository;
+import com.energia.backend.repository.UsuarioRepository;
 
 import jakarta.transaction.Transactional;
 
@@ -28,112 +31,83 @@ public class TermsUserService {
 
     private final TermsRepository termsRepository;
     private final UserTermsRepository userTermsRespository;
+    private final TermsService termsService;
+    private final UsuarioRepository userRepository;
 
-    public TermsUserService(TermsRepository termsRepository, UserTermsRepository userTermsRespository) {
+    public TermsUserService(TermsRepository termsRepository,
+            UserTermsRepository userTermsRespository,
+            TermsService termsService,
+            UsuarioRepository userRepository) {
         this.termsRepository = termsRepository;
         this.userTermsRespository = userTermsRespository;
+        this.termsService = termsService;
+        this.userRepository = userRepository;
     }
 
-    public void aprovarTermos(List<String> termosNames, AppUserEntity userEntity) {
-        validarTermosEnviados(termosNames);
+    // ok
+    public void aprovarTermos(List<UUID> termosIds, AppUserEntity userEntity) {
 
-        if (!checkRequiredTerms(termosNames, userEntity, LocalDateTime.now())) {
+        LocalDateTime agora = LocalDateTime.now();
+
+        termsService.validarTermosEnviados(termosIds);
+
+        if (!checkRequiredTerms(termosIds, userEntity, agora)) {
             throw new DocumentosObrigatoriosNaoConfiguradosException(
-                "Termo obrigatorio vigente nao aceito"
-            );
+                    "Termo obrigatório está pendente de aceite");
         }
 
-        Set<String> termosEnviadosNames = new HashSet<>(termosNames);
-        List<TermsEntity> termosEnviados = termsRepository.findByTermTypeNames(termosEnviadosNames);
+        List<TermsEntity> termos = termsRepository.findAllById(termosIds);
 
-        validarTermosVigentes(termosEnviadosNames);
+        for (TermsEntity termo : termos) {
+            checarAcaoRepetida(userEntity, termo.getId(), UserTermsAction.ACCEPTED);
+        }
 
-        salvarTermos(userEntity, termosEnviados, UserTermsAction.ACCEPTED);
+        salvarTermos(userEntity, termos, UserTermsAction.ACCEPTED);
     }
 
-    public void revogarTermos(List<String> termosNames, AppUserEntity userEntity) {
-        validarTermosEnviados(termosNames);
+    // ok
+    public void revogarTermos(List<UUID> termosIds, AppUserEntity userEntity) {
 
-        Set<String> termosEnviadosNames = new HashSet<>(termosNames);
-        List<TermsEntity> termosEnviados = termsRepository.findByTermTypeNames(termosEnviadosNames);
+        termsService.validarTermosEnviados(termosIds);
 
-        validarTermosVigentes(termosEnviadosNames);
+        List<TermsEntity> termos = termsRepository.findAllById(termosIds);
 
-        for (TermsEntity termo : termosEnviados) {
+        for (TermsEntity termo : termos) {
             if (termo.getTermType().getIsRequired()) {
                 throw new IllegalStateException(
-                    "Nao é permitido revogar termo obrigatorio: "
-                    + termo.getTermType().getName()
-                );
+                        "Não é permitido recusar/revogar termo obrigatório: "
+                                + termo.getTermType().getName());
             }
+            checarAcaoRepetida(userEntity, termo.getId(), UserTermsAction.REVOKED);
         }
 
-        salvarTermos(userEntity, termosEnviados, UserTermsAction.REVOKED);
+        salvarTermos(userEntity, termos, UserTermsAction.REVOKED);
     }
 
-    public void registrarCienciaTermos(List<String> termosNames, AppUserEntity userEntity) {
-        validarTermosEnviados(termosNames);
+    // ok
+    public void registrarCienciaTermos(List<UUID> termosIds, AppUserEntity userEntity) {
 
-        Set<String> termosEnviadosNames = new HashSet<>(termosNames);
-        List<TermsEntity> termosEnviados = termsRepository.findByTermTypeNames(termosEnviadosNames);
+        termsService.validarTermosEnviados(termosIds);
 
-        validarTermosVigentes(termosEnviadosNames);
+        List<TermsEntity> termos = termsRepository.findAllById(termosIds);
 
-        for (TermsEntity termo : termosEnviados) {
+        for (TermsEntity termo : termos) {
             if (termo.getTermType().getIsRequired()) {
                 throw new IllegalStateException(
-                    "Termo obrigatorio deve ser aceito: "
-                    + termo.getTermType().getName()
-                );
+                        "Termo obrigatorio deve ser aceito: "
+                                + termo.getTermType().getName());
             }
+            checarAcaoRepetida(userEntity, termo.getId(), UserTermsAction.ACKNOWLEDGED);
         }
 
-        salvarTermos(userEntity, termosEnviados, UserTermsAction.ACKNOWLEDGED);
+        salvarTermos(userEntity, termos, UserTermsAction.ACKNOWLEDGED);
     }
 
-    private void validarTermosEnviados(List<String> termosNames) {
-        if (termosNames == null || termosNames.isEmpty()) {
-            throw new NenhumTermoPassadoException("Lista de termos nao pode ser vazia.");
-        }
-
-        Set<String> termosEnviadosNames = new HashSet<>(termosNames);
-        List<TermsEntity> termosEnviados = termsRepository.findByTermTypeNames(termosEnviadosNames);
-
-        if (termosEnviados.size() != termosEnviadosNames.size()) {
-            throw new TermoNaoEncontradoException(
-                "Um ou mais termos informados nao existem."
-            );
-        }
-    }
-
-    private void validarTermosVigentes(Set<String> termosEnviadosNames) {
-        Set<String> namesVigentes = termsRepository
-            .findActiveByReferenceTime(LocalDateTime.now())
-            .stream()
-            .collect(Collectors.toMap(
-                t -> t.getTermType().getName(),
-                t -> t,
-                (existente, novo) -> existente.getVersion() > novo.getVersion() ? existente : novo
-            ))
-            .values()
-            .stream()
-            .map(term -> term.getTermType().getName())
-            .collect(Collectors.toSet());
-
-        for (String nameEnviado : termosEnviadosNames) {
-            if (!namesVigentes.contains(nameEnviado)) {
-                throw new TermoNaoEncontradoException(
-                    "Termo enviado nao é vigente: " + nameEnviado
-                );
-            }
-        }
-    }
-
+    // OK
     private void salvarTermos(
-        AppUserEntity userEntity,
-        List<TermsEntity> termosEnviados,
-        UserTermsAction action
-    ) {
+            AppUserEntity userEntity,
+            List<TermsEntity> termosEnviados,
+            UserTermsAction action) {
         try {
             for (TermsEntity termo : termosEnviados) {
                 UserTermsEntity userTerms = new UserTermsEntity();
@@ -149,68 +123,134 @@ public class TermsUserService {
         }
     }
 
-    public Boolean checkRequiredTerms(List<String> termosNames, AppUserEntity user, LocalDateTime referenceTime) {
-        // return true;
+    // ok
+    public Boolean checkRequiredTerms(List<UUID> aceitosIds, AppUserEntity user, LocalDateTime referenceTime) {
 
-        Set<String> aceitos = (termosNames == null)
-            ? new HashSet<>()
-            : new HashSet<>(termosNames);
+        Set<UUID> aceitos = (aceitosIds == null)
+                ? new HashSet<>()
+                : new HashSet<>(aceitosIds);
 
-        List<String> obrigatoriosNames = termsRepository
-            .findActiveRequiredByReferenceTime(referenceTime)
-            .stream()
-            .map(term -> term.getTermType().getName())
-            .toList();
+        List<TermsEntity> obrigatorios = termsRepository
+                .findActiveRequiredByReferenceTime(referenceTime);
+
+        Set<UUID> obrigatoriosIds = obrigatorios.stream()
+                .map(TermsEntity::getId)
+                .collect(Collectors.toSet());
 
         if (user != null) {
-            List<UserTermsEntity> activeUserTerms = findActiveUserTermsAtTime (
-                user,
-                referenceTime
-            );
+            List<UserTermsEntity> activeUserTerms = findAcceptedUserTermsAtTime(
+                    user,
+                    referenceTime);
             for (UserTermsEntity userTerm : activeUserTerms) {
-                String termName = userTerm.getTerms().getTermType().getName();
+                UUID termId = userTerm.getTerms().getId();
 
-                if (obrigatoriosNames.contains(termName)) {
-                    aceitos.add(termName);
+                if (obrigatoriosIds.contains(termId)) {
+                    aceitos.add(termId);
                 }
             }
         }
 
-        boolean isMissing = obrigatoriosNames.stream()
-            .anyMatch(name -> !aceitos.contains(name));
-
-        // throw new Error(
-        //     "| enviados: " + aceitos + " | obrigatorios: " + obrigatoriosNames
-        // );
-
-        return !isMissing;
+        return aceitos.containsAll(obrigatoriosIds);
     }
 
-    public List<UserTermsEntity> findActiveUserTermsAtTime(
-        AppUserEntity user,
-        LocalDateTime referenceTime
-    ) {
+    // ok
+    public List<UserTermsEntity> findAcceptedUserTermsAtTime(
+            AppUserEntity user,
+            LocalDateTime referenceTime) {
+
         List<TermsEntity> termosVigentes = termsRepository.findActiveByReferenceTime(referenceTime);
 
         Set<UUID> termosVigentesIds = termosVigentes.stream()
-            .map(TermsEntity::getId)
-            .collect(Collectors.toSet());
+                .map(TermsEntity::getId)
+                .collect(Collectors.toSet());
 
         List<UserTermsEntity> historico = userTermsRespository
-            .findByUserAndActionAtLessThanEqual(user, referenceTime);
+                .findByUserAndActionAtLessThanEqual(user, referenceTime);
 
-        Map<UUID, UserTermsEntity> ultimaAcaoPorTermo = historico
-            .stream()
-            .filter(ut -> termosVigentesIds.contains(ut.getTerms().getId()))
-            .collect(Collectors.toMap(
-                ut -> ut.getTerms().getTermType().getId(),
-                ut -> ut,
-                (a, b) -> a.getActionAt().isAfter(b.getActionAt()) ? a : b
-            ));
+        Map<String, UserTermsEntity> ultimaAcaoPorTermo = historico
+                .stream()
+                .filter(ut -> termosVigentesIds.contains(ut.getTerms().getId()))
+                .collect(Collectors.toMap(
+                        ut -> buildKey(ut),
+                        ut -> ut,
+                        (a, b) -> a.getActionAt().isAfter(b.getActionAt()) ? a : b));
 
         return ultimaAcaoPorTermo.values()
-        .stream().filter(ut -> ut.getAction() == UserTermsAction.ACCEPTED)
-        .toList();
+                .stream()
+                .filter(ut -> ut.getAction() == UserTermsAction.ACCEPTED)
+                .toList();
+    }
+
+    // ok
+    private void checarAcaoRepetida(AppUserEntity user, UUID termId, UserTermsAction action) {
+        userTermsRespository.findTopByUserAndTermsIdOrderByActionAtDesc(user, termId)
+                .ifPresent(ut -> {
+                    if (ut.getAction() == action) {
+                        throw new IllegalStateException("Ação entre usuário e termo já existe: " + action);
+                    }
+                });
+    }
+
+    // ok
+    private String buildKey(UserTermsEntity ut) {
+        return ut.getTerms().getTermType().getId() + "_" + ut.getTerms().getClause();
+    }
+
+    public List<HistoricoTermoResponse> listarHistorico(UUID userId) {
+        return userTermsRespository.findHistoryByUserId(userId).stream()
+                .map(this::toHistoricoResponse)
+                .toList();
+    }
+
+    // ok
+    public List<TermsEntity> listarTermosPendentes(UUID userId, Boolean apenasObrigatorios) {
+        AppUserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found: " + userId));
+
+        Set<UUID> termosAceitosIds = findAcceptedUserTermsAtTime(user, LocalDateTime.now())
+                .stream()
+                .map(ut -> ut.getTerms().getId())
+                .collect(Collectors.toSet());
+
+        List<TermsEntity> termosVigentes = (apenasObrigatorios
+                ? termsRepository.findActiveRequiredByReferenceTime(LocalDateTime.now())
+                : termsRepository.findActiveByReferenceTime(LocalDateTime.now()));
+
+        return termosVigentes.stream()
+                .filter(t -> !termosAceitosIds.contains(t.getId()))
+                .toList();
+
+    }
+
+    // public List<TermosResponse> listarPendenciasObrigatorias(UUID userId) {
+    // return construirPendencias(userId, carregarTermosVigentesPorTipo(true),
+    // true);
+    // }
+
+    // public boolean hasPendingRequiredTerms(UUID userId) {
+    // return !listarPendenciasObrigatorias(userId).isEmpty();
+    // }
+
+    // public boolean hasPendingTermsForAccess(UUID userId) {
+    // return !listarPendenciasDeAcesso(userId).isEmpty();
+    // }
+
+    // private List<TermosPendentesResponse> construirPendencias(
+    // UUID userId,
+    // boolean apenasAceiteObrigatorio) {
+
+    // return List.of();
+
+    // }
+
+    private HistoricoTermoResponse toHistoricoResponse(UserTermsEntity item) {
+        return new HistoricoTermoResponse(
+                item.getId(),
+                item.getTerms().getId(),
+                item.getTerms().getTermType().getName().name(),
+                item.getTerms().getTermType().getIsRequired(),
+                item.getAction().name(),
+                item.getActionAt());
     }
 
 

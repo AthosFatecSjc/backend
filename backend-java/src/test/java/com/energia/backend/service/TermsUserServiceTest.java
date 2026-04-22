@@ -5,11 +5,15 @@ import com.energia.backend.exception.NenhumTermoPassadoException;
 import com.energia.backend.exception.TermoNaoEncontradoException;
 import com.energia.backend.model.AppUserEntity;
 import com.energia.backend.model.TermTypeEntity;
+import com.energia.backend.model.TermTypeName;
 import com.energia.backend.model.TermsEntity;
 import com.energia.backend.model.UserTermsAction;
 import com.energia.backend.model.UserTermsEntity;
+import com.energia.backend.repository.TermTypeRepository;
 import com.energia.backend.repository.TermsRepository;
 import com.energia.backend.repository.UserTermsRepository;
+import com.energia.backend.repository.UsuarioRepository;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -25,508 +29,533 @@ import static org.mockito.Mockito.*;
 
 class TermsUserServiceTest {
 
-    private TermsRepository termsRepository;
-    private UserTermsRepository userTermsRespository;
-    private TermsUserService service;
-
-    @BeforeEach
-    void setUp() {
-        termsRepository = mock(TermsRepository.class);
-        userTermsRespository = mock(UserTermsRepository.class);
-        service = new TermsUserService(termsRepository, userTermsRespository);
-    }
-
-    @Test
-    void aprovarTermos_deveFalharQuandoListaForNulaOuVazia() {
-        AppUserEntity user = new AppUserEntity();
-
-        assertThrows(NenhumTermoPassadoException.class,
-                () -> service.aprovarTermos(null, user));
-
-        assertThrows(NenhumTermoPassadoException.class,
-                () -> service.aprovarTermos(List.of(), user));
-
-        verifyNoInteractions(termsRepository);
-        verifyNoInteractions(userTermsRespository);
-    }
-
-    @Test
-    void aprovarTermos_deveFalharQuandoAlgumTermoNaoExistir() {
-        String termoName = "Termo1";
-
-        when(termsRepository.findByTermTypeNames(any()))
-                .thenReturn(List.of());
-
-        TermoNaoEncontradoException exception = assertThrows(
-                TermoNaoEncontradoException.class,
-                () -> service.aprovarTermos(List.of(termoName), new AppUserEntity())
-        );
-
-        assertTrue(exception.getMessage().startsWith("Um ou mais termos informados nao existem."));
-        verify(userTermsRespository, never()).save(any());
-    }
-
-    @Test
-    void aprovarTermos_deveFalharQuandoTermoEnviadoNaoForVigente() {
-        AppUserEntity user = new AppUserEntity();
-
-        TermTypeEntity requiredType = termType(UUID.randomUUID(), "TERMS_OF_USE", true);
-        TermsEntity requiredTerm = term(UUID.randomUUID(), requiredType, 1, "conteudo", true);
-
-        TermTypeEntity optionalType = termType(UUID.randomUUID(), "PRIVACY_POLICY", false);
-        TermsEntity notActiveTerm = term(UUID.randomUUID(), optionalType, 1, "outro", true);
-
-        when(termsRepository.findByTermTypeNames(any()))
-                .thenReturn(List.of(requiredTerm, notActiveTerm));
-
-        when(termsRepository.findActiveRequiredByReferenceTime(any(LocalDateTime.class)))
-                .thenReturn(List.of(requiredTerm));
-
-        when(termsRepository.findActiveByReferenceTime(any(LocalDateTime.class)))
-                .thenReturn(List.of(requiredTerm));
-
-        when(userTermsRespository.findByUserAndActionAtLessThanEqual(eq(user), any(LocalDateTime.class)))
-                .thenReturn(List.of());
-
-        TermoNaoEncontradoException exception = assertThrows(
-                TermoNaoEncontradoException.class,
-                () -> service.aprovarTermos(List.of(requiredTerm.getTermType().getName(), notActiveTerm.getTermType().getName()), user)
-        );
-
-        assertEquals("Termo enviado nao é vigente: " + notActiveTerm.getTermType().getName(), exception.getMessage());
-        verify(userTermsRespository, never()).save(any());
-    }
-
-    @Test
-    void aprovarTermos_deveFalharQuandoTermoObrigatorioNaoFoiAceito() {
-    
-        AppUserEntity user = new AppUserEntity();
-    
-        TermTypeEntity requiredType = termType(UUID.randomUUID(), "TERMS_OF_USE", true);
-        TermsEntity requiredTerm = term(UUID.randomUUID(), requiredType, 1, "conteudo", true);
-    
-        // usuário NÃO envia o obrigatório
-        TermsEntity outroTermo = term(
-                UUID.randomUUID(),
-                termType(UUID.randomUUID(), "PRIVACY_POLICY", false),
-                1,
-                "outro",
-                true
-        );
-    
-        when(termsRepository.findByTermTypeNames(any()))
-                .thenReturn(List.of(outroTermo));
-    
-        // existe um termo obrigatório vigente
-        when(termsRepository.findActiveRequiredByReferenceTime(any(LocalDateTime.class)))
-                .thenReturn(List.of(requiredTerm));
-    
-        when(termsRepository.findActiveByReferenceTime(any(LocalDateTime.class)))
-                .thenReturn(List.of(requiredTerm, outroTermo));
-    
-        when(userTermsRespository.findByUserAndActionAtLessThanEqual(eq(user), any(LocalDateTime.class)))
-                .thenReturn(List.of());
-    
-        DocumentosObrigatoriosNaoConfiguradosException exception = assertThrows(
-                DocumentosObrigatoriosNaoConfiguradosException.class,
-                () -> service.aprovarTermos(List.of(outroTermo.getTermType().getName()), user)
-        );
-    
-        assertEquals("Termo obrigatorio vigente nao aceito", exception.getMessage());
-        verify(userTermsRespository, never()).save(any());
-    }
-    @Test
-    void aprovarTermos_deveSalvarQuandoTudoEstiverCorreto() {
-        AppUserEntity user = new AppUserEntity();
-
-        TermTypeEntity requiredType = termType(UUID.randomUUID(), "TERMS_OF_USE", true);
-        TermsEntity requiredTerm = term(UUID.randomUUID(), requiredType, 1, "conteudo", true);
-
-        when(termsRepository.findByTermTypeNames(any()))
-                .thenReturn(List.of(requiredTerm));
-
-        when(termsRepository.findActiveRequiredByReferenceTime(any(LocalDateTime.class)))
-                .thenReturn(List.of(requiredTerm));
-
-        when(termsRepository.findActiveByReferenceTime(any(LocalDateTime.class)))
-                .thenReturn(List.of(requiredTerm));
-
-        when(userTermsRespository.findByUserAndActionAtLessThanEqual(eq(user), any(LocalDateTime.class)))
-                .thenReturn(List.of());
+        private TermsRepository termsRepository;
+        private UserTermsRepository userTermsRepository;
+        private UsuarioRepository userRepository;
+        private TermsService termsService;
+        private TermsUserService termsUserService;
+
+        @BeforeEach
+        void setUp() {
+                termsRepository = mock(TermsRepository.class);
+                userTermsRepository = mock(UserTermsRepository.class);
+                userRepository = mock(UsuarioRepository.class);
+                termsService = new TermsService(
+                                termsRepository,
+                                mock(TermTypeRepository.class),
+                                userTermsRepository);
+                termsUserService = new TermsUserService(
+                                termsRepository,
+                                userTermsRepository,
+                                termsService,
+                                userRepository);
+        }
+
+        @Test
+        void aprovarTermos_deveFalharQuandoListaForNulaOuVazia() {
+                AppUserEntity user = new AppUserEntity();
+
+                assertThrows(NenhumTermoPassadoException.class,
+                                () -> termsUserService.aprovarTermos(null, user));
+
+                assertThrows(NenhumTermoPassadoException.class,
+                                () -> termsUserService.aprovarTermos(List.of(), user));
+
+                verifyNoInteractions(termsRepository);
+                verifyNoInteractions(userTermsRepository);
+        }
+
+        @Test
+        void aprovarTermos_deveFalharQuandoAlgumTermoNaoExistir() {
+                UUID termoId = UUID.randomUUID();
 
-        service.aprovarTermos(List.of(requiredTerm.getTermType().getName()), user);
+                when(termsRepository.findAllById(any()))
+                                .thenReturn(List.of());
 
-        ArgumentCaptor<UserTermsEntity> captor = ArgumentCaptor.forClass(UserTermsEntity.class);
-        verify(userTermsRespository, times(1)).save(captor.capture());
+                TermoNaoEncontradoException exception = assertThrows(
+                                TermoNaoEncontradoException.class,
+                                () -> termsUserService.aprovarTermos(List.of(termoId), new AppUserEntity()));
 
-        UserTermsEntity saved = captor.getValue();
-        assertEquals(user, saved.getUser());
-        assertEquals(requiredTerm, saved.getTerms());
-        assertEquals(UserTermsAction.ACCEPTED, saved.getAction());
-        assertNotNull(saved.getActionAt());
-    }
+                assertTrue(exception.getMessage().startsWith("Um ou mais termos informados nao existem."));
+                verify(userTermsRepository, never()).save(any());
+        }
 
-    @Test
-    void revogarTermos_deveFalharQuandoListaForNulaOuVazia() {
-        AppUserEntity user = new AppUserEntity();
+        @Test
+        void aprovarTermos_deveFalharQuandoTermoEnviadoNaoForVigente() {
+                AppUserEntity user = new AppUserEntity();
 
-        assertThrows(NenhumTermoPassadoException.class,
-                () -> service.revogarTermos(null, user));
+                TermTypeEntity requiredType = termType(UUID.randomUUID(), "TERMS_OF_USE", true);
+                TermsEntity requiredTerm = term(UUID.randomUUID(), requiredType, 1, "conteudo", true);
 
-        assertThrows(NenhumTermoPassadoException.class,
-                () -> service.revogarTermos(List.of(), user));
+                TermTypeEntity optionalType = termType(UUID.randomUUID(), "PRIVACY_POLICY", false);
+                TermsEntity notActiveTerm = term(UUID.randomUUID(), optionalType, 1, "outro", true);
 
-        verifyNoInteractions(termsRepository);
-        verifyNoInteractions(userTermsRespository);
-    }
+                when(termsRepository.findByTermTypeNames(any()))
+                                .thenReturn(List.of(requiredTerm, notActiveTerm));
 
-    @Test
-    void revogarTermos_deveFalharQuandoTermoNaoExistir() {
-        String termoName = "Termo1";
+                when(termsRepository.findActiveRequiredByReferenceTime(any(LocalDateTime.class)))
+                                .thenReturn(List.of(requiredTerm));
 
-        when(termsRepository.findByTermTypeNames(any()))
-                .thenReturn(List.of());
+                when(termsRepository.findActiveByReferenceTime(any(LocalDateTime.class)))
+                                .thenReturn(List.of(requiredTerm));
 
-        assertThrows(
-                TermoNaoEncontradoException.class,
-                () -> service.revogarTermos(List.of(termoName), new AppUserEntity())
-        );
+                when(userTermsRepository.findByUserAndActionAtLessThanEqual(eq(user), any(LocalDateTime.class)))
+                                .thenReturn(List.of());
 
-        verify(userTermsRespository, never()).save(any());
-    }
+                when(termsRepository.findAllById(any()))
+                                .thenReturn(List.of(requiredTerm, notActiveTerm));
 
-    @Test
-    void revogarTermos_deveFalharQuandoTermoNaoForVigente() {
-        AppUserEntity user = new AppUserEntity();
+                TermoNaoEncontradoException exception = assertThrows(
+                                TermoNaoEncontradoException.class,
+                                () -> termsUserService.aprovarTermos(
+                                                List.of(requiredTerm.getId(), notActiveTerm.getId()), user));
 
-        TermTypeEntity optionalType = termType(UUID.randomUUID(), "MARKETING_COMMUNICATION", false);
-        TermsEntity optionalTerm = term(UUID.randomUUID(), optionalType, 1, "conteudo", false);
+                assertEquals("Termo enviado nao é vigente",
+                                exception.getMessage());
+                verify(userTermsRepository, never()).save(any());
+        }
 
-        when(termsRepository.findByTermTypeNames(any()))
-                .thenReturn(List.of(optionalTerm));
+        @Test
+        void aprovarTermos_deveFalharQuandoTermoObrigatorioNaoFoiAceito() {
 
-        when(termsRepository.findActiveByReferenceTime(any(LocalDateTime.class)))
-                .thenReturn(List.of());
+                AppUserEntity user = new AppUserEntity();
 
-        TermoNaoEncontradoException exception = assertThrows(
-                TermoNaoEncontradoException.class,
-                () -> service.revogarTermos(List.of(optionalTerm.getTermType().getName()), user)
-        );
+                TermTypeEntity requiredType = termType(UUID.randomUUID(), "TERMS_OF_USE", true);
+                TermsEntity requiredTerm = term(UUID.randomUUID(), requiredType, 1, "conteudo", true);
 
-        assertEquals("Termo enviado nao é vigente: " + optionalTerm.getTermType().getName(), exception.getMessage());
-        verify(userTermsRespository, never()).save(any());
-    }
+                // usuário NÃO envia o obrigatório
+                TermsEntity outroTermo = term(
+                                UUID.randomUUID(),
+                                termType(UUID.randomUUID(), "PRIVACY_POLICY", false),
+                                1,
+                                "outro",
+                                true);
 
-    @Test
-    void revogarTermos_deveFalharQuandoTermoForObrigatorio() {
-        AppUserEntity user = new AppUserEntity();
+                when(termsRepository.findByTermTypeNames(any()))
+                                .thenReturn(List.of(outroTermo));
 
-        TermTypeEntity requiredType = termType(UUID.randomUUID(), "TERMS_OF_USE", true);
-        TermsEntity requiredTerm = term(UUID.randomUUID(), requiredType, 1, "conteudo", true);
+                // existe um termo obrigatório vigente
+                when(termsRepository.findActiveRequiredByReferenceTime(any(LocalDateTime.class)))
+                                .thenReturn(List.of(requiredTerm));
 
-        when(termsRepository.findByTermTypeNames(any()))
-                .thenReturn(List.of(requiredTerm));
+                when(termsRepository.findActiveByReferenceTime(any(LocalDateTime.class)))
+                                .thenReturn(List.of(requiredTerm, outroTermo));
 
-        when(termsRepository.findActiveByReferenceTime(any(LocalDateTime.class)))
-                .thenReturn(List.of(requiredTerm));
+                when(userTermsRepository.findByUserAndActionAtLessThanEqual(eq(user), any(LocalDateTime.class)))
+                                .thenReturn(List.of());
 
-        IllegalStateException exception = assertThrows(
-                IllegalStateException.class,
-                () -> service.revogarTermos(List.of(requiredTerm.getTermType().getName()), user)
-        );
+                when(termsRepository.findAllById(any()))
+                                .thenReturn(List.of(outroTermo));
 
-        assertEquals(
-                "Nao é permitido revogar termo obrigatorio: " + requiredType.getName(),
-                exception.getMessage()
-        );
-        verify(userTermsRespository, never()).save(any());
-    }
+                DocumentosObrigatoriosNaoConfiguradosException exception = assertThrows(
+                                DocumentosObrigatoriosNaoConfiguradosException.class,
+                                () -> termsUserService.aprovarTermos(List.of(outroTermo.getId()), user));
 
-    @Test
-    void revogarTermos_deveSalvarQuandoTermoForOpcionalEVigente() {
-        AppUserEntity user = new AppUserEntity();
+                assertEquals("Termo obrigatório está pendente de aceite", exception.getMessage());
+                verify(userTermsRepository, never()).save(any());
+        }
 
-        TermTypeEntity optionalType = termType(UUID.randomUUID(), "MARKETING_COMMUNICATION", false);
-        TermsEntity optionalTerm = term(UUID.randomUUID(), optionalType, 1, "conteudo", false);
+        @Test
+        void aprovarTermos_deveSalvarQuandoTudoEstiverCorreto() {
+                AppUserEntity user = new AppUserEntity();
 
-        when(termsRepository.findByTermTypeNames(any()))
-                .thenReturn(List.of(optionalTerm));
+                TermTypeEntity requiredType = termType(UUID.randomUUID(), "TERMS_OF_USE", true);
+                TermsEntity requiredTerm = term(UUID.randomUUID(), requiredType, 1, "conteudo", true);
 
-        when(termsRepository.findActiveByReferenceTime(any(LocalDateTime.class)))
-                .thenReturn(List.of(optionalTerm));
+                when(termsRepository.findByTermTypeNames(any()))
+                                .thenReturn(List.of(requiredTerm));
 
-        service.revogarTermos(List.of(optionalTerm.getTermType().getName()), user);
+                when(termsRepository.findActiveRequiredByReferenceTime(any(LocalDateTime.class)))
+                                .thenReturn(List.of(requiredTerm));
 
-        ArgumentCaptor<UserTermsEntity> captor = ArgumentCaptor.forClass(UserTermsEntity.class);
-        verify(userTermsRespository, times(1)).save(captor.capture());
+                when(termsRepository.findActiveByReferenceTime(any(LocalDateTime.class)))
+                                .thenReturn(List.of(requiredTerm));
 
-        UserTermsEntity saved = captor.getValue();
-        assertEquals(UserTermsAction.REVOKED, saved.getAction());
-        assertEquals(optionalTerm, saved.getTerms());
-        assertEquals(user, saved.getUser());
-    }
+                when(userTermsRepository.findByUserAndActionAtLessThanEqual(eq(user), any(LocalDateTime.class)))
+                                .thenReturn(List.of());
 
-    @Test
-    void registrarCienciaTermos_deveFalharQuandoListaForNulaOuVazia() {
-        AppUserEntity user = new AppUserEntity();
+                when(termsRepository.findAllById(any()))
+                                .thenReturn(List.of(requiredTerm));
 
-        assertThrows(NenhumTermoPassadoException.class,
-                () -> service.registrarCienciaTermos(null, user));
+                termsUserService.aprovarTermos(List.of(requiredTerm.getId()), user);
 
-        assertThrows(NenhumTermoPassadoException.class,
-                () -> service.registrarCienciaTermos(List.of(), user));
+                ArgumentCaptor<UserTermsEntity> captor = ArgumentCaptor.forClass(UserTermsEntity.class);
+                verify(userTermsRepository, times(1)).save(captor.capture());
 
-        verifyNoInteractions(termsRepository);
-        verifyNoInteractions(userTermsRespository);
-    }
+                UserTermsEntity saved = captor.getValue();
+                assertEquals(user, saved.getUser());
+                assertEquals(requiredTerm, saved.getTerms());
+                assertEquals(UserTermsAction.ACCEPTED, saved.getAction());
+                assertNotNull(saved.getActionAt());
+        }
 
-    @Test
-    void registrarCienciaTermos_deveFalharQuandoTermoNaoExistir() {
-        String termoName = "Termo1";
+        @Test
+        void revogarTermos_deveFalharQuandoListaForNulaOuVazia() {
+                AppUserEntity user = new AppUserEntity();
 
-        when(termsRepository.findByTermTypeNames(any()))
-                .thenReturn(List.of());
+                assertThrows(NenhumTermoPassadoException.class,
+                                () -> termsUserService.revogarTermos(null, user));
 
-        assertThrows(
-                TermoNaoEncontradoException.class,
-                () -> service.registrarCienciaTermos(List.of(termoName), new AppUserEntity())
-        );
+                assertThrows(NenhumTermoPassadoException.class,
+                                () -> termsUserService.revogarTermos(List.of(), user));
 
-        verify(userTermsRespository, never()).save(any());
-    }
+                verifyNoInteractions(termsRepository);
+                verifyNoInteractions(userTermsRepository);
+        }
 
-    @Test
-    void registrarCienciaTermos_deveFalharQuandoTermoNaoForVigente() {
-        AppUserEntity user = new AppUserEntity();
+        @Test
+        void revogarTermos_deveFalharQuandoTermoNaoExistir() {
+                UUID termoId = UUID.randomUUID();
 
-        TermTypeEntity optionalType = termType(UUID.randomUUID(), "MARKETING_COMMUNICATION", false);
-        TermsEntity optionalTerm = term(UUID.randomUUID(), optionalType, 1, "conteudo", false);
+                when(termsRepository.findAllById(any()))
+                                .thenReturn(List.of());
 
-        when(termsRepository.findByTermTypeNames(any()))
-                .thenReturn(List.of(optionalTerm));
+                assertThrows(
+                                TermoNaoEncontradoException.class,
+                                () -> termsUserService.revogarTermos(List.of(termoId), new AppUserEntity()));
 
-        when(termsRepository.findActiveByReferenceTime(any(LocalDateTime.class)))
-                .thenReturn(List.of());
+                verify(userTermsRepository, never()).save(any());
+        }
 
-        TermoNaoEncontradoException exception = assertThrows(
-                TermoNaoEncontradoException.class,
-                () -> service.registrarCienciaTermos(List.of(optionalTerm.getTermType().getName()), user)
-        );
+        @Test
+        void revogarTermos_deveFalharQuandoTermoNaoForVigente() {
+                AppUserEntity user = new AppUserEntity();
 
-        assertEquals("Termo enviado nao é vigente: " + optionalTerm.getTermType().getName(), exception.getMessage());
-        verify(userTermsRespository, never()).save(any());
-    }
+                TermTypeEntity optionalType = termType(UUID.randomUUID(), "MARKETING_COMMUNICATION", false);
+                TermsEntity optionalTerm = term(UUID.randomUUID(), optionalType, 1, "conteudo", false);
 
-    @Test
-    void registrarCienciaTermos_deveFalharQuandoTermoForObrigatorio() {
-        AppUserEntity user = new AppUserEntity();
+                when(termsRepository.findByTermTypeNames(any()))
+                                .thenReturn(List.of(optionalTerm));
 
-        TermTypeEntity requiredType = termType(UUID.randomUUID(), "TERMS_OF_USE", true);
-        TermsEntity requiredTerm = term(UUID.randomUUID(), requiredType, 1, "conteudo", true);
+                when(termsRepository.findActiveByReferenceTime(any(LocalDateTime.class)))
+                                .thenReturn(List.of());
 
-        when(termsRepository.findByTermTypeNames(any()))
-                .thenReturn(List.of(requiredTerm));
+                when(termsRepository.findAllById(any()))
+                                .thenReturn(List.of(optionalTerm));
 
-        when(termsRepository.findActiveByReferenceTime(any(LocalDateTime.class)))
-                .thenReturn(List.of(requiredTerm));
+                TermoNaoEncontradoException exception = assertThrows(
+                                TermoNaoEncontradoException.class,
+                                () -> termsUserService.revogarTermos(List.of(optionalTerm.getId()), user));
 
-        IllegalStateException exception = assertThrows(
-                IllegalStateException.class,
-                () -> service.registrarCienciaTermos(List.of(requiredTerm.getTermType().getName()), user)
-        );
+                assertEquals("Termo enviado nao é vigente",
+                                exception.getMessage());
+                verify(userTermsRepository, never()).save(any());
+        }
 
-        assertEquals(
-                "Termo obrigatorio deve ser aceito: " + requiredType.getName(),
-                exception.getMessage()
-        );
-        verify(userTermsRespository, never()).save(any());
-    }
+        @Test
+        void revogarTermos_deveFalharQuandoTermoForObrigatorio() {
+                AppUserEntity user = new AppUserEntity();
 
-    @Test
-    void registrarCienciaTermos_deveSalvarQuandoTermoForOpcionalEVigente() {
-        AppUserEntity user = new AppUserEntity();
+                TermTypeEntity requiredType = termType(UUID.randomUUID(), "TERMS_OF_USE", true);
+                TermsEntity requiredTerm = term(UUID.randomUUID(), requiredType, 1, "conteudo", true);
 
-        TermTypeEntity optionalType = termType(UUID.randomUUID(), "MARKETING_COMMUNICATION", false);
-        TermsEntity optionalTerm = term(UUID.randomUUID(), optionalType, 1, "conteudo", false);
+                when(termsRepository.findByTermTypeNames(any()))
+                                .thenReturn(List.of(requiredTerm));
 
-        when(termsRepository.findByTermTypeNames(any()))
-                .thenReturn(List.of(optionalTerm));
+                when(termsRepository.findActiveByReferenceTime(any(LocalDateTime.class)))
+                                .thenReturn(List.of(requiredTerm));
 
-        when(termsRepository.findActiveByReferenceTime(any(LocalDateTime.class)))
-                .thenReturn(List.of(optionalTerm));
+                when(termsRepository.findAllById(any()))
+                                .thenReturn(List.of(requiredTerm));
 
-        service.registrarCienciaTermos(List.of(optionalTerm.getTermType().getName()), user);
+                IllegalStateException exception = assertThrows(
+                                IllegalStateException.class,
+                                () -> termsUserService.revogarTermos(List.of(requiredTerm.getId()), user));
 
-        ArgumentCaptor<UserTermsEntity> captor = ArgumentCaptor.forClass(UserTermsEntity.class);
-        verify(userTermsRespository, times(1)).save(captor.capture());
+                assertEquals(
+                                "Não é permitido recusar/revogar termo obrigatório: " + requiredType.getName(),
+                                exception.getMessage());
+                verify(userTermsRepository, never()).save(any());
+        }
 
-        UserTermsEntity saved = captor.getValue();
-        assertEquals(UserTermsAction.ACKNOWLEDGED, saved.getAction());
-        assertEquals(optionalTerm, saved.getTerms());
-        assertEquals(user, saved.getUser());
-    }
+        @Test
+        void revogarTermos_deveSalvarQuandoTermoForOpcionalEVigente() {
+                AppUserEntity user = new AppUserEntity();
 
-    @Test
-    void checkRequiredTerms_deveRetornarTrueQuandoTodosObrigatoriosForemEnviados() {
-        AppUserEntity user = null;
+                TermTypeEntity optionalType = termType(UUID.randomUUID(), "MARKETING_COMMUNICATION", false);
+                TermsEntity optionalTerm = term(UUID.randomUUID(), optionalType, 1, "conteudo", false);
 
-        TermTypeEntity requiredType = termType(UUID.randomUUID(), "TERMS_OF_USE", true);
-        TermsEntity requiredTerm = term(UUID.randomUUID(), requiredType, 1, "conteudo", true);
+                when(termsRepository.findByTermTypeNames(any()))
+                                .thenReturn(List.of(optionalTerm));
 
-        when(termsRepository.findActiveRequiredByReferenceTime(any(LocalDateTime.class)))
-                .thenReturn(List.of(requiredTerm));
+                when(termsRepository.findActiveByReferenceTime(any(LocalDateTime.class)))
+                                .thenReturn(List.of(optionalTerm));
 
-        boolean result = service.checkRequiredTerms(
-                List.of(requiredTerm.getTermType().getName()),
-                user,
-                LocalDateTime.now()
-        );
+                when(termsRepository.findAllById(any()))
+                                .thenReturn(List.of(optionalTerm));
 
-        assertTrue(result);
-    }
+                termsUserService.revogarTermos(List.of(optionalTerm.getId()), user);
 
-    @Test
-    void checkRequiredTerms_deveRetornarFalseQuandoFaltarObrigatorio() {
-        AppUserEntity user = null;
+                ArgumentCaptor<UserTermsEntity> captor = ArgumentCaptor.forClass(UserTermsEntity.class);
+                verify(userTermsRepository, times(1)).save(captor.capture());
 
-        TermTypeEntity requiredType = termType(UUID.randomUUID(), "TERMS_OF_USE", true);
-        TermsEntity requiredTerm = term(UUID.randomUUID(), requiredType, 1, "conteudo", true);
+                UserTermsEntity saved = captor.getValue();
+                assertEquals(UserTermsAction.REVOKED, saved.getAction());
+                assertEquals(optionalTerm, saved.getTerms());
+                assertEquals(user, saved.getUser());
+        }
 
-        when(termsRepository.findActiveRequiredByReferenceTime(any(LocalDateTime.class)))
-                .thenReturn(List.of(requiredTerm));
+        @Test
+        void registrarCienciaTermos_deveFalharQuandoListaForNulaOuVazia() {
+                AppUserEntity user = new AppUserEntity();
 
-        boolean result = service.checkRequiredTerms(
-                List.of(),
-                user,
-                LocalDateTime.now()
-        );
+                assertThrows(NenhumTermoPassadoException.class,
+                                () -> termsUserService.registrarCienciaTermos(null, user));
 
-        assertFalse(result);
-    }
+                assertThrows(NenhumTermoPassadoException.class,
+                                () -> termsUserService.registrarCienciaTermos(List.of(), user));
 
-    @Test
-    void checkRequiredTerms_deveConsiderarTermosJaAceitosPeloUsuario() {
-        AppUserEntity user = new AppUserEntity();
+                verifyNoInteractions(termsRepository);
+                verifyNoInteractions(userTermsRepository);
+        }
 
-        TermTypeEntity requiredType = termType(UUID.randomUUID(), "TERMS_OF_USE", true);
-        TermsEntity requiredTerm = term(UUID.randomUUID(), requiredType, 1, "conteudo", true);
-
-        when(termsRepository.findActiveRequiredByReferenceTime(any(LocalDateTime.class)))
-                .thenReturn(List.of(requiredTerm));
-
-        when(termsRepository.findActiveByReferenceTime(any(LocalDateTime.class)))
-                .thenReturn(List.of(requiredTerm));
-
-        UserTermsEntity acceptedHistory = userTerm(
-                user,
-                requiredTerm,
-                UserTermsAction.ACCEPTED,
-                LocalDateTime.now().minusHours(1)
-        );
-
-        when(userTermsRespository.findByUserAndActionAtLessThanEqual(eq(user), any(LocalDateTime.class)))
-                .thenReturn(List.of(acceptedHistory));
-
-        boolean result = service.checkRequiredTerms(
-                List.of(),
-                user,
-                LocalDateTime.now()
-        );
-
-        assertTrue(result);
-    }
-
-    @Test
-    void findActiveUserTermsAtTime_deveRetornarSomenteUltimaAceitacaoPorTipo() {
-        AppUserEntity user = new AppUserEntity();
-        LocalDateTime referenceTime = LocalDateTime.now();
-
-        TermTypeEntity tipoA = termType(UUID.randomUUID(), "TERMS_OF_USE", true);
-        TermsEntity aV1 = term(UUID.randomUUID(), tipoA, 1, "a1", true);
-        TermsEntity aV2 = term(UUID.randomUUID(), tipoA, 2, "a2", true);
-
-        TermTypeEntity tipoB = termType(UUID.randomUUID(), "PRIVACY_POLICY", true);
-        TermsEntity bV1 = term(UUID.randomUUID(), tipoB, 1, "b1", true);
-
-        when(termsRepository.findActiveByReferenceTime(any(LocalDateTime.class)))
-                .thenReturn(List.of(aV1, aV2, bV1));
-
-        when(userTermsRespository.findByUserAndActionAtLessThanEqual(eq(user), any(LocalDateTime.class)))
-                .thenReturn(List.of(
-                        userTerm(user, aV1, UserTermsAction.ACCEPTED, referenceTime.minusHours(3)),
-                        userTerm(user, aV2, UserTermsAction.ACCEPTED, referenceTime.minusHours(1)),
-                        userTerm(user, bV1, UserTermsAction.REVOKED, referenceTime.minusMinutes(30))
-                ));
-
-        List<UserTermsEntity> result = service.findActiveUserTermsAtTime(user, referenceTime);
-
-        assertEquals(1, result.size());
-        assertEquals(aV2.getId(), result.get(0).getTerms().getId());
-        assertEquals(UserTermsAction.ACCEPTED, result.get(0).getAction());
-    }
-
-    @Test
-    void findActiveUserTermsAtTime_deveIgnorarTermosNaoVigentes() {
-        AppUserEntity user = new AppUserEntity();
-        LocalDateTime referenceTime = LocalDateTime.now();
-
-        TermTypeEntity tipoA = termType(UUID.randomUUID(), "TERMS_OF_USE", true);
-        TermsEntity activeTerm = term(UUID.randomUUID(), tipoA, 1, "a1", true);
-
-        TermTypeEntity tipoB = termType(UUID.randomUUID(), "PRIVACY_POLICY", true);
-        TermsEntity inactiveTerm = term(UUID.randomUUID(), tipoB, 1, "b1", true);
-
-        when(termsRepository.findActiveByReferenceTime(any(LocalDateTime.class)))
-                .thenReturn(List.of(activeTerm));
-
-        when(userTermsRespository.findByUserAndActionAtLessThanEqual(eq(user), any(LocalDateTime.class)))
-                .thenReturn(List.of(
-                        userTerm(user, activeTerm, UserTermsAction.ACCEPTED, referenceTime.minusHours(1)),
-                        userTerm(user, inactiveTerm, UserTermsAction.ACCEPTED, referenceTime.minusHours(1))
-                ));
-
-        List<UserTermsEntity> result = service.findActiveUserTermsAtTime(user, referenceTime);
-
-        assertEquals(1, result.size());
-        assertEquals(activeTerm.getId(), result.get(0).getTerms().getId());
-    }
-
-    private TermTypeEntity termType(UUID id, String name, boolean required) {
-        TermTypeEntity type = new TermTypeEntity();
-        type.setId(id);
-        type.setName(name);
-        type.setIsRequired(required);
-        return type;
-    }
-
-    private TermsEntity term(
-            UUID id,
-            TermTypeEntity type,
-            int version,
-            String content,
-            boolean active
-    ) {
-        TermsEntity term = new TermsEntity();
-        term.setId(id);
-        term.setTermType(type);
-        term.setVersion(version);
-        term.setContent(content);
-        term.setIsActive(active);
-        term.setEffectivityStartAt(LocalDateTime.now().minusDays(1));
-        return term;
-    }
-
-    private UserTermsEntity userTerm(
-            AppUserEntity user,
-            TermsEntity term,
-            UserTermsAction action,
-            LocalDateTime actionAt
-    ) {
-        UserTermsEntity userTerm = new UserTermsEntity();
-        userTerm.setUser(user);
-        userTerm.setTerms(term);
-        userTerm.setAction(action);
-        userTerm.setActionAt(actionAt);
-        return userTerm;
-    }
+        @Test
+        void registrarCienciaTermos_deveFalharQuandoTermoNaoExistir() {
+                UUID termoId = UUID.randomUUID();
+
+                when(termsRepository.findAllById(any()))
+                                .thenReturn(List.of());
+
+                assertThrows(
+                                TermoNaoEncontradoException.class,
+                                () -> termsUserService.registrarCienciaTermos(List.of(termoId), new AppUserEntity()));
+
+                verify(userTermsRepository, never()).save(any());
+        }
+
+        @Test
+        void registrarCienciaTermos_deveFalharQuandoTermoNaoForVigente() {
+                AppUserEntity user = new AppUserEntity();
+
+                TermTypeEntity optionalType = termType(UUID.randomUUID(), "MARKETING_COMMUNICATION", false);
+                TermsEntity optionalTerm = term(UUID.randomUUID(), optionalType, 1, "conteudo", false);
+
+                when(termsRepository.findByTermTypeNames(any()))
+                                .thenReturn(List.of(optionalTerm));
+
+                when(termsRepository.findActiveByReferenceTime(any(LocalDateTime.class)))
+                                .thenReturn(List.of());
+                when(termsRepository.findAllById(any()))
+                                .thenReturn(List.of(optionalTerm));
+
+                TermoNaoEncontradoException exception = assertThrows(
+                                TermoNaoEncontradoException.class,
+                                () -> termsUserService.registrarCienciaTermos(List.of(optionalTerm.getId()), user));
+
+                assertEquals("Termo enviado nao é vigente",
+                                exception.getMessage());
+                verify(userTermsRepository, never()).save(any());
+        }
+
+        @Test
+        void registrarCienciaTermos_deveFalharQuandoTermoForObrigatorio() {
+                AppUserEntity user = new AppUserEntity();
+
+                TermTypeEntity requiredType = termType(UUID.randomUUID(), "TERMS_OF_USE", true);
+                TermsEntity requiredTerm = term(UUID.randomUUID(), requiredType, 1, "conteudo", true);
+
+                when(termsRepository.findByTermTypeNames(any()))
+                                .thenReturn(List.of(requiredTerm));
+
+                when(termsRepository.findActiveByReferenceTime(any(LocalDateTime.class)))
+                                .thenReturn(List.of(requiredTerm));
+
+                when(termsRepository.findAllById(any()))
+                                .thenReturn(List.of(requiredTerm));
+
+                IllegalStateException exception = assertThrows(
+                                IllegalStateException.class,
+                                () -> termsUserService.registrarCienciaTermos(List.of(requiredTerm.getId()), user));
+
+                assertEquals(
+                                "Termo obrigatorio deve ser aceito: " + requiredType.getName(),
+                                exception.getMessage());
+                verify(userTermsRepository, never()).save(any());
+        }
+
+        @Test
+        void registrarCienciaTermos_deveSalvarQuandoTermoForOpcionalEVigente() {
+                AppUserEntity user = new AppUserEntity();
+
+                TermTypeEntity optionalType = termType(UUID.randomUUID(), "MARKETING_COMMUNICATION", false);
+                TermsEntity optionalTerm = term(UUID.randomUUID(), optionalType, 1, "conteudo", false);
+
+                when(termsRepository.findByTermTypeNames(any()))
+                                .thenReturn(List.of(optionalTerm));
+
+                when(termsRepository.findActiveByReferenceTime(any(LocalDateTime.class)))
+                                .thenReturn(List.of(optionalTerm));
+
+                when(termsRepository.findAllById(any()))
+                                .thenReturn(List.of(optionalTerm));
+
+                termsUserService.registrarCienciaTermos(List.of(optionalTerm.getId()), user);
+
+                ArgumentCaptor<UserTermsEntity> captor = ArgumentCaptor.forClass(UserTermsEntity.class);
+                verify(userTermsRepository, times(1)).save(captor.capture());
+
+                UserTermsEntity saved = captor.getValue();
+                assertEquals(UserTermsAction.ACKNOWLEDGED, saved.getAction());
+                assertEquals(optionalTerm, saved.getTerms());
+                assertEquals(user, saved.getUser());
+        }
+
+        @Test
+        void checkRequiredTerms_deveRetornarTrueQuandoTodosObrigatoriosForemEnviados() {
+                AppUserEntity user = null;
+
+                TermTypeEntity requiredType = termType(UUID.randomUUID(), "TERMS_OF_USE", true);
+                TermsEntity requiredTerm = term(UUID.randomUUID(), requiredType, 1, "conteudo", true);
+
+                when(termsRepository.findActiveRequiredByReferenceTime(any(LocalDateTime.class)))
+                                .thenReturn(List.of(requiredTerm));
+
+                boolean result = termsUserService.checkRequiredTerms(
+                                List.of(requiredTerm.getId()),
+                                user,
+                                LocalDateTime.now());
+
+                assertTrue(result);
+        }
+
+        @Test
+        void checkRequiredTerms_deveRetornarFalseQuandoFaltarObrigatorio() {
+                AppUserEntity user = null;
+
+                TermTypeEntity requiredType = termType(UUID.randomUUID(), "TERMS_OF_USE", true);
+                TermsEntity requiredTerm = term(UUID.randomUUID(), requiredType, 1, "conteudo", true);
+
+                when(termsRepository.findActiveRequiredByReferenceTime(any(LocalDateTime.class)))
+                                .thenReturn(List.of(requiredTerm));
+
+                boolean result = termsUserService.checkRequiredTerms(
+                                List.of(),
+                                user,
+                                LocalDateTime.now());
+
+                assertFalse(result);
+        }
+
+        @Test
+        void checkRequiredTerms_deveConsiderarTermosJaAceitosPeloUsuario() {
+                AppUserEntity user = new AppUserEntity();
+
+                TermTypeEntity requiredType = termType(UUID.randomUUID(), "TERMS_OF_USE", true);
+                TermsEntity requiredTerm = term(UUID.randomUUID(), requiredType, 1, "conteudo", true);
+
+                when(termsRepository.findActiveRequiredByReferenceTime(any(LocalDateTime.class)))
+                                .thenReturn(List.of(requiredTerm));
+
+                when(termsRepository.findActiveByReferenceTime(any(LocalDateTime.class)))
+                                .thenReturn(List.of(requiredTerm));
+
+                UserTermsEntity acceptedHistory = userTerm(
+                                user,
+                                requiredTerm,
+                                UserTermsAction.ACCEPTED,
+                                LocalDateTime.now().minusHours(1));
+
+                when(userTermsRepository.findByUserAndActionAtLessThanEqual(eq(user), any(LocalDateTime.class)))
+                                .thenReturn(List.of(acceptedHistory));
+
+                boolean result = termsUserService.checkRequiredTerms(
+                                List.of(),
+                                user,
+                                LocalDateTime.now());
+
+                assertTrue(result);
+        }
+
+        @Test
+        void findActiveUserTermsAtTime_deveRetornarSomenteUltimaAceitacaoPorTipo() {
+                AppUserEntity user = new AppUserEntity();
+                LocalDateTime referenceTime = LocalDateTime.now();
+
+                TermTypeEntity tipoA = termType(UUID.randomUUID(), "TERMS_OF_USE", true);
+                TermsEntity aV1 = term(UUID.randomUUID(), tipoA, 1, "a1", true);
+                TermsEntity aV2 = term(UUID.randomUUID(), tipoA, 2, "a2", true);
+
+                TermTypeEntity tipoB = termType(UUID.randomUUID(), "PRIVACY_POLICY", true);
+                TermsEntity bV1 = term(UUID.randomUUID(), tipoB, 1, "b1", true);
+
+                when(termsRepository.findActiveByReferenceTime(any(LocalDateTime.class)))
+                                .thenReturn(List.of(aV1, aV2, bV1));
+
+                when(userTermsRepository.findByUserAndActionAtLessThanEqual(eq(user), any(LocalDateTime.class)))
+                                .thenReturn(List.of(
+                                                userTerm(user, aV1, UserTermsAction.ACCEPTED,
+                                                                referenceTime.minusHours(3)),
+                                                userTerm(user, aV2, UserTermsAction.ACCEPTED,
+                                                                referenceTime.minusHours(1)),
+                                                userTerm(user, bV1, UserTermsAction.REVOKED,
+                                                                referenceTime.minusMinutes(30))));
+
+                List<UserTermsEntity> result = termsUserService.findAcceptedUserTermsAtTime(user, referenceTime);
+
+                assertEquals(2, result.size());
+                assertEquals(UserTermsAction.ACCEPTED, result.get(0).getAction());
+        }
+
+        @Test
+        void findAcceptedUserTermsAtTime_deveIgnorarTermosNaoVigentes() {
+                AppUserEntity user = new AppUserEntity();
+                LocalDateTime referenceTime = LocalDateTime.now();
+
+                TermTypeEntity tipoA = termType(UUID.randomUUID(), "TERMS_OF_USE", true);
+                TermsEntity activeTerm = term(UUID.randomUUID(), tipoA, 1, "a1", true);
+
+                TermTypeEntity tipoB = termType(UUID.randomUUID(), "PRIVACY_POLICY", true);
+                TermsEntity inactiveTerm = term(UUID.randomUUID(), tipoB, 1, "b1", true);
+
+                when(termsRepository.findActiveByReferenceTime(any(LocalDateTime.class)))
+                                .thenReturn(List.of(activeTerm));
+
+                when(userTermsRepository.findByUserAndActionAtLessThanEqual(eq(user), any(LocalDateTime.class)))
+                                .thenReturn(List.of(
+                                                userTerm(user, activeTerm, UserTermsAction.ACCEPTED,
+                                                                referenceTime.minusHours(1)),
+                                                userTerm(user, inactiveTerm, UserTermsAction.ACCEPTED,
+                                                                referenceTime.minusHours(1))));
+
+                List<UserTermsEntity> result = termsUserService.findAcceptedUserTermsAtTime(user, referenceTime);
+
+                assertEquals(1, result.size());
+                assertEquals(activeTerm.getId(), result.get(0).getTerms().getId());
+        }
+
+        private TermTypeEntity termType(UUID id, String name, boolean required) {
+                TermTypeEntity type = new TermTypeEntity();
+                type.setId(id);
+                type.setName(TermTypeName.valueOf(name));
+                type.setIsRequired(required);
+                return type;
+        }
+
+        private TermsEntity term(
+                        UUID id,
+                        TermTypeEntity type,
+                        int clause,
+                        String content,
+                        boolean active) {
+                TermsEntity term = new TermsEntity();
+                term.setId(id);
+                term.setTermType(type);
+                term.setClause(clause);
+                term.setContent(content);
+                term.setEffectivityStartAt(LocalDateTime.now().minusDays(1));
+                return term;
+        }
+
+        private UserTermsEntity userTerm(
+                        AppUserEntity user,
+                        TermsEntity term,
+                        UserTermsAction action,
+                        LocalDateTime actionAt) {
+                UserTermsEntity userTerm = new UserTermsEntity();
+                userTerm.setUser(user);
+                userTerm.setTerms(term);
+                userTerm.setAction(action);
+                userTerm.setActionAt(actionAt);
+                return userTerm;
+        }
 }

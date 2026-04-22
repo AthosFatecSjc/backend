@@ -35,6 +35,7 @@ public class UsuarioCadastroService {
     private final JpaUsuarioCadastroRepository jpaUsuarioCadastroRepository;
     private final RoleJpaRepository roleRepository;
     private static final Pattern EMAIL_PATTERN = Pattern.compile("[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}");
+    private final UserStatusJpaRepository userStatusRepository;
 
     public UsuarioCadastroService(
             UsuarioCadastroRepository usuarioCadastroRepository,
@@ -46,7 +47,8 @@ public class UsuarioCadastroService {
             UserStatusService userStatusService,
             PasswordEncoder passwordEncoder,
             JpaUsuarioCadastroRepository jpaUsuarioCadastroRepository,
-            RoleJpaRepository roleRepository) {
+            RoleJpaRepository roleRepository,
+            UserStatusJpaRepository userStatusJpaRepository) {
         this.usuarioCadastroRepository = usuarioCadastroRepository;
         this.appUserRepository = appUserRepository;
         this.termsUserService = termsUserService;
@@ -55,6 +57,7 @@ public class UsuarioCadastroService {
         this.passwordEncoder = passwordEncoder;
         this.jpaUsuarioCadastroRepository = jpaUsuarioCadastroRepository;
         this.roleRepository = roleRepository;
+        this.userStatusRepository = userStatusJpaRepository;
     }
 
     @Transactional
@@ -67,7 +70,7 @@ public class UsuarioCadastroService {
             throw new EmailJaCadastradoException(emailNormalizado);
         }
 
-        if (request.getTermsNames() == null || request.getTermsNames().isEmpty()) {
+        if (request.getTermsIds() == null || request.getTermsIds().isEmpty()) {
             throw new IllegalStateException("Usuario cadastrado nao aceitou nenhum termo");
         }
 
@@ -87,7 +90,9 @@ public class UsuarioCadastroService {
         userStatus.setStatus(statusEntity);
         userStatus.setAssignedAt(LocalDateTime.now());
 
-        user.getStatuses().add(userStatus);
+        UserStatusEntity savedUserStatus = userStatusRepository.save(userStatus);
+
+        user.getStatuses().add(savedUserStatus);
 
         RoleEntity role = roleRepository.findByNameIgnoreCase("USER")
                 .orElseThrow(() -> new RuntimeException("Role não encontrada"));
@@ -96,7 +101,7 @@ public class UsuarioCadastroService {
 
         AppUserEntity usuarioSalvo = appUserRepository.save(user);
 
-        termsUserService.aprovarTermos(request.getTermsNames(), usuarioSalvo);
+        termsUserService.aprovarTermos(request.getTermsIds(), usuarioSalvo);
         return usuarioSalvo;
 
     }
@@ -137,7 +142,7 @@ public class UsuarioCadastroService {
             throw new IllegalArgumentException("Senha deve ter no minimo 8 caracteres.");
         }
 
-        if (!termsUserService.checkRequiredTerms(request.getTermsNames(), null, LocalDateTime.now())) {
+        if (!termsUserService.checkRequiredTerms(request.getTermsIds(), null, LocalDateTime.now())) {
             throw new IllegalArgumentException("Usuario deve aceitar todos os termos obrigatorios.");
         }
     }

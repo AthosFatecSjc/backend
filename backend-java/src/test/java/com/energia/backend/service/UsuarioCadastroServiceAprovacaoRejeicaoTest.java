@@ -69,7 +69,8 @@ class UsuarioCadastroServiceAprovacaoRejeicaoTest {
                 userStatusService,
                 passwordEncoder,
                 jpaUsuarioCadastroRepository,
-                roleJpaRepository
+                roleJpaRepository,
+                userStatusRepository
         );
 
         usuarioId = UUID.randomUUID();

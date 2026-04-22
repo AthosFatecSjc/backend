@@ -4,9 +4,13 @@ import com.energia.backend.exception.DocumentosObrigatoriosNaoConfiguradosExcept
 import com.energia.backend.exception.TermoNaoEncontradoException;
 import com.energia.backend.model.AppUserEntity;
 import com.energia.backend.model.TermTypeEntity;
+import com.energia.backend.model.TermTypeName;
 import com.energia.backend.model.TermsEntity;
+import com.energia.backend.repository.TermTypeRepository;
 import com.energia.backend.repository.TermsRepository;
 import com.energia.backend.repository.UserTermsRepository;
+import com.energia.backend.repository.UsuarioRepository;
+
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
@@ -15,6 +19,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Answers.valueOf;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -28,9 +33,13 @@ class TermsServiceTest {
         void deveRejeitarQuandoNaoRecebeTodosOsTermosObrigatoriosVigentes() {
                 TermsRepository termsRepository = mock(TermsRepository.class);
                 UserTermsRepository userTermsRepository = mock(UserTermsRepository.class);
-                TermsUserService service = new TermsUserService(
+                TermsService termsService = mock(TermsService.class);
+                UsuarioRepository userRepository = mock(UsuarioRepository.class);
+                TermsUserService termsUserService = new TermsUserService(
                                 termsRepository,
-                                userTermsRepository);
+                                userTermsRepository,
+                                termsService,
+                                userRepository);
 
                 TermsEntity marketingEntity = termo("MARKETING_COMMUNICATION", 1, false);
                 TermsEntity termosDeUsoVigente = termo("TERMS_OF_USE", 2, true);
@@ -43,10 +52,10 @@ class TermsServiceTest {
 
                 DocumentosObrigatoriosNaoConfiguradosException exception = assertThrows(
                                 DocumentosObrigatoriosNaoConfiguradosException.class,
-                                () -> service.aprovarTermos(List.of(marketingEntity.getTermType().getName()),
+                                () -> termsUserService.aprovarTermos(List.of(marketingEntity.getId()),
                                                 new AppUserEntity()));
 
-                assertEquals("Termo obrigatorio vigente nao aceito", exception.getMessage());
+                assertEquals("Termo obrigatório está pendente de aceite", exception.getMessage());
                 verify(userTermsRepository, never()).save(any());
         }
 
@@ -54,16 +63,25 @@ class TermsServiceTest {
         void deveRejeitarQuandoRecebeVersaoAntigaDeTermoObrigatorio() {
                 TermsRepository termsRepository = mock(TermsRepository.class);
                 UserTermsRepository userTermsRepository = mock(UserTermsRepository.class);
+                TermsService termsService = new TermsService(
+                                termsRepository,
+                                mock(TermTypeRepository.class),
+                                userTermsRepository);
+                UsuarioRepository userRepository = mock(UsuarioRepository.class);
                 TermsUserService termsUserService = new TermsUserService(
                                 termsRepository,
-                                userTermsRepository);
+                                userTermsRepository,
+                                termsService,
+                                userRepository);
 
-                TermsEntity termosDeUsoAntigoEntity = termo("TERMS_OF_USE", 1, true);
+                TermsEntity termosDeUsoAntigoEntity = termo("TERMS_OF_USE", 2, true);
                 TermsEntity termosDeUsoVigente = termo("TERMS_OF_USE", 2, true);
                 TermsEntity politicaPrivacidadeVigenteEntity = termo("PRIVACY_POLICY", 1, true);
+                
 
-                when(termsRepository.findByTermTypeNames(any()))
-                                .thenReturn(List.of(termosDeUsoAntigoEntity, politicaPrivacidadeVigenteEntity));
+                when(termsRepository.findAllById(any()))
+                                .thenReturn(List.of(termosDeUsoAntigoEntity,
+                                                politicaPrivacidadeVigenteEntity));
                 when(termsRepository.findActiveRequiredByReferenceTime(any(LocalDateTime.class)))
                                 .thenReturn(List.of(termosDeUsoVigente, politicaPrivacidadeVigenteEntity));
 
@@ -71,12 +89,11 @@ class TermsServiceTest {
                                 TermoNaoEncontradoException.class,
                                 () -> termsUserService.aprovarTermos(
                                                 List.of(
-                                                        termosDeUsoAntigoEntity.getTermType().getName(),
-                                                        politicaPrivacidadeVigenteEntity.getTermType().getName()
-                                                ),
+                                                                termosDeUsoAntigoEntity.getId(),
+                                                                politicaPrivacidadeVigenteEntity.getId()),
                                                 new AppUserEntity()));
 
-                assertEquals("Termo enviado nao é vigente: PRIVACY_POLICY", exception.getMessage());
+                assertEquals("Termo enviado nao é vigente", exception.getMessage());
                 verify(userTermsRepository, never()).save(any());
         }
 
@@ -84,23 +101,28 @@ class TermsServiceTest {
         void devePersistirAceitesQuandoRecebeOsTermosObrigatoriosVigentes() {
                 TermsRepository termsRepository = mock(TermsRepository.class);
                 UserTermsRepository userTermsRepository = mock(UserTermsRepository.class);
+                TermsService termsService = mock(TermsService.class);
+                UsuarioRepository userRepository = mock(UsuarioRepository.class);
                 TermsUserService termsUserService = new TermsUserService(
                                 termsRepository,
-                                userTermsRepository);
+                                userTermsRepository,
+                                termsService,
+                                userRepository);
 
                 TermsEntity termosDeUsoVigenteEntity = termo("TERMS_OF_USE", 2, true);
                 TermsEntity politicaPrivacidadeVigenteEntity = termo("PRIVACY_POLICY", 1, true);
 
-                when(termsRepository.findAllWithTypeByIdIn(
-                                List.of(termosDeUsoVigenteEntity.getId(), politicaPrivacidadeVigenteEntity.getId())))
-                                .thenReturn(List.of(termosDeUsoVigenteEntity, politicaPrivacidadeVigenteEntity));
+                when(termsRepository.findAllById(any()))
+                                .thenReturn(List.of(
+                                                termosDeUsoVigenteEntity,
+                                                politicaPrivacidadeVigenteEntity));
                 when(termsRepository.findActiveRequiredByReferenceTime(any(LocalDateTime.class)))
                                 .thenReturn(List.of(termosDeUsoVigenteEntity, politicaPrivacidadeVigenteEntity));
                 when(userTermsRepository.findHistoryByUserId(any(UUID.class))).thenReturn(List.of());
 
                 termsUserService.aprovarTermos(
-                                List.of(termosDeUsoVigenteEntity.getTermType().getName(),
-                                                politicaPrivacidadeVigenteEntity.getTermType().getName()),
+                                List.of(termosDeUsoVigenteEntity.getId(),
+                                                politicaPrivacidadeVigenteEntity.getId()),
                                 new AppUserEntity());
 
                 verify(userTermsRepository, times(2)).save(any());
@@ -110,36 +132,45 @@ class TermsServiceTest {
         void deveRejeitarQuandoRecebeTermoInexistente() {
                 TermsRepository termsRepository = mock(TermsRepository.class);
                 UserTermsRepository userTermsRepository = mock(UserTermsRepository.class);
+                TermsService termsService = new TermsService(
+                        termsRepository,
+                        mock(TermTypeRepository.class),
+                        userTermsRepository);
+                UsuarioRepository userRepository = mock(UsuarioRepository.class);
                 TermsUserService termsUserService = new TermsUserService(
                                 termsRepository,
-                                userTermsRepository);
+                                userTermsRepository,
+                                termsService,
+                                userRepository);
 
-                TermsEntity nonExistentTermEntity = termo("NON_EXISTENT_TERM", 1, true);
+                TermsEntity nonExistentTermEntity = termo("PRIVACY_POLICY", 1, true);
+                TermsEntity termosDeUsoVigenteEntity = termo("TERMS_OF_USE", 2, true);
 
-                when(termsRepository.findAllWithTypeByIdIn(List.of(nonExistentTermEntity.getId())))
-                                .thenReturn(List.of());
+
+                when(termsRepository.findAllById(List.of(nonExistentTermEntity.getId())))
+                                .thenReturn(List.of(termosDeUsoVigenteEntity));
 
                 TermoNaoEncontradoException exception = assertThrows(
                                 TermoNaoEncontradoException.class,
                                 () -> termsUserService.aprovarTermos(
-                                                List.of(nonExistentTermEntity.getTermType().getName()),
+                                                List.of(nonExistentTermEntity.getId()),
                                                 new AppUserEntity()));
 
                 assertEquals("Um ou mais termos informados nao existem.", exception.getMessage());
                 verify(userTermsRepository, never()).save(any());
         }
 
-        private TermsEntity termo(String typeName, int version, boolean required) {
+        private TermsEntity termo(String typeName, int clause, boolean required) {
                 TermTypeEntity tipo = new TermTypeEntity();
-                tipo.setName(typeName);
-                tipo.setIsRequired(true);
+                tipo.setName(TermTypeName.valueOf(typeName));
+                tipo.setIsRequired(required);
 
                 TermsEntity termo = new TermsEntity();
                 termo.setId(UUID.randomUUID());
                 termo.setTermType(tipo);
-                termo.setVersion(version);
                 termo.setEffectivityStartAt(LocalDateTime.now());
-                termo.setContent(typeName);
+                termo.setContent("aleatorio");
+                termo.setClause(clause);
                 return termo;
         }
 }

@@ -15,10 +15,6 @@ ADD COLUMN is_active BOOLEAN DEFAULT false NOT NULL,
 DROP COLUMN created_at,
 DROP COLUMN effectivity_end_at;
 
-CREATE UNIQUE INDEX uq_terms_one_active_per_type
-ON terms (term_type_id)
-WHERE is_active = true;
-
 ALTER TABLE user_terms
 DROP COLUMN accepted_from_ip,
 DROP COLUMN event_type;
@@ -80,3 +76,14 @@ ALTER COLUMN is_required SET NOT NULL;
 
 ALTER TABLE terms
 DROP COLUMN is_required;
+
+ALTER TABLE terms
+ADD COLUMN effectivity_end_at TIMESTAMP;
+
+ALTER TABLE terms ADD COLUMN clause INT DEFAULT 0;
+UPDATE terms SET clause = 0 WHERE clause IS NULL;
+ALTER TABLE terms ALTER COLUMN clause SET NOT NULL;
+
+ALTER TABLE terms
+DROP COLUMN version,
+DROP COLUMN is_active;

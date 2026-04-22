@@ -1,6 +1,7 @@
 package com.energia.backend.dto;
 
 import java.util.List;
+import java.util.UUID;
 
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -31,5 +32,5 @@ public class UsuarioCadastroRequest {
     private String senha;
 
     private String telefone;
-    private List<String> termsNames; 
+    private List<UUID> termsIds; 
 }

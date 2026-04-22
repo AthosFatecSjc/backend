@@ -17,8 +17,9 @@ public class TermTypeEntity {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 50)
-    private String name;
+    private TermTypeName name;
 
     @OneToMany(mappedBy = "termType", fetch = FetchType.LAZY)
     private List<TermsEntity> terms;

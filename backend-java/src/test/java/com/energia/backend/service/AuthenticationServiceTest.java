@@ -19,12 +19,16 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import com.energia.backend.dto.LoginRequest;
 import com.energia.backend.dto.LoginResponse;
-import com.energia.backend.dto.TermosPendentesResponse;
+import com.energia.backend.dto.TermosResponse;
+import com.energia.backend.exception.DocumentosObrigatoriosNaoConfiguradosException;
 import com.energia.backend.exception.LoginAuthenticationException;
 import com.energia.backend.model.AppUserEntity;
 import com.energia.backend.model.RoleEntity;
 import com.energia.backend.model.StatusEntity;
 import com.energia.backend.model.StatusUsuario;
+import com.energia.backend.model.TermTypeEntity;
+import com.energia.backend.model.TermTypeName;
+import com.energia.backend.model.TermsEntity;
 import com.energia.backend.model.UserStatusEntity;
 import com.energia.backend.repository.AppUserJpaRepository;
 
@@ -58,17 +62,15 @@ class AuthenticationServiceTest {
     void setup() {
         MockitoAnnotations.openMocks(this);
         authenticationService = new AuthenticationService(
-            userRepository,
-            userStatusService,
-            passwordEncoder,
-            termsService,
-            termsUserService
-        );
+                userRepository,
+                userStatusService,
+                passwordEncoder,
+                termsService,
+                termsUserService);
         ReflectionTestUtils.setField(
-            authenticationService,
-            "jwtSecret",
-            "0123456789012345678901234567890123456789012345678901234567890123"
-        );
+                authenticationService,
+                "jwtSecret",
+                "0123456789012345678901234567890123456789012345678901234567890123");
         ReflectionTestUtils.setField(authenticationService, "jwtExpiration", 3600000L);
 
         userId = UUID.randomUUID();
@@ -89,7 +91,9 @@ class AuthenticationServiceTest {
         when(userStatusService.resolveCurrentStatusEntry(user)).thenReturn(Optional.of(userStatus));
         when(userStatusService.toOfficialStatus("ATIVO")).thenReturn(StatusUsuario.ATIVO);
         when(passwordEncoder.matches(password, passwordHashBcrypt)).thenReturn(true);
-        when(termsService.listarPendenciasDeAcesso(userId)).thenReturn(List.of());
+        when(termsUserService.listarTermosPendentes(any(), any()))
+                .thenReturn(List.of());
+        when(termsUserService.checkRequiredTerms(any(), any(), any())).thenReturn(true);
 
         LoginRequest request = new LoginRequest(email, password);
         LoginResponse response = authenticationService.authenticate(request);
@@ -126,10 +130,9 @@ class AuthenticationServiceTest {
         LoginRequest request = new LoginRequest(email, password);
 
         LoginAuthenticationException exception = assertThrows(
-            LoginAuthenticationException.class,
-            () -> authenticationService.authenticate(request),
-            "Should throw LoginAuthenticationException for PENDENTE user"
-        );
+                LoginAuthenticationException.class,
+                () -> authenticationService.authenticate(request),
+                "Should throw LoginAuthenticationException for PENDENTE user");
 
         assertEquals("USER_PENDING_APPROVAL", exception.getErrorCode());
         assertEquals(403, exception.getHttpStatus());
@@ -152,10 +155,9 @@ class AuthenticationServiceTest {
         LoginRequest request = new LoginRequest(email, password);
 
         LoginAuthenticationException exception = assertThrows(
-            LoginAuthenticationException.class,
-            () -> authenticationService.authenticate(request),
-            "Should throw LoginAuthenticationException for REJEITADO user"
-        );
+                LoginAuthenticationException.class,
+                () -> authenticationService.authenticate(request),
+                "Should throw LoginAuthenticationException for REJEITADO user");
 
         assertEquals("USER_REJECTED", exception.getErrorCode());
         assertEquals(403, exception.getHttpStatus());
@@ -176,9 +178,8 @@ class AuthenticationServiceTest {
         when(passwordEncoder.matches(password, passwordHashBcrypt)).thenReturn(true);
 
         LoginAuthenticationException exception = assertThrows(
-            LoginAuthenticationException.class,
-            () -> authenticationService.authenticate(new LoginRequest(email, password))
-        );
+                LoginAuthenticationException.class,
+                () -> authenticationService.authenticate(new LoginRequest(email, password)));
 
         assertEquals("INVALID_USER_STATUS", exception.getErrorCode());
         assertEquals(403, exception.getHttpStatus());
@@ -197,10 +198,9 @@ class AuthenticationServiceTest {
         LoginRequest request = new LoginRequest(email, "wrongPassword");
 
         LoginAuthenticationException exception = assertThrows(
-            LoginAuthenticationException.class,
-            () -> authenticationService.authenticate(request),
-            "Should throw LoginAuthenticationException for invalid password"
-        );
+                LoginAuthenticationException.class,
+                () -> authenticationService.authenticate(request),
+                "Should throw LoginAuthenticationException for invalid password");
 
         assertEquals("INVALID_CREDENTIALS", exception.getErrorCode());
         assertEquals(401, exception.getHttpStatus());
@@ -215,10 +215,9 @@ class AuthenticationServiceTest {
         LoginRequest request = new LoginRequest("nonexistent@example.com", password);
 
         LoginAuthenticationException exception = assertThrows(
-            LoginAuthenticationException.class,
-            () -> authenticationService.authenticate(request),
-            "Should throw LoginAuthenticationException for non-existent user"
-        );
+                LoginAuthenticationException.class,
+                () -> authenticationService.authenticate(request),
+                "Should throw LoginAuthenticationException for non-existent user");
 
         assertEquals("INVALID_CREDENTIALS", exception.getErrorCode());
         assertEquals(401, exception.getHttpStatus());
@@ -230,9 +229,8 @@ class AuthenticationServiceTest {
         LoginRequest request = new LoginRequest(null, password);
 
         assertThrows(IllegalArgumentException.class,
-            () -> authenticationService.authenticate(request),
-            "Should throw IllegalArgumentException for null email"
-        );
+                () -> authenticationService.authenticate(request),
+                "Should throw IllegalArgumentException for null email");
     }
 
     @Test
@@ -241,9 +239,8 @@ class AuthenticationServiceTest {
         LoginRequest request = new LoginRequest(email, null);
 
         assertThrows(IllegalArgumentException.class,
-            () -> authenticationService.authenticate(request),
-            "Should throw IllegalArgumentException for null password"
-        );
+                () -> authenticationService.authenticate(request),
+                "Should throw IllegalArgumentException for null password");
     }
 
     @Test
@@ -257,25 +254,21 @@ class AuthenticationServiceTest {
         when(userStatusService.resolveCurrentStatusEntry(user)).thenReturn(Optional.of(userStatus));
         when(userStatusService.toOfficialStatus("ATIVO")).thenReturn(StatusUsuario.ATIVO);
         when(passwordEncoder.matches(password, passwordHashBcrypt)).thenReturn(true);
-        when(termsService.listarPendenciasDeAcesso(userId)).thenReturn(List.of(
-                new TermosPendentesResponse(UUID.randomUUID(), "TERMS_OF_USE", 2, true)
-        ));
+        when(termsUserService.checkRequiredTerms(any(), any(), any()))
+                .thenReturn(false);
 
-        LoginAuthenticationException exception = assertThrows(
-                LoginAuthenticationException.class,
-                () -> authenticationService.authenticate(new LoginRequest(email, password))
-        );
+        DocumentosObrigatoriosNaoConfiguradosException exception = assertThrows(
+                DocumentosObrigatoriosNaoConfiguradosException.class,
+                () -> authenticationService.authenticate(new LoginRequest(email, password)));
 
-        assertEquals("TERMS_REVIEW_REQUIRED", exception.getErrorCode());
-        assertEquals(403, exception.getHttpStatus());
         assertEquals(
-                "Usuario deve revisar e aceitar os termos mais recentes antes de acessar a plataforma",
-                exception.getMessage()
-        );
-        assertNotNull(exception.getDetails());
+                "Existem termos obrigatórios pendentes de aceite",
+                exception.getMessage());
+
     }
 
-    private AppUserEntity criarAppUserEntity(UUID id, String email, String nome, String password, List<RoleEntity> roles) {
+    private AppUserEntity criarAppUserEntity(UUID id, String email, String nome, String password,
+            List<RoleEntity> roles) {
         AppUserEntity user = new AppUserEntity();
         user.setId(id);
         user.setEmail(email);

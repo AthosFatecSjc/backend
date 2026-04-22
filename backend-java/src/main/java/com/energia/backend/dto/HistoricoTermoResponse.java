@@ -6,8 +6,7 @@ import java.util.UUID;
 public record HistoricoTermoResponse(
         UUID userTermId,
         UUID termId,
-        String type,
-        Integer version,
+        String typeName,
         boolean required,
         String action,
         LocalDateTime actionAt
