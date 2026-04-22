@@ -37,17 +37,17 @@ public class Distribuidora {
     @Column(name = "num_cnpj", nullable = false, unique = true, length = 14)
     private String numCnpj;
 
-    @Column(name = "razao_social", nullable = false)
+    @Column(name = "razao_social")
     private String razaoSocial;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "regiao", nullable = false)
+    @Column(name = "regiao")
     private Regiao regiao;
 
-    @Column(name = "uf", length = 2, nullable = false)
+    @Column(name = "uf", length = 2)
     private String uf;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "contract_type", nullable = false)
+    @Column(name = "contract_type")
     private ContractType contractType;
 }

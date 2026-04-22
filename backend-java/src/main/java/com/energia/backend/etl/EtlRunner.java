@@ -13,8 +13,10 @@ import com.energia.backend.etl.service.LimitesTransformLoad;
 import com.energia.backend.etl.service.ConjuntoMetricasImport;
 import com.energia.backend.etl.LimitesCsvParser.LimiteFiltrado;
 import com.energia.backend.etl.service.ConjMetricTransformLoad;
+import lombok.extern.slf4j.Slf4j;
 
 @Configuration
+@Slf4j
 public class EtlRunner {
 
     @Bean
@@ -49,8 +51,7 @@ public class EtlRunner {
                 
                 System.out.println("ETL REALIZADO");
             }catch (Exception e) {
-                System.err.println("ERRO DURANTE ETL");
-                e.printStackTrace();
+                log.error("ERRO DURANTE ETL ANEEL (possível extração vazia/ inválida)", e);
                 System.exit(1); 
             };
             System.exit(0);

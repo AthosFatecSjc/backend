@@ -1,6 +1,7 @@
 import csv
 import io
 import json
+import logging
 import os
 import unicodedata
 from dataclasses import dataclass
@@ -71,6 +72,24 @@ COLUMN_ALIASES = {
     "custo perdas nao tecnicas r": "custo_perdas_nao_tec",
 }
 
+logger = logging.getLogger(__name__)
+
+MISSING_TOKENS = {
+    "",
+    "-",
+    "--",
+    "n/a",
+    "na",
+    "nd",
+    "n.d",
+    "null",
+    "none",
+    "sem informacao",
+    "sem informacoes",
+    "sem informação",
+    "sem informações",
+}
+
 
 @dataclass
 class VisualExportResult:
@@ -104,19 +123,14 @@ def _parse_number(raw_value: str | None) -> float | None:
     if raw_value is None:
         return None
     value = raw_value.strip()
-    if not value:
+    if _normalize_text(value) in MISSING_TOKENS:
         return None
     value = value.replace("%", "").replace(".", "").replace(",", ".")
     try:
         return float(value)
     except ValueError:
+        logger.warning("Valor numerico invalido recebido no ETL de perdas: %s", raw_value)
         return None
-
-
-def _normalize_measurement(value: float | None) -> float | None:
-    if value == 0:
-        return None
-    return value
 
 
 def _parse_date(raw_value: str | None) -> date | None:
@@ -179,6 +193,7 @@ def _parse_export_rows(csv_data: str) -> list[dict[str, str]]:
     lines = csv_data.splitlines()
     filtered_lines = [line for line in lines if line.strip()]
     if not filtered_lines:
+        logger.error("Erro na extracao ANEEL perdas: CSV exportado veio vazio")
         return []
 
     reader = csv.DictReader(io.StringIO("\n".join(filtered_lines)))
@@ -212,11 +227,15 @@ def _transform_rows(
 
     min_year = datetime.now().year - RETENTION_YEARS
     transformed: list[tuple[Any, ...]] = []
+    rows_with_content = 0
     for row in raw_rows:
         canonical_row = {
             mapped_key: (row.get(original_key) or "").strip()
             for original_key, mapped_key in header_map.items()
         }
+
+        if any(value for value in canonical_row.values()):
+            rows_with_content += 1
 
         distribuidora_id = None
         for value in (
@@ -231,6 +250,7 @@ def _transform_rows(
                 break
 
         if distribuidora_id is None:
+            logger.warning("Linha de perdas ignorada: distribuidora nao reconhecida. Dados: %s", row)
             continue
 
         data_processo = _parse_date(canonical_row.get("data_processo"))
@@ -245,12 +265,8 @@ def _transform_rows(
         if ano_value < min_year:
             continue
 
-        perdas_nao_tec = _normalize_measurement(
-            _parse_number(canonical_row.get("perdas_nao_tec"))
-        )
-        custo_perdas_nao_tec = _normalize_measurement(
-            _parse_number(canonical_row.get("custo_perdas_nao_tec"))
-        )
+        perdas_nao_tec = _parse_number(canonical_row.get("perdas_nao_tec"))
+        custo_perdas_nao_tec = _parse_number(canonical_row.get("custo_perdas_nao_tec"))
 
         transformed.append(
             (
@@ -262,6 +278,9 @@ def _transform_rows(
                 _build_missing_data_labels(perdas_nao_tec, custo_perdas_nao_tec),
             )
         )
+
+    if rows_with_content == 0 or not transformed:
+        logger.error("Erro na extracao ANEEL perdas: nenhum registro valido apos transformacao")
 
     return transformed
 
@@ -442,11 +461,15 @@ def run_perdas_import() -> dict[str, Any]:
     export_result = export_perdas_csv()
     archived_file = _archive_export(export_result.csv_data)
     raw_rows = _parse_export_rows(export_result.csv_data)
+    if not raw_rows:
+        raise ValueError("Erro na extracao ANEEL perdas: CSV vazio")
 
     conn = get_postgres_connection()
     try:
         distribuidoras = _load_distribuidoras(conn)
         transformed_rows = _transform_rows(raw_rows, distribuidoras)
+        if not transformed_rows:
+            raise ValueError("Erro na extracao ANEEL perdas: nenhum registro valido para carga")
         upserted = _upsert_perdas(conn, transformed_rows)
     finally:
         conn.close()

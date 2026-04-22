@@ -23,7 +23,7 @@ public class Conjunto {
     @Column(name = "ide_conj_und_consumidoras", unique = true, nullable = false)
     private Long ideConjUndConsumidoras;
 
-    @Column(name = "dsc_conj_und_consumidoras", nullable = false)
+    @Column(name = "dsc_conj_und_consumidoras")
     private String dscConjUndConsumidoras;
 
     @ManyToOne(fetch = FetchType.LAZY)

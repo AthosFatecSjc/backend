@@ -15,6 +15,7 @@ import com.energia.backend.model.aneel.IndicadorType;
 import com.energia.backend.model.aneel.Metricas;
 import com.energia.backend.model.aneel.SigIndicador;
 import com.energia.backend.model.aneel.DataKey;
+import com.energia.backend.etl.Utils;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.energia.backend.repository.aneel.ColetaDadosRepository;
 import com.energia.backend.repository.aneel.ConjuntoRepository;
@@ -25,9 +26,11 @@ import com.energia.backend.repository.aneel.SigIndicadorRepository;
 
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class ConjMetricTransformLoad {
 
     private final ConjuntoRepository conjuntoRepository;
@@ -42,29 +45,33 @@ public class ConjMetricTransformLoad {
             ObjectMapper mapper = new ObjectMapper();
         
             Map<String, Object> response = mapper.readValue(json, Map.class);
-        
             Map<String, Object> result = (Map<String, Object>) response.get("result");
-        
-            List<Map<String, Object>> registros =
-                    (List<Map<String, Object>>) result.get("records");
+            List<Map<String, Object>> registros = result == null
+                ? List.of()
+                : (List<Map<String, Object>>) result.getOrDefault("records", List.of());
+
+            if (registros.isEmpty()) {
+                throw new IllegalStateException("Erro na extração ANEEL: resposta de métricas sem registros");
+            }
+
+            int linhasValidas = 0;
 
             for (Map<String, Object> row : registros) {
-            
-                Long ideConjUndConsumidoras = Long.valueOf(row.get("IdeConjUndConsumidoras").toString());
-                String dscConjUndConsumidoras = row.get("DscConjUndConsumidoras").toString();
-                String numCnpj = row.get("NumCNPJ").toString().replaceAll("[^0-9]", "");
-                
-                String sigIndicador = row.get("SigIndicador").toString();
-                Long numPeriodoIndice = Long.valueOf(row.get("NumPeriodoIndice").toString());
-                Long anoIndice = Long.valueOf(row.get("AnoIndice").toString());
-                Double vlrIndiceEnviado = Double.valueOf(
-                    row.get("VlrIndiceEnviado")
-                       .toString()
-                       .replace(",", ".")
-                );
-                LocalDate dataGeracaoConjDados = LocalDate.parse(
-                    row.get("DatGeracaoConjuntoDados").toString()
-                );
+                Long ideConjUndConsumidoras = Utils.toLong(asString(row.get("IdeConjUndConsumidoras")));
+                String dscConjUndConsumidoras = Utils.cleanNullable(asString(row.get("DscConjUndConsumidoras")));
+                String numCnpj = normalizeCnpj(asString(row.get("NumCNPJ")));
+
+                String sigIndicador = Utils.cleanNullable(asString(row.get("SigIndicador")));
+                Long numPeriodoIndice = Utils.toLong(asString(row.get("NumPeriodoIndice")));
+                Long anoIndice = Utils.toLong(asString(row.get("AnoIndice")));
+                Double vlrIndiceEnviado = Utils.toDoubleBrNullable(asString(row.get("VlrIndiceEnviado")));
+                LocalDate dataGeracaoConjDados = Utils.toDateNullable(asString(row.get("DatGeracaoConjuntoDados")));
+
+                if (ideConjUndConsumidoras == null || numCnpj == null || sigIndicador == null
+                    || numPeriodoIndice == null || anoIndice == null) {
+                    log.warn("Linha de métricas ignorada por campos obrigatórios inválidos: {}", row);
+                    continue;
+                }
 
                 LocalDate dataColeta = LocalDate.now();
             
@@ -79,7 +86,11 @@ public class ConjMetricTransformLoad {
             
                     Distribuidora dist = distribuidoraRepository
                         .findByNumCnpj(numCnpj)
-                        .orElseThrow();
+                        .orElse(null);
+                    if (dist == null) {
+                        log.warn("Distribuidora não encontrada para CNPJ {}. Linha ignorada: {}", numCnpj, row);
+                        continue;
+                    }
                     
                     conjunto = new Conjunto();
                     conjunto.setIdeConjUndConsumidoras(ideConjUndConsumidoras);
@@ -102,13 +113,21 @@ public class ConjMetricTransformLoad {
                     coletaDadosRepository.save(coleta);
                 }
                 
-                IndicadorType tipo = IndicadorType.valueOf(
-                    sigIndicador.trim().toUpperCase()
-                );
+                IndicadorType tipo;
+                try {
+                    tipo = IndicadorType.valueOf(sigIndicador.trim().toUpperCase());
+                } catch (IllegalArgumentException ex) {
+                    log.warn("SigIndicador inválido em métricas: {}. Linha ignorada: {}", sigIndicador, row);
+                    continue;
+                }
 
                 SigIndicador indicador = sigIndicadorRepository
                 .findByIndicadorType(tipo)
-                .orElseThrow();
+                .orElse(null);
+                if (indicador == null) {
+                    log.warn("Indicador não encontrado para tipo {}. Linha ignorada: {}", tipo, row);
+                    continue;
+                }
                 
                 Optional<Metricas> opt = metricasRepository
                     .findByConjuntoAndSigIndicadorAndNumPeriodoIndiceAndAnoIndice(
@@ -125,6 +144,7 @@ public class ConjMetricTransformLoad {
                     metricaNova.setVlrIndiceEnviado(vlrIndiceEnviado);
                 
                     metricasRepository.save(metricaNova);
+                    linhasValidas++;
                     ColetaDados coleta = new ColetaDados();
                     coleta.setDataColeta(dataColeta);
                     coleta.setDataGeracao(dataGeracaoConjDados);
@@ -135,22 +155,36 @@ public class ConjMetricTransformLoad {
                     coletaDadosRepository.save(coleta);
                 
                 } else {
-                
-                    throw new RuntimeException(
-                        String.format(
-                            "Métrica já existe para Conjunto %d, Indicador %s, Período %d, Ano %d",
-                            conjunto.getId(),
-                            indicador.getIndicadorType(),
-                            numPeriodoIndice,
-                            anoIndice
-                        )
+                    log.info(
+                        "Métrica já existente (conjunto={}, indicador={}, período={}, ano={}), atualização ignorada.",
+                        conjunto.getId(),
+                        indicador.getIndicadorType(),
+                        numPeriodoIndice,
+                        anoIndice
                     );
                 }
             }
+
+            if (linhasValidas == 0) {
+                throw new IllegalStateException("Erro na extração ANEEL: nenhum registro válido de métricas foi processado");
+            }
         
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Falha no ETL de conjunto/métricas", e);
+            throw new RuntimeException(e);
         }
+    }
+
+    private String asString(Object value) {
+        return value == null ? null : value.toString();
+    }
+
+    private String normalizeCnpj(String raw) {
+        String cleaned = Utils.cleanNullable(raw);
+        if (cleaned == null) {
+            return null;
+        }
+        return cleaned.replaceAll("[^0-9]", "");
     }
     
 }
