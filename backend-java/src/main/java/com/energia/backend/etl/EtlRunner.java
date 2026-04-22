@@ -42,17 +42,57 @@ public class EtlRunner {
                 if (caminho == null || caminho.isBlank()) {
                     throw new RuntimeException("ETL_FILE_DIST_PATH não está definida");
                 }
-                distService.importar(caminho);
-                List<String> cnpjs = List.of("97578090000134");
-                String json = conjService.importar(cnpjs);
-                conjTransformService.processarJson(json);
-                String response = limService.importar();
-                List<LimiteFiltrado> listaLim = limitesCsvParser.parsearFiltrando(response, List.of(12722L));
-                limitesTransformLoad.processarLista(listaLim);
 
+                try {
+                    distService.importar(caminho);
+                } catch (Exception e) {
+                    loggingService.addError("Erro ao importar distribuidoras: " + e.getMessage());
+                }
+
+                try {
+                    List<String> cnpjs = List.of("97578090000134");
+                    String json = conjService.importar(cnpjs);
+                    conjTransformService.processarJson(json);
+                } catch (Exception e) {
+                    String msg = e.getMessage() != null ? e.getMessage() : "";
+
+                    if (msg.contains("duplicatas ignoradas")) {
+
+                        try {
+                            String[] parts = msg.split("duplicatas ignoradas");
+                            if (parts.length > 0) {
+                                String numStr = parts[0].replaceAll("[^0-9]", "");
+                                int numDuplicas = Integer.parseInt(numStr);
+                                loggingService.logExtractionFailDuplicata(numDuplicas);
+                            }
+                        } catch (Exception ex) {
+                            loggingService.addError("Erro ao processar métricas de conjunto (duplicatas): " + msg);
+                        }
+                    } else {
+                        loggingService.addError("Erro ao processar métricas de conjunto: " + msg);
+                    }
+                }
+
+                try {
+                    String response = limService.importar();
+                    List<LimiteFiltrado> listaLim = limitesCsvParser.parsearFiltrando(response, List.of(12722L));
+                    limitesTransformLoad.processarLista(listaLim);
+                } catch (Exception e) {
+                    loggingService.addError("Erro ao processar limites: " + e.getMessage());
+                }
 
                 System.out.println("ETL REALIZADO");
-                loggingService.logExtractionSuccess("Todos os dados ANEEL foram extraídos e carregados com sucesso");
+
+                if (loggingService.hasErrors()) {
+                    loggingService.logExtractionFail(
+                        "ETL finalizado com " + loggingService.getErrors().size() + " erro(s): " +
+                        String.join("; ", loggingService.getErrors())
+                    );
+                    System.exit(1);
+                } else {
+                    loggingService.logExtractionSuccess("Todos os dados ANEEL foram extraídos e carregados com sucesso");
+                }
+
             }catch (Exception e) {
                 System.err.println("ERRO DURANTE ETL");
                 e.printStackTrace();
