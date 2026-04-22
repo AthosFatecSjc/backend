@@ -4,9 +4,6 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
-import java.time.LocalDate;
-import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 import com.energia.backend.model.aneel.*;
@@ -42,7 +39,7 @@ class ConjMetricTransformLoadTest {
 
     @Test
     void deveProcessarJsonComDados() throws com.fasterxml.jackson.core.JsonProcessingException {
-        String json = createValidJson(1, false);
+        String json = createValidJson(1);
 
         Distribuidora distribuidora = createMockDistribuidora();
         Conjunto conjunto = createMockConjunto(1L, distribuidora);
@@ -65,7 +62,7 @@ class ConjMetricTransformLoadTest {
 
     @Test
     void deveLancarExcecaoQuandoEncontraDuplicata() throws com.fasterxml.jackson.core.JsonProcessingException {
-        String json = createValidJson(1, false);
+        String json = createValidJson(1);
 
         Distribuidora distribuidora = createMockDistribuidora();
         Conjunto conjunto = createMockConjunto(1L, distribuidora);
@@ -110,7 +107,7 @@ class ConjMetricTransformLoadTest {
 
     @Test
     void deveCriarColetaDadosAoNovoConjunto() throws com.fasterxml.jackson.core.JsonProcessingException {
-        String json = createValidJson(1, false);
+        String json = createValidJson(1);
 
         Distribuidora distribuidora = createMockDistribuidora();
         Conjunto conjunto = createMockConjunto(1L, distribuidora);
@@ -131,7 +128,7 @@ class ConjMetricTransformLoadTest {
         ));
     }
 
-    private String createValidJson(int quantidadeRegistros, boolean withDuplicate) {
+    private String createValidJson(int quantidadeRegistros) {
         StringBuilder json = new StringBuilder();
         json.append("{\"result\":{\"records\":[");
 
