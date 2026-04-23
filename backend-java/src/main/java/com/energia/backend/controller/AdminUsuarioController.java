@@ -18,7 +18,10 @@ import org.springframework.web.server.ResponseStatusException;
 import com.energia.backend.dto.AdminUsuarioResponse;
 import com.energia.backend.dto.AlterarRoleUsuarioRequest;
 import com.energia.backend.dto.AprovacaoRejeicaoUsuarioRequest;
+import com.energia.backend.dto.AtualizarEmailRequest;
+import com.energia.backend.dto.MinhaContaResponse;
 import com.energia.backend.service.AdminUsuarioService;
+import com.energia.backend.service.MinhaContaService;
 import com.energia.backend.service.UserRoleService;
 import com.energia.backend.service.UsuarioCadastroService;
 
@@ -30,15 +33,18 @@ public class AdminUsuarioController {
     private final AdminUsuarioService adminUsuarioService;
     private final UsuarioCadastroService usuarioCadastroService;
     private final UserRoleService userRoleService;
+    private final MinhaContaService minhaContaService;
 
     public AdminUsuarioController(
             AdminUsuarioService adminUsuarioService,
             UsuarioCadastroService usuarioCadastroService,
-            UserRoleService userRoleService
+            UserRoleService userRoleService,
+            MinhaContaService minhaContaService
     ) {
         this.adminUsuarioService = adminUsuarioService;
         this.usuarioCadastroService = usuarioCadastroService;
         this.userRoleService = userRoleService;
+        this.minhaContaService = minhaContaService;
     }
 
     @GetMapping
@@ -66,6 +72,17 @@ public class AdminUsuarioController {
         UUID adminId = obterUid(principal);
         userRoleService.alterarRoleUsuario(usuarioId, adminId, request.getRoleName());
         return ResponseEntity.ok("Role do usuario atualizado com sucesso.");
+    }
+
+    @PatchMapping("/{id}/email")
+    public ResponseEntity<MinhaContaResponse> atualizarEmailUsuario(
+            @PathVariable("id") UUID usuarioId,
+            @RequestBody AtualizarEmailRequest request,
+            Principal principal
+    ) {
+        UUID adminId = obterUid(principal);
+        MinhaContaResponse response = minhaContaService.atualizarEmail(adminId, usuarioId, request);
+        return ResponseEntity.ok(response);
     }
 
     private UUID obterUid(Principal principal) {

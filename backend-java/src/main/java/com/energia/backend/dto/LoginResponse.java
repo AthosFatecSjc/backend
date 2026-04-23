@@ -8,16 +8,22 @@ public class LoginResponse {
     private UUID userId;
     private String email;
     private String nome;
+    private String role;
 
     public LoginResponse() {
     }
 
     public LoginResponse(String accessToken, UUID userId, String email, String nome) {
+        this(accessToken, userId, email, nome, null);
+    }
+
+    public LoginResponse(String accessToken, UUID userId, String email, String nome, String role) {
         this.accessToken = accessToken;
         this.tokenType = "Bearer";
         this.userId = userId;
         this.email = email;
         this.nome = nome;
+        this.role = role;
     }
 
     public String getAccessToken() {
@@ -58,5 +64,13 @@ public class LoginResponse {
 
     public void setNome(String nome) {
         this.nome = nome;
+    }
+
+    public String getRole() {
+        return role;
+    }
+
+    public void setRole(String role) {
+        this.role = role;
     }
 }
