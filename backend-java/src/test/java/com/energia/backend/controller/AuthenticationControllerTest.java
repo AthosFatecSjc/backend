@@ -24,8 +24,10 @@ import org.springframework.test.web.servlet.MockMvc;
 import com.energia.backend.dto.LoginRequest;
 import com.energia.backend.dto.LoginResponse;
 import com.energia.backend.exception.LoginAuthenticationException;
+import com.energia.backend.repository.UsuarioRepository;
 import com.energia.backend.service.AuthenticationService;
 import com.energia.backend.service.TermsService;
+import com.energia.backend.service.TermsUserService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 @WebMvcTest(AuthenticationController.class)
@@ -44,6 +46,12 @@ class AuthenticationControllerTest {
 
     @MockBean
     private TermsService termsService;
+
+    @MockBean
+    private TermsUserService termsUserService;
+
+    @MockBean
+    private UsuarioRepository usuarioRepository;
 
     private static final String LOGIN_ENDPOINT = "/auth/login";
     private static final String EMAIL = "user@example.com";

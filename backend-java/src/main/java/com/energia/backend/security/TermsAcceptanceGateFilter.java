@@ -22,14 +22,12 @@ import java.util.UUID;
 @Component
 public class TermsAcceptanceGateFilter extends OncePerRequestFilter {
 
-    private final TermsService termsService;
     private final TermsUserService termsUserService;
     private final UsuarioRepository userRepository;
 
     public TermsAcceptanceGateFilter(TermsService termsService,
             TermsUserService termsUserService,
             UsuarioRepository userRepository) {
-        this.termsService = termsService;
         this.termsUserService = termsUserService;
         this.userRepository = userRepository;
     }
@@ -69,6 +67,7 @@ public class TermsAcceptanceGateFilter extends OncePerRequestFilter {
                 || path.startsWith("/auth/")
                 || path.startsWith("/documentos/consentimentos/vigentes")
                 || path.startsWith("/usuarios/meus-termos")
-                || path.startsWith("/usuarios/minha-conta");
+                || path.startsWith("/usuarios/minha-conta")
+                || path.startsWith("/terms");
     }
 }

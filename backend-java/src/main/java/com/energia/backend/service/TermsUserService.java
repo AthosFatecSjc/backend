@@ -11,10 +11,7 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 
 import com.energia.backend.dto.HistoricoTermoResponse;
-import com.energia.backend.dto.TermosResponse;
 import com.energia.backend.exception.DocumentosObrigatoriosNaoConfiguradosException;
-import com.energia.backend.exception.NenhumTermoPassadoException;
-import com.energia.backend.exception.TermoNaoEncontradoException;
 import com.energia.backend.model.AppUserEntity;
 import com.energia.backend.model.TermsEntity;
 import com.energia.backend.model.UserTermsAction;
@@ -198,7 +195,13 @@ public class TermsUserService {
 
     public List<HistoricoTermoResponse> listarHistorico(UUID userId) {
         return userTermsRespository.findHistoryByUserId(userId).stream()
-                .map(this::toHistoricoResponse)
+                .map(item -> new HistoricoTermoResponse(
+                        item.getId(),
+                        item.getTerms().getId(),
+                        item.getTerms().getTermType().getName().name(),
+                        item.getTerms().getTermType().getIsRequired(),
+                        item.getAction().name(),
+                        item.getActionAt()))
                 .toList();
     }
 
@@ -242,16 +245,4 @@ public class TermsUserService {
     // return List.of();
 
     // }
-
-    private HistoricoTermoResponse toHistoricoResponse(UserTermsEntity item) {
-        return new HistoricoTermoResponse(
-                item.getId(),
-                item.getTerms().getId(),
-                item.getTerms().getTermType().getName().name(),
-                item.getTerms().getTermType().getIsRequired(),
-                item.getAction().name(),
-                item.getActionAt());
-    }
-
-
 }

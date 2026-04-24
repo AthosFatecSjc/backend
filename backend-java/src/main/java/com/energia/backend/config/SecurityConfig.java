@@ -33,6 +33,7 @@ public class SecurityConfig {
                 .requestMatchers("/auth/login").permitAll()
                 .requestMatchers("/auth/terms/pending/resolve").permitAll()
                 .requestMatchers("/login").permitAll()
+                // .requestMatchers("/terms/**").permitAll()
                 .requestMatchers("/usuarios/cadastro").permitAll()
                 .requestMatchers("/documentos/consentimentos/vigentes").permitAll()
                 .requestMatchers("/admin/**").hasRole("ADMIN")
