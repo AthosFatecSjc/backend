@@ -1,6 +1,6 @@
 package com.energia.backend.controller;
 
-import com.energia.backend.dto.HistoricoTermoResponse;
+import com.energia.backend.dto.UserTermResponse;
 import com.energia.backend.model.AppUserEntity;
 import com.energia.backend.model.TermsEntity;
 import com.energia.backend.repository.UsuarioRepository;
@@ -51,7 +51,7 @@ public class TermsUserController {
     }
 
     @GetMapping("/history")
-    public ResponseEntity<List<HistoricoTermoResponse>> listarHistorico(
+    public ResponseEntity<List<UserTermResponse>> listarHistorico(
             @PathVariable UUID userId) {
 
         getUserOrThrow(userId);

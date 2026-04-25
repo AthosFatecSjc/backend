@@ -1,6 +1,6 @@
 package com.energia.backend.controller;
 
-import com.energia.backend.dto.HistoricoTermoResponse;
+import com.energia.backend.dto.UserTermResponse;
 import com.energia.backend.model.AppUserEntity;
 import com.energia.backend.model.TermTypeEntity;
 import com.energia.backend.model.TermTypeName;
@@ -109,7 +109,7 @@ class TermsUserControllerTest {
 
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
 
-        HistoricoTermoResponse response = new HistoricoTermoResponse(
+        UserTermResponse response = new UserTermResponse(
                 UUID.randomUUID(),
                 UUID.randomUUID(),
                 TermTypeName.TERMS_OF_USE.name(),

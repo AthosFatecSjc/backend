@@ -22,7 +22,7 @@ import com.energia.backend.model.TermTypeEntity;
 import com.energia.backend.model.TermTypeName;
 import com.energia.backend.model.TermsEntity;
 import com.energia.backend.repository.TermTypeRepository;
-import com.energia.backend.dto.HistoricoTermoResponse;
+import com.energia.backend.dto.UserTermResponse;
 import com.energia.backend.model.UserTermsEntity;
 import com.energia.backend.repository.TermsRepository;
 import com.energia.backend.repository.UserTermsRepository;
@@ -90,7 +90,7 @@ public class TermsService {
     }
 
     @Transactional
-    public TermsEntity cadastrarNovoTermo(TermoRequest request) {
+    public TermosResponse cadastrarNovoTermo(TermoRequest request) {
 
         TermTypeEntity termType = termTypeRepository
                 .findByName(TermTypeName.valueOf(request.getTermTypeName()))
@@ -98,7 +98,7 @@ public class TermsService {
                         "Tipo de termo não encontrado: " + request.getTermTypeName()));
 
         Integer maxClause = termsRepository.findMaxClauseByTermType(termType.getId());
-        if(maxClause==null) {
+        if (maxClause == null) {
             maxClause = 0;
         }
         int novaClause = maxClause + 1;
@@ -113,12 +113,12 @@ public class TermsService {
         } else {
             novoTermo.setEffectivityStartAt(LocalDateTime.now());
         }
-
-        return termsRepository.save(novoTermo);
+        TermosResponse response = toTermosResponse(termsRepository.save(novoTermo));
+        return response;
     }
 
     @Transactional
-    public TermsEntity desativarTermo(UUID termoId) {
+    public TermosResponse desativarTermo(UUID termoId) {
         TermsEntity termo = termsRepository.findById(termoId)
                 .orElseThrow(() -> new RuntimeException("Termo não encontrado: " + termoId));
 
@@ -127,26 +127,31 @@ public class TermsService {
         }
 
         termo.setEffectivityEndAt(LocalDateTime.now());
-        return termsRepository.save(termo);
+        TermosResponse response = toTermosResponse(termsRepository.save(termo));
+        return response;
     }
 
     @Transactional
-    public TermsEntity editarTermo(UUID termoId, TermoRequest request) {
+    public TermosResponse editarTermo(UUID termoId, TermoRequest request) {
 
-        TermsEntity termoAtual = desativarTermo(termoId);
+        TermsEntity termoAtual = termsRepository.findById(termoId)
+                .orElseThrow(() -> new RuntimeException("Termo não encontrado: " + termoId));
 
-        TermTypeEntity termType = termoAtual.getTermType();
+        desativarTermo(termoId);
 
         TermsEntity novoTermo = new TermsEntity();
-        novoTermo.setTermType(termType);
+        novoTermo.setTermType(termoAtual.getTermType());
         novoTermo.setContent(request.getContent());
         novoTermo.setClause(termoAtual.getClause());
         novoTermo.setEffectivityStartAt(LocalDateTime.now());
 
-        return termsRepository.save(novoTermo);
+        TermsEntity salvo = termsRepository.save(novoTermo);
+
+        return toTermosResponse(salvo);
     }
 
-    public Map<String, TermsEntity> carregarTermosVigentesPorTipo(boolean apenasObrigatorios) {
+    public Map<String, TermosResponse> carregarTermosVigentesPorTipo(boolean apenasObrigatorios) {
+
         List<TermsEntity> termos = apenasObrigatorios
                 ? termsRepository.findActiveRequiredByReferenceTime(LocalDateTime.now())
                 : termsRepository.findActiveByReferenceTime(LocalDateTime.now());
@@ -154,7 +159,7 @@ public class TermsService {
         return termos.stream()
                 .collect(Collectors.toMap(
                         t -> t.getTermType().getName() + "_" + t.getClause(),
-                        t -> t));
+                        t -> toTermosResponse(t)));
     }
 
     public void validarTermosEnviados(List<UUID> termosIds) {
@@ -189,7 +194,11 @@ public class TermsService {
         return new TermosResponse(
                 item.getId(),
                 item.getTermType().getName().name(),
-                item.getTermType().getIsRequired());
+                item.getTermType().getIsRequired(),
+                item.getContent(),
+                item.getClause(),
+                item.getEffectivityStartAt(),
+                item.getEffectivityEndAt());
     }
 
 }

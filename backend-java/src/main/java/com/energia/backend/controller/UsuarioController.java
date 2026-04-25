@@ -22,7 +22,7 @@ import com.energia.backend.dto.AnonimizarUsuarioRequest;
 import com.energia.backend.dto.AnonimizarUsuarioResponse;
 import com.energia.backend.dto.AprovacaoRejeicaoUsuarioRequest;
 import com.energia.backend.dto.AtualizarEmailRequest;
-import com.energia.backend.dto.HistoricoTermoResponse;
+import com.energia.backend.dto.UserTermResponse;
 import com.energia.backend.dto.MinhaContaResponse;
 import com.energia.backend.dto.MinhaContaUpdateRequest;
 import com.energia.backend.dto.RegistrarTermosRequest;
@@ -133,7 +133,7 @@ public class UsuarioController {
     }
 
     @GetMapping("/meus-termos/historico")
-    public ResponseEntity<List<HistoricoTermoResponse>> listarHistoricoTermos(Principal principal) {
+    public ResponseEntity<List<UserTermResponse>> listarHistoricoTermos(Principal principal) {
         return ResponseEntity.ok(termsUserService.listarHistorico(obterUid(principal)));
     }
 

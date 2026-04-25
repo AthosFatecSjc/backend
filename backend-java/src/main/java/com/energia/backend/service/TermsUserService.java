@@ -10,7 +10,7 @@ import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 
-import com.energia.backend.dto.HistoricoTermoResponse;
+import com.energia.backend.dto.UserTermResponse;
 import com.energia.backend.exception.DocumentosObrigatoriosNaoConfiguradosException;
 import com.energia.backend.model.AppUserEntity;
 import com.energia.backend.model.TermsEntity;
@@ -135,11 +135,11 @@ public class TermsUserService {
                 .collect(Collectors.toSet());
 
         if (user != null) {
-            List<UserTermsEntity> activeUserTerms = findAcceptedUserTermsAtTime(
+            List<UserTermResponse> activeUserTerms = findAcceptedUserTermsAtTime(
                     user,
                     referenceTime);
-            for (UserTermsEntity userTerm : activeUserTerms) {
-                UUID termId = userTerm.getTerms().getId();
+            for (UserTermResponse userTerm : activeUserTerms) {
+                UUID termId = userTerm.termId();
 
                 if (obrigatoriosIds.contains(termId)) {
                     aceitos.add(termId);
@@ -151,7 +151,7 @@ public class TermsUserService {
     }
 
     // ok
-    public List<UserTermsEntity> findAcceptedUserTermsAtTime(
+    public List<UserTermResponse> findAcceptedUserTermsAtTime(
             AppUserEntity user,
             LocalDateTime referenceTime) {
 
@@ -175,6 +175,13 @@ public class TermsUserService {
         return ultimaAcaoPorTermo.values()
                 .stream()
                 .filter(ut -> ut.getAction() == UserTermsAction.ACCEPTED)
+                .map(ut -> new UserTermResponse(
+                        ut.getId(),
+                        ut.getTerms().getId(),
+                        ut.getTerms().getTermType().getName().name(),
+                        ut.getTerms().getTermType().getIsRequired(),
+                        ut.getAction().name(),
+                        ut.getActionAt()))
                 .toList();
     }
 
@@ -193,9 +200,9 @@ public class TermsUserService {
         return ut.getTerms().getTermType().getId() + "_" + ut.getTerms().getClause();
     }
 
-    public List<HistoricoTermoResponse> listarHistorico(UUID userId) {
+    public List<UserTermResponse> listarHistorico(UUID userId) {
         return userTermsRespository.findHistoryByUserId(userId).stream()
-                .map(item -> new HistoricoTermoResponse(
+                .map(item -> new UserTermResponse(
                         item.getId(),
                         item.getTerms().getId(),
                         item.getTerms().getTermType().getName().name(),
@@ -212,7 +219,7 @@ public class TermsUserService {
 
         Set<UUID> termosAceitosIds = findAcceptedUserTermsAtTime(user, LocalDateTime.now())
                 .stream()
-                .map(ut -> ut.getTerms().getId())
+                .map(ut -> ut.termId())
                 .collect(Collectors.toSet());
 
         List<TermsEntity> termosVigentes = (apenasObrigatorios

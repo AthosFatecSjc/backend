@@ -1,6 +1,7 @@
 package com.energia.backend.controller;
 
 import com.energia.backend.dto.TermoRequest;
+import com.energia.backend.dto.TermosResponse;
 import com.energia.backend.model.TermsEntity;
 import com.energia.backend.service.TermsService;
 
@@ -19,27 +20,27 @@ public class TermsController {
     private final TermsService termsService;
 
     @PostMapping
-    public ResponseEntity<TermsEntity> cadastrarNovoTermo(
+    public ResponseEntity<TermosResponse> cadastrarNovoTermo(
             @RequestBody TermoRequest request) {
 
-        TermsEntity termo = termsService.cadastrarNovoTermo(request);
+        TermosResponse termo = termsService.cadastrarNovoTermo(request);
         return ResponseEntity.ok(termo);
     }
 
     @PatchMapping("/{id}/desativar")
-    public ResponseEntity<TermsEntity> desativarTermo(
+    public ResponseEntity<TermosResponse> desativarTermo(
             @PathVariable UUID id) {
 
-        TermsEntity termo = termsService.desativarTermo(id);
+        TermosResponse termo = termsService.desativarTermo(id);
         return ResponseEntity.ok(termo);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<TermsEntity> editarTermo(
+    public ResponseEntity<TermosResponse> editarTermo(
             @PathVariable UUID id,
             @RequestBody TermoRequest request) {
 
-        TermsEntity termo = termsService.editarTermo(id, request);
+        TermosResponse termo = termsService.editarTermo(id, request);
         return ResponseEntity.ok(termo);
     }
 }

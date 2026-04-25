@@ -1,5 +1,6 @@
 package com.energia.backend.service;
 
+import com.energia.backend.dto.UserTermResponse;
 import com.energia.backend.exception.DocumentosObrigatoriosNaoConfiguradosException;
 import com.energia.backend.exception.NenhumTermoPassadoException;
 import com.energia.backend.exception.TermoNaoEncontradoException;
@@ -490,10 +491,10 @@ class TermsUserServiceTest {
                                                 userTerm(user, bV1, UserTermsAction.REVOKED,
                                                                 referenceTime.minusMinutes(30))));
 
-                List<UserTermsEntity> result = termsUserService.findAcceptedUserTermsAtTime(user, referenceTime);
+                List<UserTermResponse> result = termsUserService.findAcceptedUserTermsAtTime(user, referenceTime);
 
                 assertEquals(2, result.size());
-                assertEquals(UserTermsAction.ACCEPTED, result.get(0).getAction());
+                assertEquals(UserTermsAction.ACCEPTED.name(), result.get(0).action());
         }
 
         @Test
@@ -517,10 +518,10 @@ class TermsUserServiceTest {
                                                 userTerm(user, inactiveTerm, UserTermsAction.ACCEPTED,
                                                                 referenceTime.minusHours(1))));
 
-                List<UserTermsEntity> result = termsUserService.findAcceptedUserTermsAtTime(user, referenceTime);
+                List<UserTermResponse> result = termsUserService.findAcceptedUserTermsAtTime(user, referenceTime);
 
                 assertEquals(1, result.size());
-                assertEquals(activeTerm.getId(), result.get(0).getTerms().getId());
+                assertEquals(activeTerm.getId(), result.get(0).termId());
         }
 
         private TermTypeEntity termType(UUID id, String name, boolean required) {

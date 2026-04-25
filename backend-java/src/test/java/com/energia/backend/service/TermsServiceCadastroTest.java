@@ -1,6 +1,7 @@
 package com.energia.backend.service;
 
 import com.energia.backend.dto.TermoRequest;
+import com.energia.backend.dto.TermosResponse;
 import com.energia.backend.model.TermTypeEntity;
 import com.energia.backend.model.TermTypeName;
 import com.energia.backend.model.TermsEntity;
@@ -53,18 +54,18 @@ class TermsServiceCadastroTest {
                                 .thenReturn(Optional.of(type));
 
                 when(termsRepository.findMaxClauseByTermType(type.getId()))
-                                .thenReturn(0); 
+                                .thenReturn(0);
 
                 when(termsRepository.save(any()))
                                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-                TermsEntity result = service.cadastrarNovoTermo(request);
+                TermosResponse result = service.cadastrarNovoTermo(request);
 
-                assertEquals(1, result.getClause());
-                assertEquals("conteudo", result.getContent());
-                assertEquals(type, result.getTermType());
-                assertNotNull(result.getEffectivityStartAt());
-                assertNull(result.getEffectivityEndAt());
+                assertEquals(1, result.clause());
+                assertEquals("conteudo", result.content());
+                assertEquals(type.getName().name(), result.typeName());
+                assertNotNull(result.effectivityStartAt());
+                assertNull(result.effectivityEndAt());
 
                 verify(termsRepository).save(any());
         }
@@ -89,9 +90,9 @@ class TermsServiceCadastroTest {
                 when(termsRepository.save(any()))
                                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-                TermsEntity result = service.cadastrarNovoTermo(request);
+                TermosResponse result = service.cadastrarNovoTermo(request);
 
-                assertEquals(4, result.getClause());
+                assertEquals(4, result.clause());
         }
 
         @Test
@@ -106,6 +107,7 @@ class TermsServiceCadastroTest {
 
                 TermTypeEntity type = new TermTypeEntity();
                 type.setId(UUID.randomUUID());
+                type.setName(TermTypeName.TERMS_OF_USE);
 
                 when(termTypeRepository.findByName(any()))
                                 .thenReturn(Optional.of(type));
@@ -116,9 +118,9 @@ class TermsServiceCadastroTest {
                 when(termsRepository.save(any()))
                                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-                TermsEntity result = service.cadastrarNovoTermo(request);
+                TermosResponse result = service.cadastrarNovoTermo(request);
 
-                assertEquals(inicio, result.getEffectivityStartAt());
+                assertEquals(inicio, result.effectivityStartAt());
         }
 
         @Test
@@ -130,6 +132,7 @@ class TermsServiceCadastroTest {
 
                 TermTypeEntity type = new TermTypeEntity();
                 type.setId(UUID.randomUUID());
+                type.setName(TermTypeName.TERMS_OF_USE); // ✅ necessário
 
                 when(termTypeRepository.findByName(any()))
                                 .thenReturn(Optional.of(type));
@@ -140,8 +143,8 @@ class TermsServiceCadastroTest {
                 when(termsRepository.save(any()))
                                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-                TermsEntity result = service.cadastrarNovoTermo(request);
+                TermosResponse result = service.cadastrarNovoTermo(request);
 
-                assertNotNull(result.getEffectivityStartAt());
+                assertNotNull(result.effectivityStartAt());
         }
 }

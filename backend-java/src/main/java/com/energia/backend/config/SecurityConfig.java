@@ -33,14 +33,14 @@ public class SecurityConfig {
                 .requestMatchers("/auth/login").permitAll()
                 .requestMatchers("/auth/terms/pending/resolve").permitAll()
                 .requestMatchers("/login").permitAll()
-                // .requestMatchers("/terms/**").permitAll()
+                .requestMatchers("/terms/**").permitAll()
+                .requestMatchers("/users/**").permitAll()
                 .requestMatchers("/usuarios/cadastro").permitAll()
                 .requestMatchers("/documentos/consentimentos/vigentes").permitAll()
                 .requestMatchers("/admin/**").hasRole("ADMIN")
                 .requestMatchers("/usuarios/**").authenticated()
                 .requestMatchers("/indicadores/**").authenticated()
-                .requestMatchers("/concessionarias/**").authenticated()
-                .anyRequest().authenticated()
+                .requestMatchers("/concessionarias/**").authenticated().anyRequest().authenticated()
             )
             .httpBasic(basic -> basic.disable());
 
