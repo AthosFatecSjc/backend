@@ -15,163 +15,158 @@ import org.springframework.http.ResponseEntity;
 
 import com.energia.backend.dto.AnonimizarUsuarioRequest;
 import com.energia.backend.dto.AnonimizarUsuarioResponse;
-import com.energia.backend.mapper.user.AppUserMapper;
 import com.energia.backend.exception.PermissaoNegadaException;
 import com.energia.backend.exception.UsuarioJaAnonimizadoException;
 import com.energia.backend.exception.UsuarioNaoEncontradoException;
 import com.energia.backend.repository.AppUserJpaRepository;
 import com.energia.backend.service.AnonimizacaoService;
 import com.energia.backend.service.TermsService;
+import com.energia.backend.service.TermsUserService;
 import com.energia.backend.service.UserRoleService;
 
 class UsuarioControllerAnonimizacaoTest {
 
-    @Test
-    void deveAnonimizarUsuarioComSucesso() {
-        AnonimizacaoService anonimizacaoService = mock(AnonimizacaoService.class);
-        com.energia.backend.service.UsuarioCadastroService cadastroService =
-                mock(com.energia.backend.service.UsuarioCadastroService.class);
-        com.energia.backend.service.MinhaContaService minhaContaService =
-                mock(com.energia.backend.service.MinhaContaService.class);
-        TermsService termsService = mock(TermsService.class);
-        AppUserJpaRepository appUserRepository = mock(AppUserJpaRepository.class);
-        AppUserMapper appUserMapper = mock(AppUserMapper.class);
-        UserRoleService userRoleService = mock(UserRoleService.class);
+        @Test
+        void deveAnonimizarUsuarioComSucesso() {
+                AnonimizacaoService anonimizacaoService = mock(AnonimizacaoService.class);
+                com.energia.backend.service.UsuarioCadastroService cadastroService = mock(
+                                com.energia.backend.service.UsuarioCadastroService.class);
+                com.energia.backend.service.MinhaContaService minhaContaService = mock(
+                                com.energia.backend.service.MinhaContaService.class);
+                AppUserJpaRepository appUserRepository = mock(AppUserJpaRepository.class);
+                TermsService termsService = mock(TermsService.class);
+                TermsUserService termsUserService = mock(TermsUserService.class);
+                UserRoleService userRoleService = mock(UserRoleService.class);
 
-        UsuarioController controller = new UsuarioController(
-                cadastroService,
-                minhaContaService,
-                anonimizacaoService,
-                termsService,
-                appUserRepository,
-                appUserMapper,
-                userRoleService
-        );
+                UsuarioController controller = new UsuarioController(
+                                cadastroService,
+                                minhaContaService,
+                                anonimizacaoService,
+                                appUserRepository,
+                                termsService,
+                                termsUserService,
+                                userRoleService);
 
-        UUID adminId = UUID.randomUUID();
-        UUID usuarioId = UUID.randomUUID();
-        LocalDateTime agora = LocalDateTime.now();
+                UUID adminId = UUID.randomUUID();
+                UUID usuarioId = UUID.randomUUID();
+                LocalDateTime agora = LocalDateTime.now();
 
-        AnonimizarUsuarioResponse response = new AnonimizarUsuarioResponse(
-                usuarioId,
-                "Usuario anonimizado com sucesso.",
-                agora
-        );
+                AnonimizarUsuarioResponse response = new AnonimizarUsuarioResponse(
+                                usuarioId,
+                                "Usuario anonimizado com sucesso.",
+                                agora);
 
-        when(anonimizacaoService.anonimizar(any(), any())).thenReturn(response);
+                when(anonimizacaoService.anonimizar(any(), any())).thenReturn(response);
 
-        java.security.Principal principal = () -> adminId.toString();
+                java.security.Principal principal = () -> adminId.toString();
 
-        ResponseEntity<AnonimizarUsuarioResponse> resultado = controller.anonimizarUsuario(principal, usuarioId);
+                ResponseEntity<AnonimizarUsuarioResponse> resultado = controller.anonimizarUsuario(principal,
+                                usuarioId);
 
-        assertEquals(HttpStatus.OK, resultado.getStatusCode());
-        assertEquals(usuarioId, resultado.getBody().usuarioId());
-        assertEquals("Usuario anonimizado com sucesso.", resultado.getBody().mensagem());
-        verify(anonimizacaoService).anonimizar(adminId, new AnonimizarUsuarioRequest(usuarioId));
-    }
+                assertEquals(HttpStatus.OK, resultado.getStatusCode());
+                assertEquals(usuarioId, resultado.getBody().usuarioId());
+                assertEquals("Usuario anonimizado com sucesso.", resultado.getBody().mensagem());
+                verify(anonimizacaoService).anonimizar(adminId, new AnonimizarUsuarioRequest(usuarioId));
+        }
 
-    @Test
-    void deveLancarPermissaoNegadaQuandoNaoForAdmin() {
-        AnonimizacaoService anonimizacaoService = mock(AnonimizacaoService.class);
-        com.energia.backend.service.UsuarioCadastroService cadastroService =
-                mock(com.energia.backend.service.UsuarioCadastroService.class);
-        com.energia.backend.service.MinhaContaService minhaContaService =
-                mock(com.energia.backend.service.MinhaContaService.class);
-        TermsService termsService = mock(TermsService.class);
-        AppUserJpaRepository appUserRepository = mock(AppUserJpaRepository.class);
-        AppUserMapper appUserMapper = mock(AppUserMapper.class);
-        UserRoleService userRoleService = mock(UserRoleService.class);
+        @Test
+        void deveLancarPermissaoNegadaQuandoNaoForAdmin() {
+                AnonimizacaoService anonimizacaoService = mock(AnonimizacaoService.class);
+                com.energia.backend.service.UsuarioCadastroService cadastroService = mock(
+                                com.energia.backend.service.UsuarioCadastroService.class);
+                com.energia.backend.service.MinhaContaService minhaContaService = mock(
+                                com.energia.backend.service.MinhaContaService.class);
+                AppUserJpaRepository appUserRepository = mock(AppUserJpaRepository.class);
+                TermsService termsService = mock(TermsService.class);
+                TermsUserService termsUserService = mock(TermsUserService.class);
+                UserRoleService userRoleService = mock(UserRoleService.class);
 
-        UsuarioController controller = new UsuarioController(
-                cadastroService,
-                minhaContaService,
-                anonimizacaoService,
-                termsService,
-                appUserRepository,
-                appUserMapper,
-                userRoleService
-        );
+                UsuarioController controller = new UsuarioController(
+                                cadastroService,
+                                minhaContaService,
+                                anonimizacaoService,
+                                appUserRepository,
+                                termsService,
+                                termsUserService,
+                                userRoleService);
 
-        UUID userId = UUID.randomUUID();
-        UUID usuarioId = UUID.randomUUID();
+                UUID userId = UUID.randomUUID();
+                UUID usuarioId = UUID.randomUUID();
 
-        when(anonimizacaoService.anonimizar(any(), any()))
-                .thenThrow(new PermissaoNegadaException("Apenas administradores podem anonimizar usuarios."));
+                when(anonimizacaoService.anonimizar(any(), any()))
+                                .thenThrow(new PermissaoNegadaException(
+                                                "Apenas administradores podem anonimizar usuarios."));
 
-        java.security.Principal principal = () -> userId.toString();
+                java.security.Principal principal = () -> userId.toString();
 
-        assertThrows(PermissaoNegadaException.class, () ->
-                controller.anonimizarUsuario(principal, usuarioId)
-        );
-    }
+                assertThrows(PermissaoNegadaException.class, () -> controller.anonimizarUsuario(principal, usuarioId));
+        }
 
-    @Test
-    void deveLancarUsuarioJaAnonimizadoQuandoJaFoiAnonimizado() {
-        AnonimizacaoService anonimizacaoService = mock(AnonimizacaoService.class);
-        com.energia.backend.service.UsuarioCadastroService cadastroService =
-                mock(com.energia.backend.service.UsuarioCadastroService.class);
-        com.energia.backend.service.MinhaContaService minhaContaService =
-                mock(com.energia.backend.service.MinhaContaService.class);
-        TermsService termsService = mock(TermsService.class);
-        AppUserJpaRepository appUserRepository = mock(AppUserJpaRepository.class);
-        AppUserMapper appUserMapper = mock(AppUserMapper.class);
-        UserRoleService userRoleService = mock(UserRoleService.class);
+        @Test
+        void deveLancarUsuarioJaAnonimizadoQuandoJaFoiAnonimizado() {
+                AnonimizacaoService anonimizacaoService = mock(AnonimizacaoService.class);
+                com.energia.backend.service.UsuarioCadastroService cadastroService = mock(
+                                com.energia.backend.service.UsuarioCadastroService.class);
+                com.energia.backend.service.MinhaContaService minhaContaService = mock(
+                                com.energia.backend.service.MinhaContaService.class);
+                AppUserJpaRepository appUserRepository = mock(AppUserJpaRepository.class);
+                TermsService termsService = mock(TermsService.class);
+                TermsUserService termsUserService = mock(TermsUserService.class);
+                UserRoleService userRoleService = mock(UserRoleService.class);
 
-        UsuarioController controller = new UsuarioController(
-                cadastroService,
-                minhaContaService,
-                anonimizacaoService,
-                termsService,
-                appUserRepository,
-                appUserMapper,
-                userRoleService
-        );
+                UsuarioController controller = new UsuarioController(
+                                cadastroService,
+                                minhaContaService,
+                                anonimizacaoService,
+                                appUserRepository,
+                                termsService,
+                                termsUserService,
+                                userRoleService);
 
-        UUID adminId = UUID.randomUUID();
-        UUID usuarioId = UUID.randomUUID();
+                UUID adminId = UUID.randomUUID();
+                UUID usuarioId = UUID.randomUUID();
 
-        when(anonimizacaoService.anonimizar(any(), any()))
-                .thenThrow(new UsuarioJaAnonimizadoException("Usuario ja foi anonimizado anteriormente."));
+                when(anonimizacaoService.anonimizar(any(), any()))
+                                .thenThrow(new UsuarioJaAnonimizadoException(
+                                                "Usuario ja foi anonimizado anteriormente."));
 
-        java.security.Principal principal = () -> adminId.toString();
+                java.security.Principal principal = () -> adminId.toString();
 
-        assertThrows(UsuarioJaAnonimizadoException.class, () ->
-                controller.anonimizarUsuario(principal, usuarioId)
-        );
-    }
+                assertThrows(UsuarioJaAnonimizadoException.class,
+                                () -> controller.anonimizarUsuario(principal, usuarioId));
+        }
 
-    @Test
-    void deveLancarUsuarioNaoEncontradoQuandoIdInvalido() {
-        AnonimizacaoService anonimizacaoService = mock(AnonimizacaoService.class);
-        com.energia.backend.service.UsuarioCadastroService cadastroService =
-                mock(com.energia.backend.service.UsuarioCadastroService.class);
-        com.energia.backend.service.MinhaContaService minhaContaService =
-                mock(com.energia.backend.service.MinhaContaService.class);
-        TermsService termsService = mock(TermsService.class);
-        AppUserJpaRepository appUserRepository = mock(AppUserJpaRepository.class);
-        AppUserMapper appUserMapper = mock(AppUserMapper.class);
-        UserRoleService userRoleService = mock(UserRoleService.class);
+        @Test
+        void deveLancarUsuarioNaoEncontradoQuandoIdInvalido() {
+                AnonimizacaoService anonimizacaoService = mock(AnonimizacaoService.class);
+                com.energia.backend.service.UsuarioCadastroService cadastroService = mock(
+                                com.energia.backend.service.UsuarioCadastroService.class);
+                com.energia.backend.service.MinhaContaService minhaContaService = mock(
+                                com.energia.backend.service.MinhaContaService.class);
+                AppUserJpaRepository appUserRepository = mock(AppUserJpaRepository.class);
+                TermsService termsService = mock(TermsService.class);
+                TermsUserService termsUserService = mock(TermsUserService.class);
+                UserRoleService userRoleService = mock(UserRoleService.class);
 
-        UsuarioController controller = new UsuarioController(
-                cadastroService,
-                minhaContaService,
-                anonimizacaoService,
-                termsService,
-                appUserRepository,
-                appUserMapper,
-                userRoleService
-        );
+                UsuarioController controller = new UsuarioController(
+                                cadastroService,
+                                minhaContaService,
+                                anonimizacaoService,
+                                appUserRepository,
+                                termsService,
+                                termsUserService,
+                                userRoleService
+                        );
 
-        UUID adminId = UUID.randomUUID();
-        UUID usuarioInexistente = UUID.randomUUID();
+                UUID adminId = UUID.randomUUID();
+                UUID usuarioInexistente = UUID.randomUUID();
 
-        when(anonimizacaoService.anonimizar(any(), any()))
-                .thenThrow(new UsuarioNaoEncontradoException("Usuario nao encontrado."));
+                when(anonimizacaoService.anonimizar(any(), any()))
+                                .thenThrow(new UsuarioNaoEncontradoException("Usuario nao encontrado."));
 
-        java.security.Principal principal = () -> adminId.toString();
+                java.security.Principal principal = () -> adminId.toString();
 
-        assertThrows(UsuarioNaoEncontradoException.class, () ->
-                controller.anonimizarUsuario(principal, usuarioInexistente)
-        );
-    }
+                assertThrows(UsuarioNaoEncontradoException.class,
+                                () -> controller.anonimizarUsuario(principal, usuarioInexistente));
+        }
 }
