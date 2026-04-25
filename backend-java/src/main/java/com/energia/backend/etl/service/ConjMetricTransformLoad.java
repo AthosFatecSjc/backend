@@ -71,7 +71,14 @@ public class ConjMetricTransformLoad {
 
             if (ideConjUndConsumidoras == null || numCnpj == null || sigIndicador == null
                     || numPeriodoIndice == null || anoIndice == null) {
-                log.warn("Linha de métricas ignorada por campos obrigatórios inválidos: {}", row);
+                log.warn(
+                    "Linha de métricas ignorada por campos obrigatórios inválidos: ideConj={}, cnpj={}, indicador={}, periodo={}, ano={}",
+                    ideConjUndConsumidoras,
+                    maskCnpj(numCnpj),
+                    sigIndicador,
+                    numPeriodoIndice,
+                    anoIndice
+                );
                 continue;
             }
 
@@ -88,7 +95,11 @@ public class ConjMetricTransformLoad {
                     .findByNumCnpj(numCnpj)
                     .orElse(null);
                 if (dist == null) {
-                    log.warn("Distribuidora não encontrada para CNPJ {}. Linha ignorada: {}", numCnpj, row);
+                    log.warn(
+                        "Distribuidora não encontrada para CNPJ {} e ideConj {}. Linha ignorada.",
+                        maskCnpj(numCnpj),
+                        ideConjUndConsumidoras
+                    );
                     continue;
                 }
 
@@ -116,7 +127,12 @@ public class ConjMetricTransformLoad {
             try {
                 tipo = IndicadorType.valueOf(sigIndicador.trim().toUpperCase());
             } catch (IllegalArgumentException ex) {
-                log.warn("SigIndicador inválido em métricas: {}. Linha ignorada: {}", sigIndicador, row);
+                log.warn(
+                    "SigIndicador inválido em métricas: {} (ideConj={}, ano={}). Linha ignorada.",
+                    sigIndicador,
+                    ideConjUndConsumidoras,
+                    anoIndice
+                );
                 continue;
             }
 
@@ -124,7 +140,12 @@ public class ConjMetricTransformLoad {
                 .findByIndicadorType(tipo)
                 .orElse(null);
             if (indicador == null) {
-                log.warn("Indicador não encontrado para tipo {}. Linha ignorada: {}", tipo, row);
+                log.warn(
+                    "Indicador não encontrado para tipo {} (ideConj={}, ano={}). Linha ignorada.",
+                    tipo,
+                    ideConjUndConsumidoras,
+                    anoIndice
+                );
                 continue;
             }
 
@@ -183,10 +204,13 @@ public class ConjMetricTransformLoad {
     }
 
     private String normalizeCnpj(String raw) {
-        String cleaned = Utils.cleanNullable(raw);
-        if (cleaned == null) {
-            return null;
+        return Utils.formatCnpj(raw);
+    }
+
+    private String maskCnpj(String cnpj) {
+        if (cnpj == null || cnpj.length() < 4) {
+            return "n/a";
         }
-        return cleaned.replaceAll("[^0-9]", "");
+        return "**********" + cnpj.substring(cnpj.length() - 4);
     }
 }

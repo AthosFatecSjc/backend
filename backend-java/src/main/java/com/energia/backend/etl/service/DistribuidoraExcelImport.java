@@ -64,6 +64,7 @@ public class DistribuidoraExcelImport {
 
         } catch (Exception e) {
             log.error("Erro ao importar Excel", e);
+            throw new IllegalStateException("Erro na extração ANEEL: falha ao importar distribuidoras do Excel", e);
         }
     }
 

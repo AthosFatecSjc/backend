@@ -22,6 +22,9 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class EtlRunner {
 
+    private static final String DEFAULT_CNPJ = "97578090000134";
+    private static final Long DEFAULT_CONJUNTO_ID = 12722L;
+
     @Bean
     CommandLineRunner run(DistribuidoraExcelImport distService,
         LimitesCsvParser limitesCsvParser,
@@ -55,18 +58,19 @@ public class EtlRunner {
                 }
 
                 try {
-                    List<String> cnpjs = List.of("97578090000134");
+                    List<String> cnpjs = getTargetCnpjs();
                     String json = conjService.importar(cnpjs);
                     conjTransformService.processarJson(json);
                 } catch (DuplicatesDetectedException e) {
                     loggingService.logExtractionFailDuplicata(e.getCount());
+                    errors.add("Duplicatas detectadas em métricas: " + e.getCount());
                 } catch (Exception e) {
                     errors.add("Erro ao processar métricas de conjunto: " + e.getMessage());
                 }
 
                 try {
                     String response = limService.importar();
-                    List<LimiteFiltrado> listaLim = limitesCsvParser.parsearFiltrando(response, List.of(12722L));
+                    List<LimiteFiltrado> listaLim = limitesCsvParser.parsearFiltrando(response, getTargetConjuntos());
                     limitesTransformLoad.processarLista(listaLim);
                 } catch (Exception e) {
                     errors.add("Erro ao processar limites: " + e.getMessage());
@@ -91,4 +95,41 @@ public class EtlRunner {
             System.exit(0);
         };
        }
+
+    private List<String> getTargetCnpjs() {
+        String raw = System.getenv("ETL_CNPJS");
+        if (raw == null || raw.isBlank()) {
+            return List.of(DEFAULT_CNPJ);
+        }
+
+        List<String> cnpjs = Arrays.stream(raw.split(","))
+            .map(Utils::formatCnpj)
+            .filter(cnpj -> cnpj != null && !cnpj.isBlank())
+            .distinct()
+            .toList();
+
+        if (cnpjs.isEmpty()) {
+            throw new IllegalArgumentException("ETL_CNPJS não contém CNPJs válidos");
+        }
+        return cnpjs;
+    }
+
+    private List<Long> getTargetConjuntos() {
+        String raw = System.getenv("ETL_CONJUNTOS_IDS");
+        if (raw == null || raw.isBlank()) {
+            return List.of(DEFAULT_CONJUNTO_ID);
+        }
+
+        List<Long> conjuntos = Arrays.stream(raw.split(","))
+            .map(String::trim)
+            .map(Utils::toLong)
+            .filter(id -> id != null)
+            .distinct()
+            .toList();
+
+        if (conjuntos.isEmpty()) {
+            throw new IllegalArgumentException("ETL_CONJUNTOS_IDS não contém IDs válidos");
+        }
+        return conjuntos;
+    }
 }

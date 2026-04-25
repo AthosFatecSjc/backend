@@ -137,7 +137,7 @@ def _parse_date(raw_value: str | None) -> date | None:
     if raw_value is None:
         return None
     value = raw_value.strip()
-    if not value:
+    if _normalize_text(value) in MISSING_TOKENS:
         return None
     for fmt in ("%d/%m/%Y", "%Y-%m-%d", "%d-%m-%Y"):
         try:
@@ -145,6 +145,34 @@ def _parse_date(raw_value: str | None) -> date | None:
         except ValueError:
             continue
     return None
+
+
+def _parse_year(raw_value: str | None) -> int | None:
+    if raw_value is None:
+        return None
+    value = raw_value.strip()
+    if _normalize_text(value) in MISSING_TOKENS:
+        return None
+    try:
+        year = int(value)
+    except ValueError:
+        logger.warning("Ano invalido recebido no ETL de perdas: %s", raw_value)
+        return None
+
+    if year <= 0 or year > 9999:
+        logger.warning("Ano fora de faixa recebido no ETL de perdas: %s", raw_value)
+        return None
+
+    return year
+
+
+def _mask_cnpj(raw_value: str | None) -> str:
+    if raw_value is None:
+        return "n/a"
+    digits = "".join(char for char in raw_value if char.isdigit())
+    if len(digits) < 4:
+        return "n/a"
+    return f"***{digits[-4:]}"
 
 
 def _load_distribuidoras(conn: Any) -> dict[str, int]:
@@ -250,15 +278,29 @@ def _transform_rows(
                 break
 
         if distribuidora_id is None:
-            logger.warning("Linha de perdas ignorada: distribuidora nao reconhecida. Dados: %s", row)
+            logger.warning(
+                "Linha de perdas ignorada: distribuidora nao reconhecida (sig_agente=%s, distribuidora=%s, num_cnpj=%s, ano=%s)",
+                canonical_row.get("sig_agente") or "n/a",
+                canonical_row.get("distribuidora") or "n/a",
+                _mask_cnpj(canonical_row.get("num_cnpj")),
+                canonical_row.get("ano") or "n/a",
+            )
             continue
 
         data_processo = _parse_date(canonical_row.get("data_processo"))
-        ano = canonical_row.get("ano")
-        ano_value = int(ano) if ano else (data_processo.year if data_processo else None)
+        ano_value = _parse_year(canonical_row.get("ano"))
+        if ano_value is None and data_processo is not None:
+            ano_value = data_processo.year
 
         if data_processo is None and ano_value is not None:
-            data_processo = date(ano_value, 1, 1)
+            try:
+                data_processo = date(ano_value, 1, 1)
+            except ValueError:
+                logger.warning(
+                    "Ano invalido para compor data_processo no ETL de perdas: %s",
+                    ano_value,
+                )
+                continue
 
         if data_processo is None or ano_value is None:
             continue
