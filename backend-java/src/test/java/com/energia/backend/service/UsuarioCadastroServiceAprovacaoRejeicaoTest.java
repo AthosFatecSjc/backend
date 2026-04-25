@@ -22,16 +22,25 @@ import com.energia.backend.model.AppUserEntity;
 import com.energia.backend.model.RoleEntity;
 import com.energia.backend.model.StatusUsuario;
 import com.energia.backend.repository.AppUserJpaRepository;
+import com.energia.backend.repository.JpaUsuarioCadastroRepository;
+import com.energia.backend.repository.RoleJpaRepository;
+import com.energia.backend.repository.StatusJpaRepository;
+import com.energia.backend.repository.UserStatusJpaRepository;
 import com.energia.backend.repository.UsuarioCadastroRepository;
 
 class UsuarioCadastroServiceAprovacaoRejeicaoTest {
 
     private UsuarioCadastroRepository usuarioCadastroRepository;
     private AppUserJpaRepository appUserRepository;
+    private TermsUserService termsUserService;
+    private StatusJpaRepository statusRepository;
+    private UserStatusJpaRepository userStatusRepository;
     private TermsService termsService;
     private UserStatusService userStatusService;
     private PasswordEncoder passwordEncoder;
     private UsuarioCadastroService service;
+    private JpaUsuarioCadastroRepository jpaUsuarioCadastroRepository;
+    private RoleJpaRepository roleJpaRepository;
 
     private UUID usuarioId;
     private UUID adminId;
@@ -42,15 +51,26 @@ class UsuarioCadastroServiceAprovacaoRejeicaoTest {
     void setup() {
         usuarioCadastroRepository = mock(UsuarioCadastroRepository.class);
         appUserRepository = mock(AppUserJpaRepository.class);
+        termsUserService = mock(TermsUserService.class);
+        statusRepository = mock(StatusJpaRepository.class);
+        userStatusRepository = mock(UserStatusJpaRepository.class);
         termsService = mock(TermsService.class);
         userStatusService = mock(UserStatusService.class);
         passwordEncoder = mock(PasswordEncoder.class);
+        jpaUsuarioCadastroRepository = mock(JpaUsuarioCadastroRepository.class);
+        roleJpaRepository = mock(RoleJpaRepository.class);
         service = new UsuarioCadastroService(
                 usuarioCadastroRepository,
                 appUserRepository,
+                termsUserService,
+                statusRepository,
+                userStatusRepository,
                 termsService,
                 userStatusService,
-                passwordEncoder
+                passwordEncoder,
+                jpaUsuarioCadastroRepository,
+                roleJpaRepository,
+                userStatusRepository
         );
 
         usuarioId = UUID.randomUUID();

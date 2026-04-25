@@ -1,6 +1,7 @@
 package com.energia.backend.controller;
 
 import java.security.Principal;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -22,24 +23,25 @@ import com.energia.backend.dto.AnonimizarUsuarioRequest;
 import com.energia.backend.dto.AnonimizarUsuarioResponse;
 import com.energia.backend.dto.AprovacaoRejeicaoUsuarioRequest;
 import com.energia.backend.dto.AtualizarEmailRequest;
-import com.energia.backend.dto.HistoricoTermoResponse;
+import com.energia.backend.dto.UserTermResponse;
 import com.energia.backend.dto.MinhaContaResponse;
 import com.energia.backend.dto.MinhaContaUpdateRequest;
 import com.energia.backend.dto.RegistrarTermosRequest;
-import com.energia.backend.dto.TermosPendentesResponse;
-import com.energia.backend.dto.Usuario;
+import com.energia.backend.dto.TermosResponse;
 import com.energia.backend.dto.UsuarioCadastroRequest;
 import com.energia.backend.dto.UsuarioCadastroResponse;
 import com.energia.backend.exception.UsuarioNaoEncontradoException;
 import com.energia.backend.model.AppUserEntity;
-import com.energia.backend.model.user.AppUserModel;
+import com.energia.backend.model.StatusUsuario;
 import com.energia.backend.repository.AppUserJpaRepository;
 import com.energia.backend.service.AnonimizacaoService;
 import com.energia.backend.service.MinhaContaService;
 import com.energia.backend.service.TermsService;
+import com.energia.backend.service.TermsUserService;
 import com.energia.backend.service.UsuarioCadastroService;
+
 import com.energia.backend.service.UserRoleService;
-import com.energia.backend.mapper.user.AppUserMapper;
+
 
 import jakarta.validation.Valid;
 import jakarta.servlet.http.HttpServletRequest;
@@ -53,26 +55,26 @@ public class UsuarioController {
     private final UsuarioCadastroService cadastroService;
     private final MinhaContaService minhaContaService;
     private final AnonimizacaoService anonimizacaoService;
-    private final TermsService termsService;
     private final AppUserJpaRepository appUserRepository;
-    private final AppUserMapper appUserMapper;
+    private final TermsService termsService;
+    private final TermsUserService termsUserService;
     private final UserRoleService userRoleService;
 
     public UsuarioController(
             UsuarioCadastroService cadastroService,
             MinhaContaService minhaContaService,
             AnonimizacaoService anonimizacaoService,
-            TermsService termsService,
             AppUserJpaRepository appUserRepository,
-            AppUserMapper appUserMapper,
+            TermsService termsService,
+            TermsUserService termsUserService,
             UserRoleService userRoleService
     ) {
         this.cadastroService = cadastroService;
         this.minhaContaService = minhaContaService;
         this.anonimizacaoService = anonimizacaoService;
-        this.termsService = termsService;
         this.appUserRepository = appUserRepository;
-        this.appUserMapper = appUserMapper;
+        this.termsService = termsService;
+        this.termsUserService = termsUserService;
         this.userRoleService = userRoleService;
     }
 
@@ -81,8 +83,7 @@ public class UsuarioController {
     public ResponseEntity<String> alterarStatusUsuario(
             @PathVariable("id") UUID usuarioId,
             @RequestBody AprovacaoRejeicaoUsuarioRequest request,
-            Principal principal
-    ) {
+            Principal principal) {
         UUID adminId = obterUid(principal);
         cadastroService.alterarStatusUsuario(usuarioId, adminId, request.getStatus(), request.getMotivo());
         return ResponseEntity.ok("Status do usuario atualizado com sucesso.");
@@ -106,21 +107,23 @@ public class UsuarioController {
         produces = "application/json"
     )
     public ResponseEntity<UsuarioCadastroResponse> cadastrar(
-        @Valid @RequestBody UsuarioCadastroRequest request,
-        HttpServletRequest httpRequest
-    )
-    {
+            @Valid @RequestBody UsuarioCadastroRequest request,
+            HttpServletRequest httpRequest) {
         log.info("User registration requested for email={} from IP={}",
                 request.getEmail(),
                 httpRequest.getRemoteAddr());
 
-        AppUserModel registeredUser = cadastroService.cadastrar(appUserMapper.fromDto(request));
+        AppUserEntity registeredUser = cadastroService.cadastrar(request);
 
         log.info("User registration successful for email={} with id={}",
                 registeredUser.getEmail(),
                 registeredUser.getId());
 
-        UsuarioCadastroResponse response = appUserMapper.toDto(registeredUser);
+        UsuarioCadastroResponse response = UsuarioCadastroResponse.builder()
+                .mensagem("Registration completed successfully. Awaiting administrator approval")
+                .email(registeredUser.getEmail())
+                .status(new ArrayList<StatusUsuario>(List.of(StatusUsuario.PENDENTE)))
+                .build();
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
@@ -136,8 +139,7 @@ public class UsuarioController {
     @PutMapping("/minha-conta")
     public ResponseEntity<MinhaContaResponse> atualizarMinhaConta(
             Principal principal,
-            @RequestBody MinhaContaUpdateRequest request
-    ) {
+            @RequestBody MinhaContaUpdateRequest request) {
         MinhaContaResponse response = minhaContaService.atualizar(obterUid(principal), request);
         return ResponseEntity.ok(response);
     }
@@ -147,64 +149,60 @@ public class UsuarioController {
     public ResponseEntity<MinhaContaResponse> atualizarEmail(
             Principal principal,
             @PathVariable("id") UUID usuarioId,
-            @RequestBody AtualizarEmailRequest request
-    ) {
+            @RequestBody AtualizarEmailRequest request) {
         MinhaContaResponse response = minhaContaService.atualizarEmail(
                 obterUid(principal),
                 usuarioId,
-                request
-        );
+                request);
         return ResponseEntity.ok(response);
     }
 
     @GetMapping("/meus-termos/historico")
-    public ResponseEntity<List<HistoricoTermoResponse>> listarHistoricoTermos(Principal principal) {
-        return ResponseEntity.ok(termsService.listarHistorico(obterUid(principal)));
+    public ResponseEntity<List<UserTermResponse>> listarHistoricoTermos(Principal principal) {
+        return ResponseEntity.ok(termsUserService.listarHistorico(obterUid(principal)));
     }
 
     @GetMapping("/meus-termos/pendentes")
-    public ResponseEntity<List<TermosPendentesResponse>> listarTermosPendentes(Principal principal) {
-        return ResponseEntity.ok(termsService.listarPendenciasDeAcesso(obterUid(principal)));
+    public ResponseEntity<List<TermosResponse>> listarTermosPendentes(Principal principal) {
+        List<TermosResponse> termosResponses = termsUserService
+            .listarTermosPendentes(obterUid(principal), false)
+            .stream()
+            .map(termsService::toTermosResponse)
+            .toList();
+
+    return ResponseEntity.ok(termosResponses);
     }
 
     @PostMapping("/meus-termos/aceites")
     public ResponseEntity<Void> aceitarTermosPendentes(
             Principal principal,
             @RequestBody RegistrarTermosRequest request,
-            HttpServletRequest httpRequest
-    ) {
-        termsService.registrarTermosAceitos(
+            HttpServletRequest httpRequest) {
+        termsUserService.aprovarTermos(
                 request.getTermsIds(),
-                obterUsuario(principal),
-                httpRequest.getRemoteAddr()
-        );
+                obterUsuario(principal));
         return ResponseEntity.noContent().build();
     }
 
-    @PostMapping("/meus-termos/{termId}/revogacao")
+    @PostMapping("/meus-termos/revogacao")
     public ResponseEntity<Void> revogarTermoOpcional(
             Principal principal,
-            @PathVariable UUID termId,
-            HttpServletRequest httpRequest
-    ) {
-        termsService.revogarConsentimentoOpcional(
-                obterUsuario(principal),
-                termId,
-                httpRequest.getRemoteAddr()
-        );
+            @RequestBody RegistrarTermosRequest request,
+            HttpServletRequest httpRequest) {
+        termsUserService.revogarTermos(
+            request.getTermsIds(),
+            obterUsuario(principal));
         return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/{usuarioId}/anonimizar")
     public ResponseEntity<AnonimizarUsuarioResponse> anonimizarUsuario(
             Principal principal,
-            @PathVariable UUID usuarioId
-    ) {
+            @PathVariable UUID usuarioId) {
         UUID actorId = obterUid(principal);
         AnonimizarUsuarioResponse response = anonimizacaoService.anonimizar(
                 actorId,
-                new AnonimizarUsuarioRequest(usuarioId)
-        );
+                new AnonimizarUsuarioRequest(usuarioId));
         return ResponseEntity.ok(response);
     }
 
@@ -216,7 +214,8 @@ public class UsuarioController {
         try {
             return UUID.fromString(principal.getName().trim());
         } catch (IllegalArgumentException ex) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Identificador do usuario autenticado invalido.");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,
+                    "Identificador do usuario autenticado invalido.");
         }
     }
 

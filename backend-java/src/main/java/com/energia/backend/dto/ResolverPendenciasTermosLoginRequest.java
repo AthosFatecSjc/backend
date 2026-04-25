@@ -37,7 +37,7 @@ public class ResolverPendenciasTermosLoginRequest {
         return optionalAcceptedTermsIds;
     }
 
-    public void setOptionalAcceptedTermsIds(List<UUID> optionalAcceptedTermsIds) {
+    public void setOptionalAcceptedTermsNames(List<UUID> optionalAcceptedTermsIds) {
         this.optionalAcceptedTermsIds = optionalAcceptedTermsIds;
     }
 }

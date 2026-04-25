@@ -78,8 +78,7 @@ public class JpaUsuarioCadastroRepository implements UsuarioCadastroRepository {
         return savedUser;
     }
 
-    private String normalizarEmail(String email) {
+    public String normalizarEmail(String email) {
         return email == null ? null : email.trim().toLowerCase();
     }
 }
-

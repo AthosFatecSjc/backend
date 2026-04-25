@@ -1,10 +1,11 @@
 package com.energia.backend.dto;
 
-import com.energia.backend.dto.term.AcceptedTermRequestDto;
-
 import java.util.List;
+import java.util.UUID;
 
 import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 
 import jakarta.validation.constraints.Size;
@@ -12,6 +13,8 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.NotBlank;
 
+@AllArgsConstructor
+@NoArgsConstructor
 @Data
 @Builder
 @NotNull(message = "User data is required")
@@ -29,5 +32,5 @@ public class UsuarioCadastroRequest {
     private String senha;
 
     private String telefone;
-    private List<AcceptedTermRequestDto> terms; 
+    private List<UUID> termsIds; 
 }
