@@ -1,0 +1,2 @@
+ALTER TABLE aneel.perdas
+DROP COLUMN IF EXISTS tme;

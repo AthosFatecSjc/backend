@@ -22,6 +22,7 @@ import com.energia.backend.repository.AppUserJpaRepository;
 import com.energia.backend.service.AnonimizacaoService;
 import com.energia.backend.service.TermsService;
 import com.energia.backend.service.TermsUserService;
+import com.energia.backend.service.UserRoleService;
 
 class UsuarioControllerAnonimizacaoTest {
 
@@ -35,6 +36,7 @@ class UsuarioControllerAnonimizacaoTest {
                 AppUserJpaRepository appUserRepository = mock(AppUserJpaRepository.class);
                 TermsService termsService = mock(TermsService.class);
                 TermsUserService termsUserService = mock(TermsUserService.class);
+                UserRoleService userRoleService = mock(UserRoleService.class);
 
                 UsuarioController controller = new UsuarioController(
                                 cadastroService,
@@ -42,7 +44,8 @@ class UsuarioControllerAnonimizacaoTest {
                                 anonimizacaoService,
                                 appUserRepository,
                                 termsService,
-                                termsUserService);
+                                termsUserService,
+                                userRoleService);
 
                 UUID adminId = UUID.randomUUID();
                 UUID usuarioId = UUID.randomUUID();
@@ -76,6 +79,7 @@ class UsuarioControllerAnonimizacaoTest {
                 AppUserJpaRepository appUserRepository = mock(AppUserJpaRepository.class);
                 TermsService termsService = mock(TermsService.class);
                 TermsUserService termsUserService = mock(TermsUserService.class);
+                UserRoleService userRoleService = mock(UserRoleService.class);
 
                 UsuarioController controller = new UsuarioController(
                                 cadastroService,
@@ -83,7 +87,8 @@ class UsuarioControllerAnonimizacaoTest {
                                 anonimizacaoService,
                                 appUserRepository,
                                 termsService,
-                                termsUserService);
+                                termsUserService,
+                                userRoleService);
 
                 UUID userId = UUID.randomUUID();
                 UUID usuarioId = UUID.randomUUID();
@@ -107,6 +112,7 @@ class UsuarioControllerAnonimizacaoTest {
                 AppUserJpaRepository appUserRepository = mock(AppUserJpaRepository.class);
                 TermsService termsService = mock(TermsService.class);
                 TermsUserService termsUserService = mock(TermsUserService.class);
+                UserRoleService userRoleService = mock(UserRoleService.class);
 
                 UsuarioController controller = new UsuarioController(
                                 cadastroService,
@@ -114,7 +120,8 @@ class UsuarioControllerAnonimizacaoTest {
                                 anonimizacaoService,
                                 appUserRepository,
                                 termsService,
-                                termsUserService);
+                                termsUserService,
+                                userRoleService);
 
                 UUID adminId = UUID.randomUUID();
                 UUID usuarioId = UUID.randomUUID();
@@ -139,6 +146,7 @@ class UsuarioControllerAnonimizacaoTest {
                 AppUserJpaRepository appUserRepository = mock(AppUserJpaRepository.class);
                 TermsService termsService = mock(TermsService.class);
                 TermsUserService termsUserService = mock(TermsUserService.class);
+                UserRoleService userRoleService = mock(UserRoleService.class);
 
                 UsuarioController controller = new UsuarioController(
                                 cadastroService,
@@ -146,7 +154,9 @@ class UsuarioControllerAnonimizacaoTest {
                                 anonimizacaoService,
                                 appUserRepository,
                                 termsService,
-                                termsUserService);
+                                termsUserService,
+                                userRoleService
+                        );
 
                 UUID adminId = UUID.randomUUID();
                 UUID usuarioInexistente = UUID.randomUUID();

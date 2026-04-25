@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.energia.backend.dto.AlterarRoleUsuarioRequest;
 import com.energia.backend.dto.AnonimizarUsuarioRequest;
 import com.energia.backend.dto.AnonimizarUsuarioResponse;
 import com.energia.backend.dto.AprovacaoRejeicaoUsuarioRequest;
@@ -38,6 +39,10 @@ import com.energia.backend.service.MinhaContaService;
 import com.energia.backend.service.TermsService;
 import com.energia.backend.service.TermsUserService;
 import com.energia.backend.service.UsuarioCadastroService;
+
+import com.energia.backend.service.UserRoleService;
+
+
 import jakarta.validation.Valid;
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -53,6 +58,7 @@ public class UsuarioController {
     private final AppUserJpaRepository appUserRepository;
     private final TermsService termsService;
     private final TermsUserService termsUserService;
+    private final UserRoleService userRoleService;
 
     public UsuarioController(
             UsuarioCadastroService cadastroService,
@@ -60,13 +66,16 @@ public class UsuarioController {
             AnonimizacaoService anonimizacaoService,
             AppUserJpaRepository appUserRepository,
             TermsService termsService,
-            TermsUserService termsUserService) {
+            TermsUserService termsUserService,
+            UserRoleService userRoleService
+    ) {
         this.cadastroService = cadastroService;
         this.minhaContaService = minhaContaService;
         this.anonimizacaoService = anonimizacaoService;
         this.appUserRepository = appUserRepository;
         this.termsService = termsService;
         this.termsUserService = termsUserService;
+        this.userRoleService = userRoleService;
     }
 
     @PatchMapping("/{id}/status")
@@ -80,7 +89,23 @@ public class UsuarioController {
         return ResponseEntity.ok("Status do usuario atualizado com sucesso.");
     }
 
-    @PostMapping(value = "/cadastro", consumes = "application/json", produces = "application/json")
+    @PatchMapping("/{id}/role")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<String> alterarRoleUsuario(
+            @PathVariable("id") UUID usuarioId,
+            @RequestBody AlterarRoleUsuarioRequest request,
+            Principal principal
+    ) {
+        UUID adminId = obterUid(principal);
+        userRoleService.alterarRoleUsuario(usuarioId, adminId, request.getRoleName());
+        return ResponseEntity.ok("Role do usuario atualizado com sucesso.");
+    }
+
+    @PostMapping(
+        value = "/cadastro",
+        consumes = "application/json",
+        produces = "application/json"
+    )
     public ResponseEntity<UsuarioCadastroResponse> cadastrar(
             @Valid @RequestBody UsuarioCadastroRequest request,
             HttpServletRequest httpRequest) {

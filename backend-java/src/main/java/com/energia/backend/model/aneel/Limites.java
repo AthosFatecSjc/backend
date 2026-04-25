@@ -32,10 +32,10 @@ public class Limites {
 	@Column(name = "ano", nullable = false)
     private Long ano;
 
-	@Column(name = "dec_lim", nullable = false)
+	@Column(name = "dec_lim")
     private Double decLim;
 
-	@Column(name = "fec_lim", nullable = false)
+	@Column(name = "fec_lim")
     private Double fecLim;
 
     

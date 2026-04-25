@@ -31,6 +31,7 @@ import com.energia.backend.service.MinhaContaService;
 import com.energia.backend.service.TermsService;
 import com.energia.backend.service.TermsUserService;
 import com.energia.backend.service.UsuarioCadastroService;
+import com.energia.backend.service.UserRoleService;
 
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -43,6 +44,7 @@ class UsuarioControllerTest {
                 AppUserJpaRepository appUserRepository = mock(AppUserJpaRepository.class);
                 TermsService termsService = mock(TermsService.class);
                 TermsUserService termsUserService = mock(TermsUserService.class);
+                UserRoleService userRoleService = mock(UserRoleService.class);
 
                 return new UsuarioController(
                                 cadastroService,
@@ -50,7 +52,8 @@ class UsuarioControllerTest {
                                 anonimizacaoService,
                                 appUserRepository,
                                 termsService,
-                                termsUserService);
+                                termsUserService,
+                                userRoleService);
         }
 
         @Test
