@@ -5,22 +5,22 @@ import java.util.UUID;
 public class ConsentimentoDocumentoResponse {
     private final UUID documentId;
     private final String type;
-    private final Integer version;
     private final String content;
     private final boolean required;
+    private final Integer clause;
 
     public ConsentimentoDocumentoResponse(
             UUID documentId,
             String type,
-            Integer version,
             String content,
-            boolean required
+            boolean required,
+            Integer clause
     ) {
         this.documentId = documentId;
         this.type = type;
-        this.version = version;
         this.content = content;
         this.required = required;
+        this.clause = clause;
     }
 
     public UUID getDocumentId() {
@@ -31,15 +31,17 @@ public class ConsentimentoDocumentoResponse {
         return type;
     }
 
-    public Integer getVersion() {
-        return version;
-    }
-
+    
     public String getContent() {
         return content;
     }
-
+    
     public boolean isRequired() {
         return required;
     }
+    
+    public Integer getClause() {
+        return clause;
+    }
+
 }
