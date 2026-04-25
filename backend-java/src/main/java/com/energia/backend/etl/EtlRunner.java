@@ -23,7 +23,6 @@ import lombok.extern.slf4j.Slf4j;
 public class EtlRunner {
 
     private static final String DEFAULT_CNPJ = "97578090000134";
-    private static final Long DEFAULT_CONJUNTO_ID = 12722L;
 
     @Bean
     CommandLineRunner run(DistribuidoraExcelImport distService,
@@ -56,11 +55,12 @@ public class EtlRunner {
                 } catch (Exception e) {
                     errors.add("Erro ao importar distribuidoras: " + e.getMessage());
                 }
+                List<Long> conjuntos = new ArrayList<>();
 
                 try {
                     List<String> cnpjs = getTargetCnpjs();
                     String json = conjService.importar(cnpjs);
-                    conjTransformService.processarJson(json);
+                    conjuntos = conjTransformService.processarJson(json);
                 } catch (DuplicatesDetectedException e) {
                     loggingService.logExtractionFailDuplicata(e.getCount());
                     errors.add("Duplicatas detectadas em métricas: " + e.getCount());
@@ -70,7 +70,7 @@ public class EtlRunner {
 
                 try {
                     String response = limService.importar();
-                    List<LimiteFiltrado> listaLim = limitesCsvParser.parsearFiltrando(response, getTargetConjuntos());
+                    List<LimiteFiltrado> listaLim = limitesCsvParser.parsearFiltrando(response, conjuntos);
                     limitesTransformLoad.processarLista(listaLim);
                 } catch (Exception e) {
                     errors.add("Erro ao processar limites: " + e.getMessage());
@@ -114,22 +114,22 @@ public class EtlRunner {
         return cnpjs;
     }
 
-    private List<Long> getTargetConjuntos() {
-        String raw = System.getenv("ETL_CONJUNTOS_IDS");
-        if (raw == null || raw.isBlank()) {
-            return List.of(DEFAULT_CONJUNTO_ID);
-        }
+    // private List<Long> getTargetConjuntos() {
+    //     String raw = System.getenv("ETL_CONJUNTOS_IDS");
+    //     if (raw == null || raw.isBlank()) {
+    //         return List.of(DEFAULT_CONJUNTO_ID);
+    //     }
 
-        List<Long> conjuntos = Arrays.stream(raw.split(","))
-            .map(String::trim)
-            .map(Utils::toLong)
-            .filter(id -> id != null)
-            .distinct()
-            .toList();
+    //     List<Long> conjuntos = Arrays.stream(raw.split(","))
+    //         .map(String::trim)
+    //         .map(Utils::toLong)
+    //         .filter(id -> id != null)
+    //         .distinct()
+    //         .toList();
 
-        if (conjuntos.isEmpty()) {
-            throw new IllegalArgumentException("ETL_CONJUNTOS_IDS não contém IDs válidos");
-        }
-        return conjuntos;
-    }
+    //     if (conjuntos.isEmpty()) {
+    //         throw new IllegalArgumentException("ETL_CONJUNTOS_IDS não contém IDs válidos");
+    //     }
+    //     return conjuntos;
+    // }
 }

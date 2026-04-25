@@ -4,7 +4,9 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Optional;
+import java.util.Set;
 
 import org.springframework.stereotype.Service;
 
@@ -41,14 +43,16 @@ public class ConjMetricTransformLoad {
     private final SigIndicadorRepository sigIndicadorRepository;
 
     @Transactional(dontRollbackOn = DuplicatesDetectedException.class)
-    public void processarJson(String json) throws com.fasterxml.jackson.core.JsonProcessingException {
+    public List<Long> processarJson(String json) throws com.fasterxml.jackson.core.JsonProcessingException {
         ObjectMapper mapper = new ObjectMapper();
 
+        Set<Long> conjuntosProcessados = new HashSet<>();
+        
         Map<String, Object> response = mapper.readValue(json, Map.class);
         Map<String, Object> result = (Map<String, Object>) response.get("result");
         List<Map<String, Object>> registros = result == null
-            ? List.of()
-            : (List<Map<String, Object>>) result.getOrDefault("records", List.of());
+                ? List.of()
+                : (List<Map<String, Object>>) result.getOrDefault("records", List.of());
 
         if (registros.isEmpty()) {
             throw new IllegalStateException("Erro na extração ANEEL: resposta de métricas sem registros");
@@ -72,34 +76,32 @@ public class ConjMetricTransformLoad {
             if (ideConjUndConsumidoras == null || numCnpj == null || sigIndicador == null
                     || numPeriodoIndice == null || anoIndice == null) {
                 log.warn(
-                    "Linha de métricas ignorada por campos obrigatórios inválidos: ideConj={}, cnpj={}, indicador={}, periodo={}, ano={}",
-                    ideConjUndConsumidoras,
-                    maskCnpj(numCnpj),
-                    sigIndicador,
-                    numPeriodoIndice,
-                    anoIndice
-                );
+                        "Linha de métricas ignorada por campos obrigatórios inválidos: ideConj={}, cnpj={}, indicador={}, periodo={}, ano={}",
+                        ideConjUndConsumidoras,
+                        maskCnpj(numCnpj),
+                        sigIndicador,
+                        numPeriodoIndice,
+                        anoIndice);
                 continue;
             }
 
             LocalDate dataColeta = LocalDate.now();
 
             Conjunto conjunto = conjuntoRepository
-                .findByIdeConjUndConsumidoras(ideConjUndConsumidoras)
-                .orElse(null);
+                    .findByIdeConjUndConsumidoras(ideConjUndConsumidoras)
+                    .orElse(null);
 
             boolean created = false;
 
             if (conjunto == null) {
                 Distribuidora dist = distribuidoraRepository
-                    .findByNumCnpj(numCnpj)
-                    .orElse(null);
+                        .findByNumCnpj(numCnpj)
+                        .orElse(null);
                 if (dist == null) {
                     log.warn(
-                        "Distribuidora não encontrada para CNPJ {} e ideConj {}. Linha ignorada.",
-                        maskCnpj(numCnpj),
-                        ideConjUndConsumidoras
-                    );
+                            "Distribuidora não encontrada para CNPJ {} e ideConj {}. Linha ignorada.",
+                            maskCnpj(numCnpj),
+                            ideConjUndConsumidoras);
                     continue;
                 }
 
@@ -112,13 +114,16 @@ public class ConjMetricTransformLoad {
                 created = true;
             }
 
+            conjuntosProcessados.add(conjunto.getIdeConjUndConsumidoras());
+
             if (created) {
                 ColetaDados coleta = new ColetaDados();
                 coleta.setDataColeta(dataColeta);
                 coleta.setDataGeracao(dataGeracaoConjDados);
                 coleta.setDataKey(DataKey.CONJUNTO);
                 coleta.setIdData(conjunto.getId());
-                coleta.setLink("https://dadosabertos.aneel.gov.br/dataset/indicadores-coletivos-de-continuidade-dec-e-fec");
+                coleta.setLink(
+                        "https://dadosabertos.aneel.gov.br/dataset/indicadores-coletivos-de-continuidade-dec-e-fec");
 
                 coletaDadosRepository.save(coleta);
             }
@@ -128,31 +133,28 @@ public class ConjMetricTransformLoad {
                 tipo = IndicadorType.valueOf(sigIndicador.trim().toUpperCase());
             } catch (IllegalArgumentException ex) {
                 log.warn(
-                    "SigIndicador inválido em métricas: {} (ideConj={}, ano={}). Linha ignorada.",
-                    sigIndicador,
-                    ideConjUndConsumidoras,
-                    anoIndice
-                );
+                        "SigIndicador inválido em métricas: {} (ideConj={}, ano={}). Linha ignorada.",
+                        sigIndicador,
+                        ideConjUndConsumidoras,
+                        anoIndice);
                 continue;
             }
 
             SigIndicador indicador = sigIndicadorRepository
-                .findByIndicadorType(tipo)
-                .orElse(null);
+                    .findByIndicadorType(tipo)
+                    .orElse(null);
             if (indicador == null) {
                 log.warn(
-                    "Indicador não encontrado para tipo {} (ideConj={}, ano={}). Linha ignorada.",
-                    tipo,
-                    ideConjUndConsumidoras,
-                    anoIndice
-                );
+                        "Indicador não encontrado para tipo {} (ideConj={}, ano={}). Linha ignorada.",
+                        tipo,
+                        ideConjUndConsumidoras,
+                        anoIndice);
                 continue;
             }
 
             Optional<Metricas> opt = metricasRepository
-                .findByConjuntoAndSigIndicadorAndNumPeriodoIndiceAndAnoIndice(
-                    conjunto, indicador, numPeriodoIndice, anoIndice
-                );
+                    .findByConjuntoAndSigIndicadorAndNumPeriodoIndiceAndAnoIndice(
+                            conjunto, indicador, numPeriodoIndice, anoIndice);
 
             if (!opt.isPresent()) {
                 Metricas metricaNova = new Metricas();
@@ -170,33 +172,35 @@ public class ConjMetricTransformLoad {
                 coleta.setDataGeracao(dataGeracaoConjDados);
                 coleta.setDataKey(DataKey.METRICAS);
                 coleta.setIdData(metricaNova.getId());
-                coleta.setLink("https://dadosabertos.aneel.gov.br/dataset/indicadores-coletivos-de-continuidade-dec-e-fec");
+                coleta.setLink(
+                        "https://dadosabertos.aneel.gov.br/dataset/indicadores-coletivos-de-continuidade-dec-e-fec");
 
                 coletaDadosRepository.save(coleta);
                 linhasValidas++;
 
             } else {
                 String msgDuplicata = String.format(
-                    "Métrica duplicada pulada - Conjunto %d, Indicador %s, Período %d, Ano %d",
-                    conjunto.getId(),
-                    indicador.getIndicadorType(),
-                    numPeriodoIndice,
-                    anoIndice
-                );
+                        "Métrica duplicada pulada - Conjunto %d, Indicador %s, Período %d, Ano %d",
+                        conjunto.getId(),
+                        indicador.getIndicadorType(),
+                        numPeriodoIndice,
+                        anoIndice);
                 errosDuplicatas.add(msgDuplicata);
             }
         }
 
         if (linhasValidas == 0 && errosDuplicatas.isEmpty()) {
-            throw new IllegalStateException("Erro na extração ANEEL: nenhum registro válido de métricas foi processado");
+            throw new IllegalStateException(
+                    "Erro na extração ANEEL: nenhum registro válido de métricas foi processado");
         }
 
         if (!errosDuplicatas.isEmpty()) {
             throw new DuplicatesDetectedException(
-                errosDuplicatas.size(),
-                String.join("; ", errosDuplicatas)
-            );
+                    errosDuplicatas.size(),
+                    String.join("; ", errosDuplicatas));
         }
+
+        return new ArrayList<>(conjuntosProcessados);
     }
 
     private String asString(Object value) {
