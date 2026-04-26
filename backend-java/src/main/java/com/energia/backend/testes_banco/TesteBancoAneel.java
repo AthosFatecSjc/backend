@@ -107,10 +107,7 @@ public class TesteBancoAneel {
             // importante agora por causa da migration
             perdas.setAno((long) data.getYear());
                     
-            perdas.setTme(1.2);
-            perdas.setPerdasRedeBasica(2.3);
-            perdas.setCustoPerdasRedeBasica(3.4);
-                    
+           
             perdasRepo.save(perdas);
 
             // =========================
