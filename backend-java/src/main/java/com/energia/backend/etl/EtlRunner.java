@@ -16,9 +16,13 @@ import com.energia.backend.etl.LimitesCsvParser.LimiteFiltrado;
 import com.energia.backend.etl.service.ConjMetricTransformLoad;
 import com.energia.backend.etl.service.AneelExtractionLoggingService;
 import com.energia.backend.etl.exception.DuplicatesDetectedException;
+import lombok.extern.slf4j.Slf4j;
 
 @Configuration
+@Slf4j
 public class EtlRunner {
+
+    private static final String DEFAULT_CNPJ = "97578090000134";
 
     @Bean
     CommandLineRunner run(DistribuidoraExcelImport distService,
@@ -51,20 +55,22 @@ public class EtlRunner {
                 } catch (Exception e) {
                     errors.add("Erro ao importar distribuidoras: " + e.getMessage());
                 }
+                List<Long> conjuntos = new ArrayList<>();
 
                 try {
-                    List<String> cnpjs = List.of("97578090000134");
+                    List<String> cnpjs = getTargetCnpjs();
                     String json = conjService.importar(cnpjs);
-                    conjTransformService.processarJson(json);
+                    conjuntos = conjTransformService.processarJson(json);
                 } catch (DuplicatesDetectedException e) {
                     loggingService.logExtractionFailDuplicata(e.getCount());
+                    errors.add("Duplicatas detectadas em métricas: " + e.getCount());
                 } catch (Exception e) {
                     errors.add("Erro ao processar métricas de conjunto: " + e.getMessage());
                 }
 
                 try {
                     String response = limService.importar();
-                    List<LimiteFiltrado> listaLim = limitesCsvParser.parsearFiltrando(response, List.of(12722L));
+                    List<LimiteFiltrado> listaLim = limitesCsvParser.parsearFiltrando(response, conjuntos);
                     limitesTransformLoad.processarLista(listaLim);
                 } catch (Exception e) {
                     errors.add("Erro ao processar limites: " + e.getMessage());
@@ -83,12 +89,47 @@ public class EtlRunner {
                 }
 
             } catch (Exception e) {
-                System.err.println("ERRO DURANTE ETL");
-                e.printStackTrace();
-                loggingService.logExtractionFail(e.getMessage());
+                loggingService.logExtractionFail("ERRO DURANTE ETL ANEEL (possível extração vazia/ inválida) " + e.getMessage());
                 System.exit(1);
             }
             System.exit(0);
         };
        }
+
+    private List<String> getTargetCnpjs() {
+        String raw = System.getenv("ETL_CNPJS");
+        if (raw == null || raw.isBlank()) {
+            return List.of(DEFAULT_CNPJ);
+        }
+
+        List<String> cnpjs = Arrays.stream(raw.split(","))
+            .map(Utils::formatCnpj)
+            .filter(cnpj -> cnpj != null && !cnpj.isBlank())
+            .distinct()
+            .toList();
+
+        if (cnpjs.isEmpty()) {
+            throw new IllegalArgumentException("ETL_CNPJS não contém CNPJs válidos");
+        }
+        return cnpjs;
+    }
+
+    // private List<Long> getTargetConjuntos() {
+    //     String raw = System.getenv("ETL_CONJUNTOS_IDS");
+    //     if (raw == null || raw.isBlank()) {
+    //         return List.of(DEFAULT_CONJUNTO_ID);
+    //     }
+
+    //     List<Long> conjuntos = Arrays.stream(raw.split(","))
+    //         .map(String::trim)
+    //         .map(Utils::toLong)
+    //         .filter(id -> id != null)
+    //         .distinct()
+    //         .toList();
+
+    //     if (conjuntos.isEmpty()) {
+    //         throw new IllegalArgumentException("ETL_CONJUNTOS_IDS não contém IDs válidos");
+    //     }
+    //     return conjuntos;
+    // }
 }

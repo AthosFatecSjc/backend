@@ -11,11 +11,12 @@ import java.util.Set;
 
 import org.springframework.stereotype.Service;
 
-import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 
 
 
 @Service
+@Slf4j
 public class LimitesCsvParser {
 
     public record LimiteFiltrado(
@@ -29,6 +30,7 @@ public class LimitesCsvParser {
     public List<LimiteFiltrado> parsearFiltrando(String csv, List<Long> ideConjPermitidos) throws IOException {
         Set<Long> permitidos = new HashSet<>(ideConjPermitidos);
         List<LimiteFiltrado> linhas = new ArrayList<>();
+        int linhasComDado = 0;
 
         try (BufferedReader br = new BufferedReader(new StringReader(csv))) {
             String line;
@@ -43,17 +45,24 @@ public class LimitesCsvParser {
                 if (line.isBlank()) {
                     continue;
                 }
+                linhasComDado++;
 
                 String[] cols = line.split(";", -1);
                 if (cols.length < 8) {
+                    log.warn("Linha de limites ignorada por quantidade de colunas inválida: {}", line);
                     continue; 
                 }
 
                 Long ideConj = Utils.toLong(cols[3].trim());
-                String sigIndicador = cols[5].trim();
+                String sigIndicador = Utils.cleanNullable(cols[5].trim());
                 Long ano = Utils.toLong(cols[6].trim());
-                Double valor = parseDoubleBr(cols[7].trim());
-                LocalDate dataGeracao = LocalDate.parse((cols[0].trim()).toString());
+                Double valor = Utils.toDoubleBrNullable(cols[7].trim());
+                LocalDate dataGeracao = Utils.toDateNullable(cols[0].trim());
+
+                if (sigIndicador == null || ano == null) {
+                    log.warn("Linha de limites ignorada por campos obrigatórios inválidos: {}", line);
+                    continue;
+                }
 
                 if (ideConj == null || !permitidos.contains(ideConj)) {
                     continue; 
@@ -68,12 +77,12 @@ public class LimitesCsvParser {
                 ));
             }
         }
-        System.out.println("Linhas: " + linhas);
-        return linhas;
-    }
 
-    private Double parseDoubleBr(String raw) {
-        if (raw == null || raw.isBlank()) return null;
-        return Double.parseDouble(raw.replace(",", "."));
+        if (linhasComDado == 0 || linhas.isEmpty()) {
+            throw new IllegalStateException("Erro na extração ANEEL: limites vazio ou sem registros válidos");
+        }
+
+        log.info("Limites válidos processados: {}", linhas.size());
+        return linhas;
     }
 }
