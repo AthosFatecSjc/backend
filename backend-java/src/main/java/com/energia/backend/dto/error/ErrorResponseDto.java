@@ -1,7 +1,5 @@
 package com.energia.backend.dto.error;
 
-import java.util.UUID;
-
 import lombok.Data;
 import lombok.Builder;
 

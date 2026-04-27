@@ -1,10 +1,12 @@
 package com.energia.backend.service;
 
+import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -15,7 +17,8 @@ import org.springframework.transaction.annotation.Transactional;
 import com.energia.backend.dto.LoginRequest;
 import com.energia.backend.dto.LoginResponse;
 import com.energia.backend.dto.ResolverPendenciasTermosLoginRequest;
-import com.energia.backend.dto.TermosPendentesResponse;
+import com.energia.backend.dto.TermosResponse;
+import com.energia.backend.exception.DocumentosObrigatoriosNaoConfiguradosException;
 import com.energia.backend.exception.LoginAuthenticationException;
 import com.energia.backend.model.AppUserEntity;
 import com.energia.backend.model.StatusUsuario;
@@ -34,6 +37,7 @@ public class AuthenticationService {
     private final UserStatusService userStatusService;
     private final PasswordEncoder passwordEncoder;
     private final TermsService termsService;
+    private final TermsUserService termsUserService;
 
     @Value("${jwt.secret:sua-chave-secreta-muito-longa-com-pelo-menos-256-bits-de-comprimento-para-hs512}")
     private String jwtSecret;
@@ -45,12 +49,13 @@ public class AuthenticationService {
             AppUserJpaRepository userRepository,
             UserStatusService userStatusService,
             PasswordEncoder passwordEncoder,
-            TermsService termsService
-    ) {
+            TermsService termsService,
+            TermsUserService termsUserService) {
         this.userRepository = userRepository;
         this.userStatusService = userStatusService;
         this.passwordEncoder = passwordEncoder;
         this.termsService = termsService;
+        this.termsUserService = termsUserService;
     }
 
     @Transactional(readOnly = true)
@@ -59,27 +64,27 @@ public class AuthenticationService {
 
         AppUserEntity user = autenticarCredenciais(request.getEmail(), request.getSenha());
         validarStatusParaAcesso(user);
-        List<TermosPendentesResponse> pendingTerms = termsService.listarPendenciasDeAcesso(user.getId());
-        validarPendenciasDeTermos(pendingTerms);
 
+        if (!termsUserService.checkRequiredTerms(null, user, LocalDateTime.now())) {
+            throw new DocumentosObrigatoriosNaoConfiguradosException(
+                    "Existem termos obrigatórios pendentes de aceite");
+        }
+       
         return gerarRespostaDeLogin(user);
     }
 
     @Transactional
     public LoginResponse resolverPendenciasETokenizar(ResolverPendenciasTermosLoginRequest request, String ipOrigem) {
-        validarRequest(new LoginRequest(
-                request != null ? request.getEmail() : null,
-                request != null ? request.getSenha() : null
-        ));
+        validarRequest(request != null
+                ? new LoginRequest(request.getEmail(), request.getSenha())
+                : new LoginRequest(null, null));
 
         AppUserEntity user = autenticarCredenciais(request.getEmail(), request.getSenha());
         validarStatusParaAcesso(user);
-        termsService.registrarDecisoesPendentes(
-                user,
-                request.getRequiredTermsIds(),
-                request.getOptionalAcceptedTermsIds(),
-                ipOrigem
-        );
+        termsUserService.aprovarTermos(
+                Stream.concat(request.getRequiredTermsIds().stream(),
+                        request.getOptionalAcceptedTermsIds().stream()).collect(Collectors.toList()),
+                user);
         return gerarRespostaDeLogin(user);
     }
 
@@ -88,15 +93,13 @@ public class AuthenticationService {
                 .orElseThrow(() -> new LoginAuthenticationException(
                         "Invalid email or password",
                         "INVALID_CREDENTIALS",
-                        HttpStatus.UNAUTHORIZED.value()
-                ));
+                        HttpStatus.UNAUTHORIZED.value()));
 
         if (!passwordEncoder.matches(senha, user.getPassword())) {
             throw new LoginAuthenticationException(
                     "Invalid email or password",
                     "INVALID_CREDENTIALS",
-                    HttpStatus.UNAUTHORIZED.value()
-            );
+                    HttpStatus.UNAUTHORIZED.value());
         }
 
         return user;
@@ -107,8 +110,7 @@ public class AuthenticationService {
                 .orElseThrow(() -> new LoginAuthenticationException(
                         "User account has no status assigned",
                         "USER_NO_STATUS",
-                        HttpStatus.FORBIDDEN.value()
-                ));
+                        HttpStatus.FORBIDDEN.value()));
 
         String statusName = userStatus.getStatus() != null ? userStatus.getStatus().getName() : null;
         StatusUsuario status = userStatusService.toOfficialStatus(statusName);
@@ -117,8 +119,7 @@ public class AuthenticationService {
             throw new LoginAuthenticationException(
                     "User account is pending administrator approval",
                     "USER_PENDING_APPROVAL",
-                    HttpStatus.FORBIDDEN.value()
-            );
+                    HttpStatus.FORBIDDEN.value());
         }
 
         if (status == StatusUsuario.REJEITADO) {
@@ -129,45 +130,26 @@ public class AuthenticationService {
                     "User account has been rejected",
                     "USER_REJECTED",
                     HttpStatus.FORBIDDEN.value(),
-                    reason
-            );
+                    reason);
         }
 
         if (status != StatusUsuario.ATIVO) {
             throw new LoginAuthenticationException(
                     "User account status is invalid: " + statusName,
                     "INVALID_USER_STATUS",
-                    HttpStatus.FORBIDDEN.value()
-            );
+                    HttpStatus.FORBIDDEN.value());
         }
     }
 
     private LoginResponse gerarRespostaDeLogin(AppUserEntity user) {
         List<String> roles = user.getRoles() != null
                 ? user.getRoles().stream()
-                    .map(role -> role.getName().toLowerCase().replaceAll("role_", ""))
-                    .collect(Collectors.toList())
+                        .map(role -> role.getName().toLowerCase().replaceAll("role_", ""))
+                        .collect(Collectors.toList())
                 : java.util.Collections.emptyList();
 
         String token = generateTokenWithRoles(user.getId(), user.getEmail(), user.getName(), roles);
         return new LoginResponse(token, user.getId(), user.getEmail(), user.getName());
-    }
-
-    private void validarPendenciasDeTermos(List<TermosPendentesResponse> pendingTerms) {
-        if (pendingTerms.isEmpty()) {
-            return;
-        }
-
-        throw new LoginAuthenticationException(
-                "Usuario deve revisar e aceitar os termos mais recentes antes de acessar a plataforma",
-                "TERMS_REVIEW_REQUIRED",
-                HttpStatus.FORBIDDEN.value(),
-                "LATEST_TERMS_PENDING",
-                Map.of(
-                        "redirect", "/consentimentos-pendentes",
-                        "pendingTerms", pendingTerms
-                )
-        );
     }
 
     private void validarRequest(LoginRequest request) {
@@ -184,14 +166,14 @@ public class AuthenticationService {
 
     public String generateTokenWithRoles(UUID userId, String email, String username, List<String> roles) {
         Map<String, Object> claims = Map.of(
-            "userId", userId.toString(),
-            "email", email,
-            "username", username,
-            "roles", roles
-        );
+                "userId", userId.toString(),
+                "email", email,
+                "username", username,
+                "roles", roles);
         return createToken(claims, userId.toString());
     }
 
+    @SuppressWarnings("deprecation")
     private String createToken(Map<String, Object> claims, String subject) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + jwtExpiration);

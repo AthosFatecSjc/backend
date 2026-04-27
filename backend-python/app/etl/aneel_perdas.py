@@ -1,6 +1,7 @@
 import csv
 import io
 import json
+import logging
 import os
 import unicodedata
 from dataclasses import dataclass
@@ -71,6 +72,24 @@ COLUMN_ALIASES = {
     "custo perdas nao tecnicas r": "custo_perdas_nao_tec",
 }
 
+logger = logging.getLogger(__name__)
+
+MISSING_TOKENS = {
+    "",
+    "-",
+    "--",
+    "n/a",
+    "na",
+    "nd",
+    "n.d",
+    "null",
+    "none",
+    "sem informacao",
+    "sem informacoes",
+    "sem informação",
+    "sem informações",
+}
+
 
 @dataclass
 class VisualExportResult:
@@ -104,26 +123,21 @@ def _parse_number(raw_value: str | None) -> float | None:
     if raw_value is None:
         return None
     value = raw_value.strip()
-    if not value:
+    if _normalize_text(value) in MISSING_TOKENS:
         return None
     value = value.replace("%", "").replace(".", "").replace(",", ".")
     try:
         return float(value)
     except ValueError:
+        logger.warning("Valor numerico invalido recebido no ETL de perdas: %s", raw_value)
         return None
-
-
-def _normalize_measurement(value: float | None) -> float | None:
-    if value == 0:
-        return None
-    return value
 
 
 def _parse_date(raw_value: str | None) -> date | None:
     if raw_value is None:
         return None
     value = raw_value.strip()
-    if not value:
+    if _normalize_text(value) in MISSING_TOKENS:
         return None
     for fmt in ("%d/%m/%Y", "%Y-%m-%d", "%d-%m-%Y"):
         try:
@@ -131,6 +145,34 @@ def _parse_date(raw_value: str | None) -> date | None:
         except ValueError:
             continue
     return None
+
+
+def _parse_year(raw_value: str | None) -> int | None:
+    if raw_value is None:
+        return None
+    value = raw_value.strip()
+    if _normalize_text(value) in MISSING_TOKENS:
+        return None
+    try:
+        year = int(value)
+    except ValueError:
+        logger.warning("Ano invalido recebido no ETL de perdas: %s", raw_value)
+        return None
+
+    if year <= 0 or year > 9999:
+        logger.warning("Ano fora de faixa recebido no ETL de perdas: %s", raw_value)
+        return None
+
+    return year
+
+
+def _mask_cnpj(raw_value: str | None) -> str:
+    if raw_value is None:
+        return "n/a"
+    digits = "".join(char for char in raw_value if char.isdigit())
+    if len(digits) < 4:
+        return "n/a"
+    return f"***{digits[-4:]}"
 
 
 def _load_distribuidoras(conn: Any) -> dict[str, int]:
@@ -179,6 +221,7 @@ def _parse_export_rows(csv_data: str) -> list[dict[str, str]]:
     lines = csv_data.splitlines()
     filtered_lines = [line for line in lines if line.strip()]
     if not filtered_lines:
+        logger.error("Erro na extracao ANEEL perdas: CSV exportado veio vazio")
         return []
 
     reader = csv.DictReader(io.StringIO("\n".join(filtered_lines)))
@@ -212,11 +255,15 @@ def _transform_rows(
 
     min_year = datetime.now().year - RETENTION_YEARS
     transformed: list[tuple[Any, ...]] = []
+    rows_with_content = 0
     for row in raw_rows:
         canonical_row = {
             mapped_key: (row.get(original_key) or "").strip()
             for original_key, mapped_key in header_map.items()
         }
+
+        if any(value for value in canonical_row.values()):
+            rows_with_content += 1
 
         distribuidora_id = None
         for value in (
@@ -231,26 +278,37 @@ def _transform_rows(
                 break
 
         if distribuidora_id is None:
+            logger.warning(
+                "Linha de perdas ignorada: distribuidora nao reconhecida (sig_agente=%s, distribuidora=%s, num_cnpj=%s, ano=%s)",
+                canonical_row.get("sig_agente") or "n/a",
+                canonical_row.get("distribuidora") or "n/a",
+                _mask_cnpj(canonical_row.get("num_cnpj")),
+                canonical_row.get("ano") or "n/a",
+            )
             continue
 
         data_processo = _parse_date(canonical_row.get("data_processo"))
-        ano = canonical_row.get("ano")
-        ano_value = int(ano) if ano else (data_processo.year if data_processo else None)
+        ano_value = _parse_year(canonical_row.get("ano"))
+        if ano_value is None and data_processo is not None:
+            ano_value = data_processo.year
 
         if data_processo is None and ano_value is not None:
-            data_processo = date(ano_value, 1, 1)
+            try:
+                data_processo = date(ano_value, 1, 1)
+            except ValueError:
+                logger.warning(
+                    "Ano invalido para compor data_processo no ETL de perdas: %s",
+                    ano_value,
+                )
+                continue
 
         if data_processo is None or ano_value is None:
             continue
         if ano_value < min_year:
             continue
 
-        perdas_nao_tec = _normalize_measurement(
-            _parse_number(canonical_row.get("perdas_nao_tec"))
-        )
-        custo_perdas_nao_tec = _normalize_measurement(
-            _parse_number(canonical_row.get("custo_perdas_nao_tec"))
-        )
+        perdas_nao_tec = _parse_number(canonical_row.get("perdas_nao_tec"))
+        custo_perdas_nao_tec = _parse_number(canonical_row.get("custo_perdas_nao_tec"))
 
         transformed.append(
             (
@@ -262,6 +320,9 @@ def _transform_rows(
                 _build_missing_data_labels(perdas_nao_tec, custo_perdas_nao_tec),
             )
         )
+
+    if rows_with_content == 0 or not transformed:
+        logger.error("Erro na extracao ANEEL perdas: nenhum registro valido apos transformacao")
 
     return transformed
 
@@ -442,11 +503,15 @@ def run_perdas_import() -> dict[str, Any]:
     export_result = export_perdas_csv()
     archived_file = _archive_export(export_result.csv_data)
     raw_rows = _parse_export_rows(export_result.csv_data)
+    if not raw_rows:
+        raise ValueError("Erro na extracao ANEEL perdas: CSV vazio")
 
     conn = get_postgres_connection()
     try:
         distribuidoras = _load_distribuidoras(conn)
         transformed_rows = _transform_rows(raw_rows, distribuidoras)
+        if not transformed_rows:
+            raise ValueError("Erro na extracao ANEEL perdas: nenhum registro valido para carga")
         upserted = _upsert_perdas(conn, transformed_rows)
     finally:
         conn.close()

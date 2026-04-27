@@ -1,9 +1,9 @@
 package com.energia.backend.model;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.ArrayList;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -89,4 +89,5 @@ public class AppUserEntity {
         }
     }
 
+    
 }

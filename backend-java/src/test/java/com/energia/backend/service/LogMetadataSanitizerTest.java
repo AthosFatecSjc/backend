@@ -77,10 +77,11 @@ class LogMetadataSanitizerTest {
     void testOversizedMetadataIsTruncated() {
         Map<String, Object> meta = new HashMap<>();
         StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < 3000; i++) sb.append("a");
+        for (int i = 0; i < 3000; i++)
+            sb.append("a");
         meta.put("big", sb.toString());
         Map<String, Object> sanitized = sanitizer.sanitize(meta);
-        assertTrue(sanitized.containsKey("_truncated"));
+        assertTrue(sanitized.get("big").toString().contains("_truncated"));
     }
 
     @Test
