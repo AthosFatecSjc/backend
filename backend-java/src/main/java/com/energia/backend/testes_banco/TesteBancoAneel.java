@@ -1,6 +1,7 @@
 package com.energia.backend.testes_banco;
 
 import java.time.LocalDate;
+import java.util.Optional;
 
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
@@ -11,7 +12,6 @@ import com.energia.backend.model.aneel.*;
 import com.energia.backend.repository.aneel.*;
 
 import jakarta.transaction.Transactional;
-
 
 @Configuration
 public class TesteBancoAneel {
@@ -25,8 +25,7 @@ public class TesteBancoAneel {
             SigIndicadorRepository sigIndicadorRepo,
             MetricasRepository metricasRepo,
             PerdasRepository perdasRepo,
-            SubestacaoRepository subestacaoRepo
-    ) {
+            SubestacaoRepository subestacaoRepo) {
         return args -> {
 
             System.out.println("🔥 ENTROU NO RUNNER");
@@ -77,10 +76,17 @@ public class TesteBancoAneel {
             // =========================
             // 4. SigIndicador
             // =========================
-            SigIndicador sig = new SigIndicador();
-            sig.setIndicadorType(IndicadorType.DEC);
+            SigIndicador sig;
+            Optional<SigIndicador> existingSig = sigIndicadorRepo.findByIndicadorType(IndicadorType.DEC);
 
-            sig = sigIndicadorRepo.save(sig);
+            if (existingSig.isPresent()) {
+                sig = existingSig.get();
+                System.out.println("SigIndicador DEC ja existente, usando o existente com ID: " + sig.getId());
+            } else {
+                sig = new SigIndicador();
+                sig.setIndicadorType(IndicadorType.DEC);
+                sig = sigIndicadorRepo.save(sig);
+            }
 
             // =========================
             // 5. Metricas
@@ -100,14 +106,13 @@ public class TesteBancoAneel {
             // =========================
             Perdas perdas = new Perdas();
             perdas.setDistribuidora(dist);
-                    
+
             LocalDate data = LocalDate.now();
             perdas.setDataProcesso(data);
-                    
+
             // importante agora por causa da migration
             perdas.setAno((long) data.getYear());
-                    
-           
+
             perdasRepo.save(perdas);
 
             // =========================

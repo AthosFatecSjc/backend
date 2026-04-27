@@ -1,8 +1,8 @@
 package com.energia.backend.controller;
 
+import com.energia.backend.dto.TermosResponse;
 import com.energia.backend.dto.UserTermResponse;
 import com.energia.backend.model.AppUserEntity;
-import com.energia.backend.model.TermsEntity;
 import com.energia.backend.repository.UsuarioRepository;
 import com.energia.backend.service.TermsUserService;
 import lombok.RequiredArgsConstructor;
@@ -59,12 +59,17 @@ public class TermsUserController {
     }
 
     @GetMapping("/pending")
-    public ResponseEntity<List<TermsEntity>> listarTermosPendentes(
+    public ResponseEntity<List<TermosResponse>> listarTermosPendentes(
             @PathVariable UUID userId,
             @RequestParam(defaultValue = "false") Boolean apenasObrigatorios) {
 
+
         getUserOrThrow(userId);
-        return ResponseEntity.ok(termsUserService.listarTermosPendentes(userId, apenasObrigatorios));
+        return ResponseEntity.ok(
+                termsUserService.listarTermosPendentes(userId, apenasObrigatorios)
+                        .stream()
+                        .map(TermosResponse::fromEntity)
+                        .toList());
     }
 
     private AppUserEntity getUserOrThrow(UUID userId) {

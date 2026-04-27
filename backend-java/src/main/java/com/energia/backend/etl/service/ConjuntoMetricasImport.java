@@ -1,7 +1,5 @@
 package com.energia.backend.etl.service;
 
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 import org.springframework.stereotype.Service;

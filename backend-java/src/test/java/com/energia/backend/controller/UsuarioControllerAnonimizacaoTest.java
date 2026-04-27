@@ -20,7 +20,6 @@ import com.energia.backend.exception.UsuarioJaAnonimizadoException;
 import com.energia.backend.exception.UsuarioNaoEncontradoException;
 import com.energia.backend.repository.AppUserJpaRepository;
 import com.energia.backend.service.AnonimizacaoService;
-import com.energia.backend.service.TermsService;
 import com.energia.backend.service.TermsUserService;
 import com.energia.backend.service.UserRoleService;
 
@@ -34,7 +33,6 @@ class UsuarioControllerAnonimizacaoTest {
                 com.energia.backend.service.MinhaContaService minhaContaService = mock(
                                 com.energia.backend.service.MinhaContaService.class);
                 AppUserJpaRepository appUserRepository = mock(AppUserJpaRepository.class);
-                TermsService termsService = mock(TermsService.class);
                 TermsUserService termsUserService = mock(TermsUserService.class);
                 UserRoleService userRoleService = mock(UserRoleService.class);
 
@@ -43,7 +41,6 @@ class UsuarioControllerAnonimizacaoTest {
                                 minhaContaService,
                                 anonimizacaoService,
                                 appUserRepository,
-                                termsService,
                                 termsUserService,
                                 userRoleService);
 
@@ -77,7 +74,6 @@ class UsuarioControllerAnonimizacaoTest {
                 com.energia.backend.service.MinhaContaService minhaContaService = mock(
                                 com.energia.backend.service.MinhaContaService.class);
                 AppUserJpaRepository appUserRepository = mock(AppUserJpaRepository.class);
-                TermsService termsService = mock(TermsService.class);
                 TermsUserService termsUserService = mock(TermsUserService.class);
                 UserRoleService userRoleService = mock(UserRoleService.class);
 
@@ -86,7 +82,6 @@ class UsuarioControllerAnonimizacaoTest {
                                 minhaContaService,
                                 anonimizacaoService,
                                 appUserRepository,
-                                termsService,
                                 termsUserService,
                                 userRoleService);
 
@@ -110,7 +105,6 @@ class UsuarioControllerAnonimizacaoTest {
                 com.energia.backend.service.MinhaContaService minhaContaService = mock(
                                 com.energia.backend.service.MinhaContaService.class);
                 AppUserJpaRepository appUserRepository = mock(AppUserJpaRepository.class);
-                TermsService termsService = mock(TermsService.class);
                 TermsUserService termsUserService = mock(TermsUserService.class);
                 UserRoleService userRoleService = mock(UserRoleService.class);
 
@@ -119,7 +113,6 @@ class UsuarioControllerAnonimizacaoTest {
                                 minhaContaService,
                                 anonimizacaoService,
                                 appUserRepository,
-                                termsService,
                                 termsUserService,
                                 userRoleService);
 
@@ -144,7 +137,6 @@ class UsuarioControllerAnonimizacaoTest {
                 com.energia.backend.service.MinhaContaService minhaContaService = mock(
                                 com.energia.backend.service.MinhaContaService.class);
                 AppUserJpaRepository appUserRepository = mock(AppUserJpaRepository.class);
-                TermsService termsService = mock(TermsService.class);
                 TermsUserService termsUserService = mock(TermsUserService.class);
                 UserRoleService userRoleService = mock(UserRoleService.class);
 
@@ -153,7 +145,6 @@ class UsuarioControllerAnonimizacaoTest {
                                 minhaContaService,
                                 anonimizacaoService,
                                 appUserRepository,
-                                termsService,
                                 termsUserService,
                                 userRoleService
                         );

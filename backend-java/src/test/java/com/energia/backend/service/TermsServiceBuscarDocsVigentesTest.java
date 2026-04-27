@@ -23,7 +23,6 @@ import com.energia.backend.model.TermTypeName;
 import com.energia.backend.model.TermsEntity;
 import com.energia.backend.repository.TermTypeRepository;
 import com.energia.backend.repository.TermsRepository;
-import com.energia.backend.repository.UserTermsRepository;
 
 class TermsServiceBuscarDocsVigentesTest {
 
@@ -31,12 +30,10 @@ class TermsServiceBuscarDocsVigentesTest {
         void deveRetornarDocumentosObrigatoriosEMarketingQuandoDisponivel() {
                 TermsRepository termsRepository = mock(TermsRepository.class);
                 TermTypeRepository termTypeRepository = mock(TermTypeRepository.class);
-                UserTermsRepository userTermsRepository = mock(UserTermsRepository.class);
 
                 TermsService service = new TermsService(
                                 termsRepository,
-                                termTypeRepository,
-                                userTermsRepository);
+                                termTypeRepository);
 
                 when(termsRepository.findActiveByReferenceTime(any(LocalDateTime.class)))
                                 .thenReturn(List.of(
@@ -78,11 +75,9 @@ class TermsServiceBuscarDocsVigentesTest {
         void deveRetornarMarketingNuloQuandoNaoHouverDocumentoOpcional() {
                 TermsRepository termsRepository = mock(TermsRepository.class);
                 TermTypeRepository termTypeRepository = mock(TermTypeRepository.class);
-                UserTermsRepository userTermsRepository = mock(UserTermsRepository.class);
                 TermsService service = new TermsService(
                                 termsRepository,
-                                termTypeRepository,
-                                userTermsRepository);
+                                termTypeRepository);
 
                 when(termsRepository.findActiveByReferenceTime(any(LocalDateTime.class)))
                                 .thenReturn(List.of(
@@ -98,11 +93,9 @@ class TermsServiceBuscarDocsVigentesTest {
         void deveFalharQuandoDocumentoObrigatorioNaoEstiverConfigurado() {
                 TermsRepository termsRepository = mock(TermsRepository.class);
                 TermTypeRepository termTypeRepository = mock(TermTypeRepository.class);
-                UserTermsRepository userTermsRepository = mock(UserTermsRepository.class);
                 TermsService service = new TermsService(
                                 termsRepository,
-                                termTypeRepository,
-                                userTermsRepository);
+                                termTypeRepository);
 
                 when(termsRepository.findActiveByReferenceTime(any(LocalDateTime.class)))
                                 .thenReturn(List.of(term(TermTypeName.MARKETING_COMMUNICATION, "Marketing vigente", 0, false)));

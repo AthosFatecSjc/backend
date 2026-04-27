@@ -23,7 +23,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.energia.backend.repository.aneel.ColetaDadosRepository;
 import com.energia.backend.repository.aneel.ConjuntoRepository;
 import com.energia.backend.repository.aneel.DistribuidoraRepository;
-import com.energia.backend.repository.aneel.IndicatorType;
 import com.energia.backend.repository.aneel.MetricasRepository;
 import com.energia.backend.repository.aneel.SigIndicadorRepository;
 
