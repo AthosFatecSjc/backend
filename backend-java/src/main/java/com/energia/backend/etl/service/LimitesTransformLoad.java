@@ -16,9 +16,11 @@ import com.energia.backend.repository.aneel.ConjuntoRepository;
 import com.energia.backend.repository.aneel.LimitesRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class LimitesTransformLoad {
 
     private final ConjuntoRepository conjuntoRepository;
@@ -27,10 +29,16 @@ public class LimitesTransformLoad {
 
     @Transactional
     public void processarLista(List<LimiteFiltrado> listaLim) {
+        int processados = 0;
         for (LimiteFiltrado lim : listaLim) {
+            if (lim == null || lim.anoLimiteQualidade() == null || lim.sigIndicador() == null) {
+                log.warn("Registro de limite inválido ignorado: {}", lim);
+                continue;
+            }
+
             Optional<Conjunto> conjuntoOpt = conjuntoRepository.findByIdeConjUndConsumidoras(lim.ideConjUndConsumidoras());
             if (conjuntoOpt.isEmpty()) {
-                System.out.println ("ConjuntoOPt está vazio");
+                log.warn("Conjunto não encontrado para ideConjUndConsumidoras={}", lim.ideConjUndConsumidoras());
                 continue; 
             }
             Conjunto conjunto = conjuntoOpt.get();
@@ -48,6 +56,7 @@ public class LimitesTransformLoad {
                     limExistente.setFecLim(lim.vlrLimite());
                 }
                 limitesRepository.save(limExistente);
+                processados++;
                 
             }
             else {
@@ -57,11 +66,15 @@ public class LimitesTransformLoad {
             
                 if (lim.sigIndicador().equalsIgnoreCase("DEC")) {
                     novo.setDecLim(lim.vlrLimite());
-                } else {
+                } else if (lim.sigIndicador().equalsIgnoreCase("FEC")) {
                     novo.setFecLim(lim.vlrLimite());
+                } else {
+                    log.warn("SigIndicador de limite inválido: {}", lim.sigIndicador());
+                    continue;
                 }
             
                 limitesRepository.save(novo);
+                processados++;
                 id = novo.getId();
 
                 ColetaDados coleta = new ColetaDados();
@@ -74,6 +87,10 @@ public class LimitesTransformLoad {
             }
         
                         
+        }
+
+        if (processados == 0) {
+            throw new IllegalStateException("Erro na extração ANEEL: nenhum registro válido de limites foi processado");
         }
     }
     

@@ -12,6 +12,7 @@ import com.energia.backend.repository.aneel.DistribuidoraRepository;
 import java.io.FileInputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -28,12 +29,17 @@ public class DistribuidoraExcelImport {
             Sheet sheet = workbook.getSheetAt(0);
 
             List<Distribuidora> lista = new ArrayList<>();
+            int linhasValidas = 0;
 
             for (Row row : sheet) {
 
                 if (row.getRowNum() == 0) continue; 
 
                 Long codigoIdDist = Utils.toLong(Utils.getRaw(row.getCell(13))); 
+                if (codigoIdDist == null) {
+                    log.warn("Linha {} ignorada: cod_id_dist inválido ou vazio", row.getRowNum());
+                    continue;
+                }
                 if(repository.existsByCodigoIdDist(codigoIdDist)){
                     continue;
                 }
@@ -44,7 +50,12 @@ public class DistribuidoraExcelImport {
                 
                 if (dist != null) {
                     lista.add(dist);
+                    linhasValidas++;
                 }
+            }
+
+            if (linhasValidas == 0) {
+                throw new IllegalStateException("Erro na extração ANEEL: planilha de distribuidoras sem registros válidos");
             }
 
             repository.saveAll(lista);
@@ -53,6 +64,7 @@ public class DistribuidoraExcelImport {
 
         } catch (Exception e) {
             log.error("Erro ao importar Excel", e);
+            throw new IllegalStateException("Erro na extração ANEEL: falha ao importar distribuidoras do Excel", e);
         }
     }
 
@@ -67,15 +79,31 @@ public class DistribuidoraExcelImport {
         String regiaoRaw = Utils.getRaw(row.getCell(8));
         String ufRaw = Utils.getRaw(row.getCell(7));
         String contractTypeRaw = Utils.getRaw(row.getCell(12));
-      
 
-        dist.setCodigoIdDist(Utils.toLong(codigoIdDistRaw));
-        dist.setSigAgente((sigAgenteRaw));
-        dist.setNumCnpj(Utils.formatCnpj(cnpjRaw));
-        dist.setRazaoSocial((razaoSocialRaw));
+        Long codigoIdDist = Utils.toLong(codigoIdDistRaw);
+        String sigAgente = Utils.cleanNullable(sigAgenteRaw);
+        String cnpj = Utils.formatCnpj(cnpjRaw);
+
+        if (codigoIdDist == null || sigAgente == null || cnpj == null) {
+            log.warn("Linha {} ignorada por campos essenciais inválidos", row.getRowNum());
+            return null;
+        }
+
+        dist.setCodigoIdDist(codigoIdDist);
+        dist.setSigAgente(sigAgente);
+        dist.setNumCnpj(cnpj);
+        dist.setRazaoSocial(Utils.cleanNullable(razaoSocialRaw));
         dist.setRegiao(Utils.parseRegiao(regiaoRaw));
         dist.setUf(Utils.formatUf(ufRaw));
         dist.setContractType(Utils.parseContractType(contractTypeRaw));
+
+        if (Objects.isNull(dist.getRegiao()) || Objects.isNull(dist.getUf()) || Objects.isNull(dist.getContractType())) {
+            log.warn(
+                "Linha {} com dimensões faltantes para distribuidora {} (regiao/uf/contract_type nulos).",
+                row.getRowNum(),
+                dist.getNumCnpj()
+            );
+        }
 
         return dist;
     }
