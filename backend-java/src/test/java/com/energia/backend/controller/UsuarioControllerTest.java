@@ -21,7 +21,6 @@ import org.springframework.web.server.ResponseStatusException;
 import com.energia.backend.dto.AprovacaoRejeicaoUsuarioRequest;
 import com.energia.backend.dto.MinhaContaResponse;
 import com.energia.backend.dto.MinhaContaUpdateRequest;
-import com.energia.backend.dto.Usuario;
 import com.energia.backend.dto.UsuarioCadastroRequest;
 import com.energia.backend.dto.UsuarioCadastroResponse;
 import com.energia.backend.dto.term.AcceptedTermRequestDto;
