@@ -19,16 +19,12 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import com.energia.backend.dto.LoginRequest;
 import com.energia.backend.dto.LoginResponse;
-import com.energia.backend.dto.TermosResponse;
 import com.energia.backend.exception.DocumentosObrigatoriosNaoConfiguradosException;
 import com.energia.backend.exception.LoginAuthenticationException;
 import com.energia.backend.model.AppUserEntity;
 import com.energia.backend.model.RoleEntity;
 import com.energia.backend.model.StatusEntity;
 import com.energia.backend.model.StatusUsuario;
-import com.energia.backend.model.TermTypeEntity;
-import com.energia.backend.model.TermTypeName;
-import com.energia.backend.model.TermsEntity;
 import com.energia.backend.model.UserStatusEntity;
 import com.energia.backend.repository.AppUserJpaRepository;
 
@@ -65,7 +61,6 @@ class AuthenticationServiceTest {
                 userRepository,
                 userStatusService,
                 passwordEncoder,
-                termsService,
                 termsUserService);
         ReflectionTestUtils.setField(
                 authenticationService,

@@ -2,7 +2,6 @@ package com.energia.backend.controller;
 
 import com.energia.backend.dto.TermoRequest;
 import com.energia.backend.dto.TermosResponse;
-import com.energia.backend.model.TermsEntity;
 import com.energia.backend.service.TermsService;
 
 import lombok.RequiredArgsConstructor;

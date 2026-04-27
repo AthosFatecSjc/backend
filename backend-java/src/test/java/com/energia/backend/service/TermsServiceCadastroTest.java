@@ -4,11 +4,8 @@ import com.energia.backend.dto.TermoRequest;
 import com.energia.backend.dto.TermosResponse;
 import com.energia.backend.model.TermTypeEntity;
 import com.energia.backend.model.TermTypeName;
-import com.energia.backend.model.TermsEntity;
 import com.energia.backend.repository.TermTypeRepository;
 import com.energia.backend.repository.TermsRepository;
-import com.energia.backend.repository.UserTermsRepository;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -24,19 +21,16 @@ class TermsServiceCadastroTest {
 
         private TermsRepository termsRepository;
         private TermTypeRepository termTypeRepository;
-        private UserTermsRepository userTermsRepository;
         private TermsService service;
 
         @BeforeEach
         void setUp() {
                 termsRepository = mock(TermsRepository.class);
                 termTypeRepository = mock(TermTypeRepository.class);
-                userTermsRepository = mock(UserTermsRepository.class);
 
                 service = new TermsService(
                                 termsRepository,
-                                termTypeRepository,
-                                userTermsRepository);
+                                termTypeRepository);
         }
 
         @Test

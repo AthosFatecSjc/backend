@@ -36,7 +36,6 @@ import com.energia.backend.model.StatusUsuario;
 import com.energia.backend.repository.AppUserJpaRepository;
 import com.energia.backend.service.AnonimizacaoService;
 import com.energia.backend.service.MinhaContaService;
-import com.energia.backend.service.TermsService;
 import com.energia.backend.service.TermsUserService;
 import com.energia.backend.service.UsuarioCadastroService;
 
@@ -56,7 +55,6 @@ public class UsuarioController {
     private final MinhaContaService minhaContaService;
     private final AnonimizacaoService anonimizacaoService;
     private final AppUserJpaRepository appUserRepository;
-    private final TermsService termsService;
     private final TermsUserService termsUserService;
     private final UserRoleService userRoleService;
 
@@ -65,7 +63,6 @@ public class UsuarioController {
             MinhaContaService minhaContaService,
             AnonimizacaoService anonimizacaoService,
             AppUserJpaRepository appUserRepository,
-            TermsService termsService,
             TermsUserService termsUserService,
             UserRoleService userRoleService
     ) {
@@ -73,7 +70,6 @@ public class UsuarioController {
         this.minhaContaService = minhaContaService;
         this.anonimizacaoService = anonimizacaoService;
         this.appUserRepository = appUserRepository;
-        this.termsService = termsService;
         this.termsUserService = termsUserService;
         this.userRoleService = userRoleService;
     }
@@ -167,7 +163,7 @@ public class UsuarioController {
         List<TermosResponse> termosResponses = termsUserService
             .listarTermosPendentes(obterUid(principal), false)
             .stream()
-            .map(termsService::toTermosResponse)
+            .map(TermosResponse::fromEntity)
             .toList();
 
     return ResponseEntity.ok(termosResponses);

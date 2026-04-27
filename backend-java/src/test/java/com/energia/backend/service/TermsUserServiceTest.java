@@ -43,8 +43,7 @@ class TermsUserServiceTest {
                 userRepository = mock(UsuarioRepository.class);
                 termsService = new TermsService(
                                 termsRepository,
-                                mock(TermTypeRepository.class),
-                                userTermsRepository);
+                                mock(TermTypeRepository.class));
                 termsUserService = new TermsUserService(
                                 termsRepository,
                                 userTermsRepository,

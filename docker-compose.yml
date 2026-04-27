@@ -9,7 +9,7 @@ services:
     ports:
       - "${POSTGRES_PORT_LOCAL}:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      # - postgres_data:/var/lib/postgresql/data
       - ./init-scripts/postgres:/docker-entrypoint-initdb.d
     networks:
       - energia-network
@@ -29,7 +29,7 @@ services:
     ports:
       - "${MONGO_PORT_LOCAL}:27017"
     volumes:
-      - mongodb_data:/data/db
+      # - mongodb_data:/data/db
       - ./init-scripts/mongo:/docker-entrypoint-initdb.d
     networks:
       - energia-network
@@ -181,9 +181,9 @@ services:
         mongodb:
           condition: service_healthy
 
-volumes:
-  postgres_data:
-  mongodb_data:
+# volumes:
+#   postgres_data:
+#   mongodb_data:
 
 networks:
   energia-network:

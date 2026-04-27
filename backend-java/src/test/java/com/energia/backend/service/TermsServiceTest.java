@@ -19,7 +19,6 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Answers.valueOf;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -65,8 +64,7 @@ class TermsServiceTest {
                 UserTermsRepository userTermsRepository = mock(UserTermsRepository.class);
                 TermsService termsService = new TermsService(
                                 termsRepository,
-                                mock(TermTypeRepository.class),
-                                userTermsRepository);
+                                mock(TermTypeRepository.class));
                 UsuarioRepository userRepository = mock(UsuarioRepository.class);
                 TermsUserService termsUserService = new TermsUserService(
                                 termsRepository,
@@ -134,8 +132,7 @@ class TermsServiceTest {
                 UserTermsRepository userTermsRepository = mock(UserTermsRepository.class);
                 TermsService termsService = new TermsService(
                         termsRepository,
-                        mock(TermTypeRepository.class),
-                        userTermsRepository);
+                        mock(TermTypeRepository.class));
                 UsuarioRepository userRepository = mock(UsuarioRepository.class);
                 TermsUserService termsUserService = new TermsUserService(
                                 termsRepository,
