@@ -2,6 +2,7 @@ package com.energia.backend.service;
 
 import com.energia.backend.model.AnonymizationStatus;
 import com.energia.backend.model.AppUserEntity;
+import com.energia.backend.model.UserPersonalDataEntity;
 import com.energia.backend.model.log.LogCategory;
 import com.energia.backend.model.log.LogEvent;
 import com.energia.backend.model.log.ResultType;
@@ -44,14 +45,19 @@ class UserPrivacyAnonymizationServiceTest {
         );
 
         UUID userId = UUID.randomUUID();
-        AppUserEntity user = AppUserEntity.builder()
-                .id(userId)
+        UserPersonalDataEntity personalData = UserPersonalDataEntity.builder()
+                .userId(userId)
                 .name("Maria Silva")
                 .email("maria@teste.com")
-                .password("hash-antigo")
                 .phone("11999999999")
-                .anonymizationStatus(AnonymizationStatus.ACTIVE)
                 .build();
+        AppUserEntity user = AppUserEntity.builder()
+                .id(userId)
+                .password("hash-antigo")
+                .anonymizationStatus(AnonymizationStatus.ACTIVE)
+                .personalData(personalData)
+                .build();
+        personalData.setUser(user);
 
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(registryRepository.findByEntityTypeAndEntityId(AnonymizedEntityType.APP_USER, userId))
@@ -61,10 +67,11 @@ class UserPrivacyAnonymizationServiceTest {
 
         assertEquals(AnonymizationStatus.ANONYMIZED, user.getAnonymizationStatus());
         assertNotNull(user.getAnonymizedAt());
-        assertEquals("ANONYMIZED USER", user.getName());
+        assertNull(user.getPersonalData());
+        assertNull(user.getName());
         assertNull(user.getPhone());
-        assertTrue(user.getEmail().endsWith("@anon.io"));
-        assertTrue(user.getPassword().startsWith("ANONYMIZED::"));
+        assertNull(user.getEmail());
+        assertEquals("hash-antigo", user.getPassword());
 
         ArgumentCaptor<PrivacyAnonymizationRegistryEntity> registryCaptor =
                 ArgumentCaptor.forClass(PrivacyAnonymizationRegistryEntity.class);
@@ -103,14 +110,19 @@ class UserPrivacyAnonymizationServiceTest {
         );
 
         UUID userId = UUID.randomUUID();
-        AppUserEntity restoredUser = AppUserEntity.builder()
-                .id(userId)
+        UserPersonalDataEntity restoredData = UserPersonalDataEntity.builder()
+                .userId(userId)
                 .name("Maria Restaurada")
                 .email("maria@teste.com")
-                .password("hash-antigo")
                 .phone("11999999999")
-                .anonymizationStatus(AnonymizationStatus.ACTIVE)
                 .build();
+        AppUserEntity restoredUser = AppUserEntity.builder()
+                .id(userId)
+                .password("hash-antigo")
+                .anonymizationStatus(AnonymizationStatus.ACTIVE)
+                .personalData(restoredData)
+                .build();
+        restoredData.setUser(restoredUser);
 
         PrivacyAnonymizationRegistryEntity registry = PrivacyAnonymizationRegistryEntity.builder()
                 .entityType(AnonymizedEntityType.APP_USER)
@@ -125,9 +137,10 @@ class UserPrivacyAnonymizationServiceTest {
 
         assertTrue(reapplied);
         assertEquals(AnonymizationStatus.ANONYMIZED, restoredUser.getAnonymizationStatus());
-        assertEquals("ANONYMIZED USER", restoredUser.getName());
+        assertNull(restoredUser.getPersonalData());
+        assertNull(restoredUser.getName());
         assertNull(restoredUser.getPhone());
-        assertTrue(restoredUser.getEmail().endsWith("@anon.io"));
+        assertNull(restoredUser.getEmail());
         verify(registryRepository).save(registry);
         verify(logService).log(
                 eq("system"),
@@ -156,12 +169,8 @@ class UserPrivacyAnonymizationServiceTest {
         );
 
         UUID userId = UUID.randomUUID();
-        String compactId = userId.toString().replace("-", "");
         AppUserEntity anonymizedUser = AppUserEntity.builder()
                 .id(userId)
-                .name("ANONYMIZED USER")
-                .email("u" + compactId + "@anon.io")
-                .password("ANONYMIZED::" + compactId)
                 .anonymizationStatus(AnonymizationStatus.ANONYMIZED)
                 .build();
         anonymizedUser.setAnonymizedAt(LocalDateTime.now());

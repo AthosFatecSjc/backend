@@ -19,7 +19,6 @@ import com.energia.backend.repository.AppUserJpaRepository;
 public class AnonimizacaoService {
 
     private static final String ADMIN_ROLE = "ADMIN";
-    private static final String ANONIMIZADO_MARKER = "ANONYMIZED USER";
 
     private final AppUserJpaRepository appUserRepository;
     private final UserPrivacyAnonymizationService userPrivacyAnonymizationService;
@@ -73,8 +72,7 @@ public class AnonimizacaoService {
     }
 
     private void validarJaAnonimizado(AppUserEntity usuario) {
-        if (ANONIMIZADO_MARKER.equalsIgnoreCase(usuario.getName())
-                || usuario.getAnonymizationStatus() == AnonymizationStatus.ANONYMIZED) {
+        if (usuario.getAnonymizationStatus() == AnonymizationStatus.ANONYMIZED) {
             throw new UsuarioJaAnonimizadoException("Usuario ja foi anonimizado anteriormente.");
         }
     }
