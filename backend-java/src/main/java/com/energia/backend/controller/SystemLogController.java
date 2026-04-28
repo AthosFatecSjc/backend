@@ -1,6 +1,7 @@
 package com.energia.backend.controller;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -15,6 +16,7 @@ import com.energia.backend.service.SystemLogService;
 
 @RestController
 @RequestMapping("/admin/logs")
+@PreAuthorize("hasRole('ADMIN')")
 public class SystemLogController {
 
     private final SystemLogService service;

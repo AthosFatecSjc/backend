@@ -3,6 +3,7 @@ package com.energia.backend.testes_banco;
 import java.time.LocalDate;
 import java.util.Optional;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -14,6 +15,7 @@ import com.energia.backend.repository.aneel.*;
 import jakarta.transaction.Transactional;
 
 @Configuration
+@ConditionalOnProperty(name = "app.seed.aneel-test.enabled", havingValue = "true")
 public class TesteBancoAneel {
 
     @Bean

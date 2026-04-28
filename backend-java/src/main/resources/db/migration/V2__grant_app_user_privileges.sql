@@ -1,13 +1,3 @@
--- Create application user role if it doesn't exist
-DO $$
-BEGIN
-  CREATE ROLE energia_app WITH LOGIN PASSWORD 'app_password';
-EXCEPTION
-  WHEN duplicate_object THEN
-    NULL;
-END
-$$;
-
 -- Grant schema usage
 GRANT USAGE ON SCHEMA energia TO energia_app;
 

@@ -138,7 +138,20 @@ public class AuthenticationService {
                 : java.util.Collections.emptyList();
 
         String token = generateTokenWithRoles(user.getId(), user.getEmail(), user.getName(), roles);
-        return new LoginResponse(token, user.getId(), user.getEmail(), user.getName());
+        return new LoginResponse(token, user.getId(), user.getEmail(), user.getName(), resolvePrimaryRole(roles));
+    }
+
+    private String resolvePrimaryRole(List<String> roles) {
+        if (roles == null || roles.isEmpty()) {
+            return "USER";
+        }
+
+        boolean isAdmin = roles.stream().anyMatch(role -> "admin".equalsIgnoreCase(role));
+        if (isAdmin) {
+            return "ADMIN";
+        }
+
+        return roles.get(0).toUpperCase();
     }
 
     private void validarRequest(LoginRequest request) {

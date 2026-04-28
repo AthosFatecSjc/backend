@@ -62,7 +62,7 @@ class AuthenticationControllerTest {
     @DisplayName("POST /auth/login - Active user login succeeds with JWT token")
     void testLoginSuccess() throws Exception {
         LoginRequest request = new LoginRequest(EMAIL, PASSWORD);
-        LoginResponse response = new LoginResponse("jwt-token-here", USER_ID, EMAIL, "Test User");
+        LoginResponse response = new LoginResponse("jwt-token-here", USER_ID, EMAIL, "Test User", "USER");
 
         when(authenticationService.authenticate(any(LoginRequest.class))).thenReturn(response);
 
@@ -74,7 +74,8 @@ class AuthenticationControllerTest {
                 .andExpect(jsonPath("$.userId", equalTo(USER_ID.toString())))
                 .andExpect(jsonPath("$.email", equalTo(EMAIL)))
                 .andExpect(jsonPath("$.tokenType", equalTo("Bearer")))
-                .andExpect(jsonPath("$.nome", equalTo("Test User")));
+                .andExpect(jsonPath("$.nome", equalTo("Test User")))
+                .andExpect(jsonPath("$.role", equalTo("USER")));
 
         verify(authenticationService, times(1)).authenticate(any(LoginRequest.class));
     }

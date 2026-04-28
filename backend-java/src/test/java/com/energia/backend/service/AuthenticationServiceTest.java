@@ -97,6 +97,7 @@ class AuthenticationServiceTest {
         assertEquals(userId, response.getUserId());
         assertEquals(email, response.getEmail());
         assertEquals(nome, response.getNome());
+        assertEquals("USER", response.getRole());
         assertNotNull(response.getAccessToken());
         assertEquals("Bearer", response.getTokenType());
 
