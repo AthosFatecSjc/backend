@@ -4,8 +4,10 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.energia.backend.model.aneel.Conjunto;
 import com.energia.backend.repository.aneel.projection.MapaCalorConjuntoProjection;
@@ -13,6 +15,8 @@ import com.energia.backend.repository.aneel.projection.MapaCalorConjuntoProjecti
 public interface ConjuntoRepository extends JpaRepository<Conjunto, Long> {
     Optional<Conjunto> findByIdeConjUndConsumidoras(Long ide);
 
+    @Modifying
+    @Transactional
     @Query(value = """
                 UPDATE aneel.conjunto
                 SET geometry = ST_SetSRID(ST_GeomFromGeoJSON(:geojson), 4674)
