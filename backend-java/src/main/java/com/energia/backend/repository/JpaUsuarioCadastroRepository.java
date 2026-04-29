@@ -5,6 +5,7 @@ import com.energia.backend.model.AnonymizationStatus;
 import com.energia.backend.model.RoleEntity;
 import com.energia.backend.model.StatusEntity;
 import com.energia.backend.model.StatusUsuario;
+import com.energia.backend.model.UserPersonalDataEntity;
 import com.energia.backend.model.UserStatusEntity;
 import com.energia.backend.model.user.AppUserModel;
 import org.springframework.context.annotation.Primary;
@@ -49,13 +50,16 @@ public class JpaUsuarioCadastroRepository implements UsuarioCadastroRepository {
                 .orElseGet(() -> roleRepository.save(RoleEntity.builder().name(DEFAULT_USER_ROLE).build()));
 
         AppUserEntity entity = AppUserEntity.builder()
-                .name(user.getFullName())
-                .email(user.getEmail())
                 .password(user.getPassword())
-                .phone(user.getPhone())
                 .anonymizationStatus(AnonymizationStatus.ACTIVE)
                 .roles(List.of(userRole))
                 .build();
+
+        entity.setPersonalData(UserPersonalDataEntity.builder()
+                .name(user.getFullName())
+                .email(normalizarEmail(user.getEmail()))
+                .phone(sanitizeOptional(user.getPhone()))
+                .build());
 
         AppUserEntity savedUser = appUserRepository.save(entity);
 
@@ -80,5 +84,13 @@ public class JpaUsuarioCadastroRepository implements UsuarioCadastroRepository {
 
     public String normalizarEmail(String email) {
         return email == null ? null : email.trim().toLowerCase();
+    }
+
+    private String sanitizeOptional(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return null;
+        }
+
+        return value.trim();
     }
 }

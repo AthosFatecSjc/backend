@@ -16,6 +16,7 @@ import com.energia.backend.model.AnonymizationStatus;
 import com.energia.backend.model.AppUserEntity;
 import com.energia.backend.model.RoleEntity;
 import com.energia.backend.model.StatusEntity;
+import com.energia.backend.model.UserPersonalDataEntity;
 import com.energia.backend.model.UserStatusEntity;
 import com.energia.backend.repository.AppUserJpaRepository;
 import com.energia.backend.repository.RoleJpaRepository;
@@ -87,13 +88,16 @@ public class AdminInitializationService implements CommandLineRunner {
 
             AppUserEntity adminUser = AppUserEntity.builder()
                     .id(UUID.randomUUID())
-                    .name("Administrator")
-                    .email(normalizedEmail)
                     .password(encodedPassword)
-                    .phone(null)
                     .anonymizationStatus(AnonymizationStatus.ACTIVE)
                     .roles(List.of(adminRole))
                     .build();
+
+                adminUser.setPersonalData(UserPersonalDataEntity.builder()
+                        .name("Administrator")
+                        .email(normalizedEmail)
+                        .phone(null)
+                        .build());
 
             AppUserEntity savedAdmin = appUserRepository.save(adminUser);
 
