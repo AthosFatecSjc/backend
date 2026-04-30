@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -97,6 +98,18 @@ class MinhaContaServiceTest {
         assertEquals(StatusUsuario.PENDENTE, response.getStatus());
         assertEquals(dataCadastro, response.getDataCadastro());
         assertEquals("hash-original", user.getPassword());
+        
+        verify(logService).log(
+                eq(userId.toString()),
+                eq(userId.toString()),
+                eq(SourceType.USER),
+                eq(LogEvent.USER_EDITED),
+                eq(ResultType.SUCCESS),
+                eq(LogCategory.AUDIT),
+                eq("Usuario atualizou seu perfil."),
+                any(),
+                eq("user-profile")
+        );
     }
 
     @Test
@@ -127,6 +140,18 @@ class MinhaContaServiceTest {
         MinhaContaResponse response = service.atualizar(userId, request);
 
         assertNull(response.getTelefone());
+        
+        verify(logService).log(
+                eq(userId.toString()),
+                eq(userId.toString()),
+                eq(SourceType.USER),
+                eq(LogEvent.USER_EDITED),
+                eq(ResultType.SUCCESS),
+                eq(LogCategory.AUDIT),
+                eq("Usuario atualizou seu perfil."),
+                any(),
+                eq("user-profile")
+        );
     }
 
     @Test
