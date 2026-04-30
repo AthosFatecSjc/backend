@@ -13,19 +13,26 @@ import com.energia.backend.exception.PermissaoNegadaException;
 import com.energia.backend.exception.UsuarioNaoEncontradoException;
 import com.energia.backend.model.AppUserEntity;
 import com.energia.backend.model.StatusUsuario;
+import com.energia.backend.model.log.LogCategory;
+import com.energia.backend.model.log.LogEvent;
+import com.energia.backend.model.log.ResultType;
+import com.energia.backend.model.log.SourceType;
 import com.energia.backend.repository.AppUserJpaRepository;
 
 @Service
 public class MinhaContaService {
     private final AppUserJpaRepository appUserRepository;
     private final UserStatusService userStatusService;
+    private final LogService logService;
 
     public MinhaContaService(
             AppUserJpaRepository appUserRepository,
-            UserStatusService userStatusService
+            UserStatusService userStatusService,
+            LogService logService
     ) {
         this.appUserRepository = appUserRepository;
         this.userStatusService = userStatusService;
+        this.logService = logService;
     }
 
     @Transactional(readOnly = true)
@@ -70,9 +77,33 @@ public class MinhaContaService {
             throw new IllegalArgumentException("O novo e-mail informado ja esta em uso.");
         }
 
+        String emailAnterior = usuario.getEmail();
         usuario.setEmail(novoEmail);
         AppUserEntity atualizado = appUserRepository.save(usuario);
+
+        logService.log(
+                adminId.toString(),
+                usuarioId.toString(),
+                SourceType.USER,
+                LogEvent.USER_EDITED,
+                ResultType.SUCCESS,
+                LogCategory.AUDIT,
+                "Administrador alterou o e-mail de um usuario.",
+                buildEmailUpdateMetadata(emailAnterior, novoEmail),
+                "MinhaContaService"
+        );
+
         return toResponse(atualizado);
+    }
+
+    private String buildEmailUpdateMetadata(String oldEmail, String newEmail) {
+        String oldValue = oldEmail == null ? "" : oldEmail.replace("\"", "");
+        String newValue = newEmail == null ? "" : newEmail.replace("\"", "");
+        return "{\"operation\":\"admin_email_update\",\"oldEmail\":\""
+                + oldValue
+                + "\",\"newEmail\":\""
+                + newValue
+                + "\"}";
     }
 
     private AppUserEntity buscarUsuarioPorUid(UUID uidAutenticado) {

@@ -214,22 +214,15 @@ public class TermsUserService {
 
     // ok
     public List<TermsEntity> listarTermosPendentes(UUID userId, Boolean apenasObrigatorios) {
-        AppUserEntity user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found: " + userId));
+        if (!userRepository.findById(userId).isPresent()) {
+            throw new RuntimeException("User not found: " + userId);
+        }
 
-        Set<UUID> termosAceitosIds = findAcceptedUserTermsAtTime(user, LocalDateTime.now())
-                .stream()
-                .map(ut -> ut.termId())
-                .collect(Collectors.toSet());
-
-        List<TermsEntity> termosVigentes = (apenasObrigatorios
-                ? termsRepository.findActiveRequiredByReferenceTime(LocalDateTime.now())
-                : termsRepository.findActiveByReferenceTime(LocalDateTime.now()));
-
-        return termosVigentes.stream()
-                .filter(t -> !termosAceitosIds.contains(t.getId()))
+        return termsRepository.findPendingLatestTermsByUser(
+                userId,
+                LocalDateTime.now()).stream()
+                .filter(terms -> !apenasObrigatorios || terms.getTermType().getIsRequired())
                 .toList();
-
     }
 
     // public List<TermosResponse> listarPendenciasObrigatorias(UUID userId) {

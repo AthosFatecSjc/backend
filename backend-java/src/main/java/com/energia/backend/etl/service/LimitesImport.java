@@ -1,11 +1,6 @@
 package com.energia.backend.etl.service;
 
 import java.io.UnsupportedEncodingException;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
-import java.util.List;
-import java.util.stream.Collectors;
-
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 

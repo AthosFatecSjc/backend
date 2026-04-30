@@ -22,10 +22,7 @@ import com.energia.backend.model.TermTypeEntity;
 import com.energia.backend.model.TermTypeName;
 import com.energia.backend.model.TermsEntity;
 import com.energia.backend.repository.TermTypeRepository;
-import com.energia.backend.dto.UserTermResponse;
-import com.energia.backend.model.UserTermsEntity;
 import com.energia.backend.repository.TermsRepository;
-import com.energia.backend.repository.UserTermsRepository;
 
 @Service
 public class TermsService {
@@ -36,15 +33,12 @@ public class TermsService {
 
     private final TermsRepository termsRepository;
     private final TermTypeRepository termTypeRepository;
-    private final UserTermsRepository userTermsRespository;
 
     public TermsService(
             TermsRepository termsRepository,
-            TermTypeRepository termTypeRepository,
-            UserTermsRepository userTermsRespository) {
+            TermTypeRepository termTypeRepository) {
         this.termsRepository = termsRepository;
         this.termTypeRepository = termTypeRepository;
-        this.userTermsRespository = userTermsRespository;
     }
 
     @Transactional(readOnly = true)
@@ -113,7 +107,7 @@ public class TermsService {
         } else {
             novoTermo.setEffectivityStartAt(LocalDateTime.now());
         }
-        TermosResponse response = toTermosResponse(termsRepository.save(novoTermo));
+        TermosResponse response = TermosResponse.fromEntity(termsRepository.save(novoTermo));
         return response;
     }
 
@@ -127,7 +121,7 @@ public class TermsService {
         }
 
         termo.setEffectivityEndAt(LocalDateTime.now());
-        TermosResponse response = toTermosResponse(termsRepository.save(termo));
+        TermosResponse response = TermosResponse.fromEntity(termsRepository.save(termo));
         return response;
     }
 
@@ -147,7 +141,7 @@ public class TermsService {
 
         TermsEntity salvo = termsRepository.save(novoTermo);
 
-        return toTermosResponse(salvo);
+        return TermosResponse.fromEntity(salvo);
     }
 
     public Map<String, TermosResponse> carregarTermosVigentesPorTipo(boolean apenasObrigatorios) {
@@ -159,7 +153,7 @@ public class TermsService {
         return termos.stream()
                 .collect(Collectors.toMap(
                         t -> t.getTermType().getName() + "_" + t.getClause(),
-                        t -> toTermosResponse(t)));
+                        t -> TermosResponse.fromEntity(t)));
     }
 
     public void validarTermosEnviados(List<UUID> termosIds) {
@@ -189,16 +183,4 @@ public class TermsService {
         }
 
     }
-
-    public TermosResponse toTermosResponse(TermsEntity item) {
-        return new TermosResponse(
-                item.getId(),
-                item.getTermType().getName().name(),
-                item.getTermType().getIsRequired(),
-                item.getContent(),
-                item.getClause(),
-                item.getEffectivityStartAt(),
-                item.getEffectivityEndAt());
-    }
-
 }

@@ -1,6 +1,5 @@
 package com.energia.backend.service;
 
-import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -17,8 +16,6 @@ import org.springframework.transaction.annotation.Transactional;
 import com.energia.backend.dto.LoginRequest;
 import com.energia.backend.dto.LoginResponse;
 import com.energia.backend.dto.ResolverPendenciasTermosLoginRequest;
-import com.energia.backend.dto.TermosResponse;
-import com.energia.backend.exception.DocumentosObrigatoriosNaoConfiguradosException;
 import com.energia.backend.exception.LoginAuthenticationException;
 import com.energia.backend.model.AppUserEntity;
 import com.energia.backend.model.StatusUsuario;
@@ -36,7 +33,6 @@ public class AuthenticationService {
     private final AppUserJpaRepository userRepository;
     private final UserStatusService userStatusService;
     private final PasswordEncoder passwordEncoder;
-    private final TermsService termsService;
     private final TermsUserService termsUserService;
 
     @Value("${jwt.secret:sua-chave-secreta-muito-longa-com-pelo-menos-256-bits-de-comprimento-para-hs512}")
@@ -49,12 +45,10 @@ public class AuthenticationService {
             AppUserJpaRepository userRepository,
             UserStatusService userStatusService,
             PasswordEncoder passwordEncoder,
-            TermsService termsService,
             TermsUserService termsUserService) {
         this.userRepository = userRepository;
         this.userStatusService = userStatusService;
         this.passwordEncoder = passwordEncoder;
-        this.termsService = termsService;
         this.termsUserService = termsUserService;
     }
 
@@ -65,11 +59,6 @@ public class AuthenticationService {
         AppUserEntity user = autenticarCredenciais(request.getEmail(), request.getSenha());
         validarStatusParaAcesso(user);
 
-        if (!termsUserService.checkRequiredTerms(null, user, LocalDateTime.now())) {
-            throw new DocumentosObrigatoriosNaoConfiguradosException(
-                    "Existem termos obrigatórios pendentes de aceite");
-        }
-       
         return gerarRespostaDeLogin(user);
     }
 
@@ -149,7 +138,20 @@ public class AuthenticationService {
                 : java.util.Collections.emptyList();
 
         String token = generateTokenWithRoles(user.getId(), user.getEmail(), user.getName(), roles);
-        return new LoginResponse(token, user.getId(), user.getEmail(), user.getName());
+        return new LoginResponse(token, user.getId(), user.getEmail(), user.getName(), resolvePrimaryRole(roles));
+    }
+
+    private String resolvePrimaryRole(List<String> roles) {
+        if (roles == null || roles.isEmpty()) {
+            return "USER";
+        }
+
+        boolean isAdmin = roles.stream().anyMatch(role -> "admin".equalsIgnoreCase(role));
+        if (isAdmin) {
+            return "ADMIN";
+        }
+
+        return roles.get(0).toUpperCase();
     }
 
     private void validarRequest(LoginRequest request) {

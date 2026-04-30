@@ -23,6 +23,10 @@ import com.energia.backend.exception.PermissaoNegadaException;
 import com.energia.backend.model.AppUserEntity;
 import com.energia.backend.model.RoleEntity;
 import com.energia.backend.model.StatusUsuario;
+import com.energia.backend.model.log.LogCategory;
+import com.energia.backend.model.log.LogEvent;
+import com.energia.backend.model.log.ResultType;
+import com.energia.backend.model.log.SourceType;
 import com.energia.backend.repository.AppUserJpaRepository;
 
 class MinhaContaServiceTest {
@@ -31,7 +35,8 @@ class MinhaContaServiceTest {
     void deveConsultarDadosDaMinhaConta() {
         AppUserJpaRepository appUserRepository = mock(AppUserJpaRepository.class);
         UserStatusService userStatusService = mock(UserStatusService.class);
-        MinhaContaService service = new MinhaContaService(appUserRepository, userStatusService);
+        LogService logService = mock(LogService.class);
+        MinhaContaService service = new MinhaContaService(appUserRepository, userStatusService, logService);
 
         UUID userId = UUID.randomUUID();
         LocalDateTime dataCadastro = LocalDateTime.now().minusDays(5);
@@ -61,7 +66,8 @@ class MinhaContaServiceTest {
     void deveAtualizarApenasNomeETelefoneSemAlterarOutrosCampos() {
         AppUserJpaRepository appUserRepository = mock(AppUserJpaRepository.class);
         UserStatusService userStatusService = mock(UserStatusService.class);
-        MinhaContaService service = new MinhaContaService(appUserRepository, userStatusService);
+        LogService logService = mock(LogService.class);
+        MinhaContaService service = new MinhaContaService(appUserRepository, userStatusService, logService);
 
         UUID userId = UUID.randomUUID();
         LocalDateTime dataCadastro = LocalDateTime.now().minusDays(7);
@@ -97,7 +103,8 @@ class MinhaContaServiceTest {
     void devePermitirLimparTelefoneQuandoVazio() {
         AppUserJpaRepository appUserRepository = mock(AppUserJpaRepository.class);
         UserStatusService userStatusService = mock(UserStatusService.class);
-        MinhaContaService service = new MinhaContaService(appUserRepository, userStatusService);
+        LogService logService = mock(LogService.class);
+        MinhaContaService service = new MinhaContaService(appUserRepository, userStatusService, logService);
 
         UUID userId = UUID.randomUUID();
 
@@ -126,7 +133,8 @@ class MinhaContaServiceTest {
     void deveRejeitarUpdateSemCamposPermitidos() {
         AppUserJpaRepository appUserRepository = mock(AppUserJpaRepository.class);
         UserStatusService userStatusService = mock(UserStatusService.class);
-        MinhaContaService service = new MinhaContaService(appUserRepository, userStatusService);
+        LogService logService = mock(LogService.class);
+        MinhaContaService service = new MinhaContaService(appUserRepository, userStatusService, logService);
 
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
@@ -135,13 +143,15 @@ class MinhaContaServiceTest {
 
         assertEquals("Informe ao menos nomeCompleto ou telefone para atualizar.", exception.getMessage());
         verify(appUserRepository, never()).save(any(AppUserEntity.class));
+                verify(logService, never()).log(any(), any(), any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
     void devePermitirAdminAlterarEmailDeOutroUsuario() {
         AppUserJpaRepository appUserRepository = mock(AppUserJpaRepository.class);
         UserStatusService userStatusService = mock(UserStatusService.class);
-        MinhaContaService service = new MinhaContaService(appUserRepository, userStatusService);
+        LogService logService = mock(LogService.class);
+        MinhaContaService service = new MinhaContaService(appUserRepository, userStatusService, logService);
 
         UUID adminId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
@@ -173,13 +183,25 @@ class MinhaContaServiceTest {
         MinhaContaResponse response = service.atualizarEmail(adminId, userId, request);
 
         assertEquals("novo@teste.com", response.getEmail());
+        verify(logService).log(
+                adminId.toString(),
+                userId.toString(),
+                SourceType.USER,
+                LogEvent.USER_EDITED,
+                ResultType.SUCCESS,
+                LogCategory.AUDIT,
+                "Administrador alterou o e-mail de um usuario.",
+                "{\"operation\":\"admin_email_update\",\"oldEmail\":\"maria@teste.com\",\"newEmail\":\"novo@teste.com\"}",
+                "MinhaContaService"
+        );
     }
 
     @Test
     void deveRejeitarAlteracaoDeEmailQuandoSolicitanteNaoForAdmin() {
         AppUserJpaRepository appUserRepository = mock(AppUserJpaRepository.class);
         UserStatusService userStatusService = mock(UserStatusService.class);
-        MinhaContaService service = new MinhaContaService(appUserRepository, userStatusService);
+        LogService logService = mock(LogService.class);
+        MinhaContaService service = new MinhaContaService(appUserRepository, userStatusService, logService);
 
         UUID actorId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
@@ -201,5 +223,6 @@ class MinhaContaServiceTest {
         );
 
         assertEquals("Apenas administradores podem alterar o e-mail do usuario.", exception.getMessage());
+        verify(logService, never()).log(any(), any(), any(), any(), any(), any(), any(), any(), any());
     }
 }
