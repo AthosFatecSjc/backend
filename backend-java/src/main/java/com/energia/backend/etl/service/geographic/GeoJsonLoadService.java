@@ -14,6 +14,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.jsonwebtoken.io.IOException;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -23,6 +24,7 @@ public class GeoJsonLoadService {
     private final ConjuntoRepository conjuntoRepository;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+    @Transactional
     public void importar(File geoJsonFile, Distribuidora dist) throws IOException, java.io.IOException {
 
         JsonNode root = objectMapper.readTree(geoJsonFile);
