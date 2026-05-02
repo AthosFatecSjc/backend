@@ -61,7 +61,7 @@ public class JpaUsuarioCadastroRepository implements UsuarioCadastroRepository {
                 .phone(sanitizeOptional(user.getPhone()))
                 .build());
 
-        AppUserEntity savedUser = appUserRepository.save(entity);
+        AppUserEntity savedUser = appUserRepository.saveAndFlush(entity);
 
         StatusEntity statusPendente = statusRepository
                 .findByNameIgnoreCase(StatusUsuario.PENDENTE.name())
@@ -75,7 +75,7 @@ public class JpaUsuarioCadastroRepository implements UsuarioCadastroRepository {
                 .assignedAt(user.getCreatedAt() != null ? user.getCreatedAt() : LocalDateTime.now())
                 .build();
 
-        userStatusRepository.save(userStatus);
+        userStatusRepository.saveAndFlush(userStatus);
 
         savedUser.setStatuses(List.of(userStatus));
 
