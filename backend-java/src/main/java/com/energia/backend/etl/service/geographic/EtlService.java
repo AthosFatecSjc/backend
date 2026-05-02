@@ -2,6 +2,7 @@ package com.energia.backend.etl.service.geographic;
 
 import java.io.IOException;
 
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import com.energia.backend.model.aneel.Distribuidora;
@@ -18,6 +19,11 @@ public class EtlService {
     private final GeoProcessingService geoService;
     private final DistribuidoraRepository distribuidoraRepository;
     private final GeoJsonLoadService geoJsonLoadService;
+
+    @Async
+    public void executarPipelineAsync(String cnpj) throws IOException, InterruptedException {
+        executarPipeline(cnpj);
+    }
 
     public void executarPipeline(String cnpj) throws IOException, InterruptedException {
 
@@ -39,10 +45,10 @@ public class EtlService {
 
         InMemoryZip zip = downloadService.downloadGdb(itemId);
         InMemoryGdb gdb = downloadService.unzip(zip);
-        
+
         String geoJson = geoService.converterParaGeoJson(gdb);
 
-        geoJsonLoadService.importar(geoJson, dist); 
+        geoJsonLoadService.importar(geoJson, dist);
     }
 
 }

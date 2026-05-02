@@ -17,7 +17,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.jsonwebtoken.io.IOException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class GeoJsonLoadService {
@@ -39,18 +41,21 @@ public class GeoJsonLoadService {
             Long codId = props.path("COD_ID").asLong();
             System.out.println("O CODID DESSE CONJUNTO É: " + codId);
 
-            Optional<Conjunto> optConjunto = conjuntoRepository.findByIdeConjUndConsumidoras(codId);
+            // Optional<Conjunto> optConjunto = conjuntoRepository.findByIdeConjUndConsumidoras(codId);
 
-            if (optConjunto.isEmpty()) {
-                System.out.println("NÃO FOI ACHADO CONJUNTO COM CODID= " + codId);
-                continue;
-            }
+            // if (optConjunto.isEmpty()) {
+            //     System.out.println("NÃO FOI ACHADO CONJUNTO COM CODID= " + codId);
+            //     continue;
+            // }
 
             JsonNode geometryNode = feature.path("geometry");
 
             Geometry geometry = converterGeometry(geometryNode);
 
-            conjuntoRepository.atualizarGeometria(codId, geometry);
+            int updated = conjuntoRepository.atualizarGeometria(codId, geometry);
+            if (updated == 0) {
+                log.debug("Conjunto não encontrado para COD_ID={}", codId);
+            }
         }
     }
 

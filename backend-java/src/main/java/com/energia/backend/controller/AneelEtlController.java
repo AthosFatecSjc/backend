@@ -21,11 +21,10 @@ public class AneelEtlController {
     public ResponseEntity<String> processar(@RequestParam String cnpj) {
 
         try {
-            importService.executarPipeline(cnpj);
+            importService.executarPipelineAsync(cnpj);
 
-            return ResponseEntity.ok(
-                "Processamento realizado com sucesso para o CNPJ: " + cnpj
-            );
+            return ResponseEntity.accepted()
+                    .body("ETL iniciado para o CNPJ: " + cnpj);
 
         } catch (Exception e) {
             return ResponseEntity.internalServerError()
