@@ -1,6 +1,5 @@
 package com.energia.backend.etl.service.geographic;
 
-import java.io.File;
 import java.util.Optional;
 
 import org.locationtech.jts.geom.Geometry;
@@ -10,6 +9,8 @@ import org.wololo.jts2geojson.GeoJSONReader;
 import com.energia.backend.model.aneel.Conjunto;
 import com.energia.backend.model.aneel.Distribuidora;
 import com.energia.backend.repository.aneel.ConjuntoRepository;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -25,9 +26,10 @@ public class GeoJsonLoadService {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Transactional
-    public void importar(File geoJsonFile, Distribuidora dist) throws IOException, java.io.IOException {
+    public void importar(String geoJsonContent, Distribuidora dist)
+            throws IOException, JsonMappingException, JsonProcessingException {
 
-        JsonNode root = objectMapper.readTree(geoJsonFile);
+        JsonNode root = objectMapper.readTree(geoJsonContent);
         JsonNode features = root.path("features");
 
         for (JsonNode feature : features) {
@@ -35,16 +37,20 @@ public class GeoJsonLoadService {
             JsonNode props = feature.path("properties");
 
             Long codId = props.path("COD_ID").asLong();
+            System.out.println("O CODID DESSE CONJUNTO É: " + codId);
 
             Optional<Conjunto> optConjunto = conjuntoRepository.findByIdeConjUndConsumidoras(codId);
 
             if (optConjunto.isEmpty()) {
+                System.out.println("NÃO FOI ACHADO CONJUNTO COM CODID= " + codId);
                 continue;
             }
 
-            String geojson = feature.path("geometry").toString();
+            JsonNode geometryNode = feature.path("geometry");
 
-            conjuntoRepository.atualizarGeometria(codId, geojson);
+            Geometry geometry = converterGeometry(geometryNode);
+
+            conjuntoRepository.atualizarGeometria(codId, geometry);
         }
     }
 

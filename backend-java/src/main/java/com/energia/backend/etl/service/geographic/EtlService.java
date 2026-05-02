@@ -1,6 +1,5 @@
 package com.energia.backend.etl.service.geographic;
 
-import java.io.File;
 import java.io.IOException;
 
 import org.springframework.stereotype.Service;
@@ -33,15 +32,15 @@ public class EtlService {
                     "sig_agente não encontrado para a distribuidora: " + cnpj);
         }
         String itemId = searchService.localizarItemId(sigAgente);
-        if (itemId == null) {
+        if (itemId == null || itemId.isBlank()) {
             throw new IllegalStateException(
                     "Nenhum item encontrado no ArcGIS para: " + sigAgente);
         }
 
-        File zip = downloadService.downloadGdb(itemId);
-        File gdb = downloadService.unzip(zip);
-
-        File geoJson = geoService.converterParaGeoJson(gdb);
+        InMemoryZip zip = downloadService.downloadGdb(itemId);
+        InMemoryGdb gdb = downloadService.unzip(zip);
+        
+        String geoJson = geoService.converterParaGeoJson(gdb);
 
         geoJsonLoadService.importar(geoJson, dist); 
     }

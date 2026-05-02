@@ -1,44 +1,63 @@
 package com.energia.backend.etl;
 
-import java.util.Arrays;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
+import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import com.energia.backend.etl.LimitesCsvParser.LimiteFiltrado;
+import com.energia.backend.etl.exception.DuplicatesDetectedException;
+import com.energia.backend.etl.service.AneelExtractionLoggingService;
+import com.energia.backend.etl.service.ConjMetricTransformLoad;
+import com.energia.backend.etl.service.ConjuntoMetricasImport;
 import com.energia.backend.etl.service.DistribuidoraExcelImport;
 import com.energia.backend.etl.service.LimitesImport;
 import com.energia.backend.etl.service.LimitesTransformLoad;
-import com.energia.backend.etl.service.ConjuntoMetricasImport;
-import com.energia.backend.etl.LimitesCsvParser.LimiteFiltrado;
-import com.energia.backend.etl.service.ConjMetricTransformLoad;
-import com.energia.backend.etl.service.AneelExtractionLoggingService;
-import com.energia.backend.etl.exception.DuplicatesDetectedException;
+
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 @Configuration
 @Slf4j
+@RequiredArgsConstructor
 public class EtlRunner {
 
-    private static final String DEFAULT_CNPJ = "97578090000134";
+    private final ApplicationArguments args;
 
     @Bean
     CommandLineRunner run(DistribuidoraExcelImport distService,
-        LimitesCsvParser limitesCsvParser,
-        ConjuntoMetricasImport conjService,
-        LimitesImport limService,
-        LimitesTransformLoad limitesTransformLoad,
-        ConjMetricTransformLoad conjTransformService,
-        AneelExtractionLoggingService loggingService){
-        return args -> {
-            if (Arrays.stream(args).noneMatch(arg -> arg.equalsIgnoreCase("etl"))) {
-                System.out.println("ARGS: " + Arrays.toString(args));
+            LimitesCsvParser limitesCsvParser,
+            ConjuntoMetricasImport conjService,
+            LimitesImport limService,
+            LimitesTransformLoad limitesTransformLoad,
+            ConjMetricTransformLoad conjTransformService,
+            AneelExtractionLoggingService loggingService) {
+        return cliArgs -> {
+            boolean isEtl = args.getNonOptionArgs().stream()
+                    .anyMatch(arg -> arg.equalsIgnoreCase("etl"));
+
+            if (!isEtl) {
+                System.out.println("ARGS: " + Arrays.toString(args.getSourceArgs()));
                 System.out.println("ENTROU NA FUNÇÃO DO ETL");
+
                 return;
             }
             System.out.println("ENTROU NO ETL");
+
+            String cnpj = args.getOptionValues("cnpj") != null
+                    ? args.getOptionValues("cnpj").get(0)
+                    : null;
+
+            if (cnpj == null || cnpj.isBlank()) {
+                throw new IllegalArgumentException("Missing required argument: --cnpj=...");
+            }
+
+            System.out.println("cnpj = " + cnpj);
+            System.out.println("after args");
 
             loggingService.logExtractionStart();
 
@@ -58,7 +77,7 @@ public class EtlRunner {
                 List<Long> conjuntos = new ArrayList<>();
 
                 try {
-                    List<String> cnpjs = getTargetCnpjs();
+                    List<String> cnpjs = getTargetCnpjs(cnpj);
                     String json = conjService.importar(cnpjs);
                     conjuntos = conjTransformService.processarJson(json);
                 } catch (DuplicatesDetectedException e) {
@@ -80,33 +99,34 @@ public class EtlRunner {
 
                 if (!errors.isEmpty()) {
                     loggingService.logExtractionFail(
-                        "ETL finalizado com " + errors.size() + " erro(s): " +
-                        String.join("; ", errors)
-                    );
+                            "ETL finalizado com " + errors.size() + " erro(s): " +
+                                    String.join("; ", errors));
                     System.exit(1);
                 } else {
-                    loggingService.logExtractionSuccess("Todos os dados ANEEL foram extraídos e carregados com sucesso");
+                    loggingService
+                            .logExtractionSuccess("Todos os dados ANEEL foram extraídos e carregados com sucesso");
                 }
 
             } catch (Exception e) {
-                loggingService.logExtractionFail("ERRO DURANTE ETL ANEEL (possível extração vazia/ inválida) " + e.getMessage());
+                loggingService.logExtractionFail(
+                        "ERRO DURANTE ETL ANEEL (possível extração vazia/ inválida) " + e.getMessage());
                 System.exit(1);
             }
             System.exit(0);
         };
-       }
+    }
 
-    private List<String> getTargetCnpjs() {
+    private List<String> getTargetCnpjs(String cnpj) {
         String raw = System.getenv("ETL_CNPJS");
         if (raw == null || raw.isBlank()) {
-            return List.of(DEFAULT_CNPJ);
+            return List.of(cnpj);
         }
 
         List<String> cnpjs = Arrays.stream(raw.split(","))
-            .map(Utils::formatCnpj)
-            .filter(cnpj -> cnpj != null && !cnpj.isBlank())
-            .distinct()
-            .toList();
+                .map(Utils::formatCnpj)
+                .filter(c -> c != null && !c.isBlank())
+                .distinct()
+                .toList();
 
         if (cnpjs.isEmpty()) {
             throw new IllegalArgumentException("ETL_CNPJS não contém CNPJs válidos");
@@ -115,21 +135,22 @@ public class EtlRunner {
     }
 
     // private List<Long> getTargetConjuntos() {
-    //     String raw = System.getenv("ETL_CONJUNTOS_IDS");
-    //     if (raw == null || raw.isBlank()) {
-    //         return List.of(DEFAULT_CONJUNTO_ID);
-    //     }
+    // String raw = System.getenv("ETL_CONJUNTOS_IDS");
+    // if (raw == null || raw.isBlank()) {
+    // return List.of(DEFAULT_CONJUNTO_ID);
+    // }
 
-    //     List<Long> conjuntos = Arrays.stream(raw.split(","))
-    //         .map(String::trim)
-    //         .map(Utils::toLong)
-    //         .filter(id -> id != null)
-    //         .distinct()
-    //         .toList();
+    // List<Long> conjuntos = Arrays.stream(raw.split(","))
+    // .map(String::trim)
+    // .map(Utils::toLong)
+    // .filter(id -> id != null)
+    // .distinct()
+    // .toList();
 
-    //     if (conjuntos.isEmpty()) {
-    //         throw new IllegalArgumentException("ETL_CONJUNTOS_IDS não contém IDs válidos");
-    //     }
-    //     return conjuntos;
+    // if (conjuntos.isEmpty()) {
+    // throw new IllegalArgumentException("ETL_CONJUNTOS_IDS não contém IDs
+    // válidos");
+    // }
+    // return conjuntos;
     // }
 }

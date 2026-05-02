@@ -2,6 +2,7 @@ package com.energia.backend.etl.service.geographic;
 
 import java.time.LocalDate;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -23,30 +24,32 @@ public class IdSearchService {
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public String localizarItemId(String sigAgente) {
-        List<String> tentativas = gerarTentativasBusca(sigAgente);
+        public String localizarItemId(String sigAgente) {
+            List<String> tentativas = gerarTentativasBusca(sigAgente);
 
-        for (String tentativa : tentativas) {
-            String url = montarUrlBusca(tentativa);
-            try {
-                String response = restTemplate.getForObject(url, String.class);
-                if (response == null || response.isBlank()) {
-                    continue;
+            for (String tentativa : tentativas) {
+                String url = montarUrlBusca(tentativa);
+                try {
+                    String response = restTemplate.getForObject(url, String.class);
+                    System.out.println("A RESPONSE É: "+ response);
+                    if (response == null || response.isBlank()) {
+                        System.out.println("A RESPONSE DEU NULL PARA O SIGAGENTE: "+ sigAgente);
+                        continue;
+                    }
+                    String itemId = extrairItemMaisRecente(response);
+                    if (itemId != null) {
+                        log.info("Item ArcGIS encontrado para {} com busca '{}': {}", sigAgente, tentativa, itemId);
+                        return itemId;
+                    }
+                } catch (Exception e) {
+                    log.warn("Falha ao buscar item ArcGIS com tentativa '{}': {}", tentativa, e.getMessage());
                 }
-                String itemId = extrairItemMaisRecente(response);
-                if (itemId != null) {
-                    log.info("Item ArcGIS encontrado para {} com busca '{}': {}", sigAgente, tentativa, itemId);
-                    return itemId;
-                }
-            } catch (Exception e) {
-                log.warn("Falha ao buscar item ArcGIS com tentativa '{}': {}", tentativa, e.getMessage());
+
             }
 
+            return null;
+
         }
-
-        return null;
-
-    }
 
     private String montarUrlBusca(String sigAgente) {
         return HUB_SEARCH_URL
@@ -65,10 +68,11 @@ public class IdSearchService {
     private List<String> gerarTentativasBusca(String sigAgente) {
         String base = normalizarSigAgente(sigAgente);
 
-        Set<String> tentativas = new HashSet<>();
+        Set<String> tentativas = new LinkedHashSet<>();
 
-        tentativas.add(base);
         tentativas.add(base.replace(" ", "_"));
+        tentativas.add(base);
+        tentativas.add(base.replace("-", "_"));
         tentativas.add(base.replace(" ", ""));
         tentativas.add(base.replace(" ", "-"));
 

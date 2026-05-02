@@ -74,32 +74,33 @@ public class UsuarioCadastroService {
             throw new IllegalStateException("Usuario cadastrado nao aceitou nenhum termo");
         }
 
+        RoleEntity role = roleRepository.findByNameIgnoreCase("USER")
+            .orElseThrow(() -> new RuntimeException("Role não encontrada"));
+
+        StatusEntity statusEntity = statusRepository
+            .findByNameIgnoreCase(StatusUsuario.PENDENTE.name())
+            .orElseThrow(() -> new RuntimeException("Status não encontrado"));
+
         AppUserEntity user = new AppUserEntity();
         user.setName(request.getNomeCompleto().trim());
         user.setEmail(emailNormalizado);
         user.setPassword(passwordEncoder.encode(request.getSenha()));
         user.setPhone(sanitizeOptional(request.getTelefone()));
         user.setCreatedAt(LocalDateTime.now());
+        user.setRoles(List.of(role));
 
-        StatusEntity statusEntity = statusRepository
-                .findByNameIgnoreCase(StatusUsuario.PENDENTE.name())
-                .orElseThrow(() -> new RuntimeException("Status não encontrado"));
-
+        
         UserStatusEntity userStatus = new UserStatusEntity();
         userStatus.setUser(user);
         userStatus.setStatus(statusEntity);
         userStatus.setAssignedAt(LocalDateTime.now());
 
-        UserStatusEntity savedUserStatus = userStatusRepository.save(userStatus);
+        // userStatus.setUser(user);
 
-        user.getStatuses().add(savedUserStatus);
-
-        RoleEntity role = roleRepository.findByNameIgnoreCase("USER")
-                .orElseThrow(() -> new RuntimeException("Role não encontrada"));
-
-        user.setRoles(List.of(role));
+        user.getStatuses().add(userStatus);
 
         AppUserEntity usuarioSalvo = appUserRepository.save(user);
+        userStatusRepository.save(userStatus);
 
         termsUserService.aprovarTermos(request.getTermsIds(), usuarioSalvo);
         return usuarioSalvo;
@@ -143,7 +144,7 @@ public class UsuarioCadastroService {
         }
 
         if (!termsUserService.checkRequiredTerms(request.getTermsIds(), null, LocalDateTime.now())) {
-            throw new IllegalArgumentException("Usuario deve aceitar todos os termos obrigatorios.");
+            throw new IllegalArgumentException("Usuario deve aceitar todos os termos obrigatorios:");
         }
     }
 
