@@ -10,6 +10,10 @@ import com.energia.backend.model.AppUserEntity;
 import com.energia.backend.model.StatusEntity;
 import com.energia.backend.model.StatusUsuario;
 import com.energia.backend.model.UserStatusEntity;
+import com.energia.backend.model.log.LogCategory;
+import com.energia.backend.model.log.LogEvent;
+import com.energia.backend.model.log.ResultType;
+import com.energia.backend.model.log.SourceType;
 import com.energia.backend.repository.StatusJpaRepository;
 import com.energia.backend.repository.UserStatusJpaRepository;
 
@@ -18,13 +22,16 @@ public class UserStatusService {
 
     private final StatusJpaRepository statusRepository;
     private final UserStatusJpaRepository userStatusRepository;
+    private final LogService logService;
 
     public UserStatusService(
             StatusJpaRepository statusRepository,
-            UserStatusJpaRepository userStatusRepository
+            UserStatusJpaRepository userStatusRepository,
+            LogService logService
     ) {
         this.statusRepository = statusRepository;
         this.userStatusRepository = userStatusRepository;
+        this.logService = logService;
     }
 
     @Transactional(readOnly = true)
@@ -75,7 +82,29 @@ public class UserStatusService {
                 .rationaleForRejection(normalizedRejectionRationale)
                 .build();
 
-        return userStatusRepository.save(nextStatus);
+        UserStatusEntity savedStatus = userStatusRepository.save(nextStatus);
+        
+        LogEvent event = targetStatus == StatusUsuario.ATIVO ? LogEvent.USER_APPROVED : LogEvent.USER_REJECTED;
+        String description = targetStatus == StatusUsuario.ATIVO 
+            ? "Cadastro de usuario aprovado" 
+            : "Cadastro de usuario rejeitado";
+        String metadata = normalizedRejectionRationale != null 
+            ? String.format("{\"reason\":\"%s\"}", normalizedRejectionRationale.replace("\"", "'"))
+            : null;
+        
+        logService.log(
+                assignedBy.getId().toString(),
+                user.getId().toString(),
+                SourceType.SYSTEM,
+                event,
+                ResultType.SUCCESS,
+                LogCategory.AUDIT,
+                description,
+                metadata,
+                "user-management"
+        );
+        
+        return savedStatus;
     }
 
     public StatusUsuario toOfficialStatus(String rawStatus) {

@@ -46,6 +46,9 @@ public class MinhaContaService {
         validarUpdateRequest(request);
 
         AppUserEntity usuario = buscarUsuarioPorUid(uidAutenticado);
+        
+        String nomeAnterior = usuario.getName();
+        String telefoneAnterior = usuario.getPhone();
 
         if (request.getNomeCompleto() != null) {
             usuario.setName(normalizarNome(request.getNomeCompleto()));
@@ -56,6 +59,21 @@ public class MinhaContaService {
         }
 
         AppUserEntity atualizado = appUserRepository.save(usuario);
+        
+        // Log da edição de perfil
+        String metadata = buildProfileUpdateMetadata(nomeAnterior, usuario.getName(), telefoneAnterior, usuario.getPhone());
+        logService.log(
+                uidAutenticado.toString(),
+                uidAutenticado.toString(),
+                SourceType.USER,
+                LogEvent.USER_EDITED,
+                ResultType.SUCCESS,
+                LogCategory.AUDIT,
+                "Usuario atualizou seu perfil.",
+                metadata,
+                "user-profile"
+        );
+        
         return toResponse(atualizado);
     }
 
@@ -104,6 +122,39 @@ public class MinhaContaService {
                 + "\",\"newEmail\":\""
                 + newValue
                 + "\"}";
+    }
+
+    private String buildProfileUpdateMetadata(String oldName, String newName, String oldPhone, String newPhone) {
+        StringBuilder metadata = new StringBuilder("{\"changes\":[");
+        boolean first = true;
+        
+        if (!safeEquals(oldName, newName)) {
+            if (!first) metadata.append(",");
+            metadata.append("{\"field\":\"name\",\"oldValue\":\"")
+                    .append(oldName == null ? "" : oldName.replace("\"", "'"))
+                    .append("\",\"newValue\":\"")
+                    .append(newName == null ? "" : newName.replace("\"", "'"))
+                    .append("\"}");
+            first = false;
+        }
+        
+        if (!safeEquals(oldPhone, newPhone)) {
+            if (!first) metadata.append(",");
+            metadata.append("{\"field\":\"phone\",\"oldValue\":\"")
+                    .append(oldPhone == null ? "" : oldPhone.replace("\"", "'"))
+                    .append("\",\"newValue\":\"")
+                    .append(newPhone == null ? "" : newPhone.replace("\"", "'"))
+                    .append("\"}");
+        }
+        
+        metadata.append("]}");
+        return metadata.toString();
+    }
+
+    private boolean safeEquals(String a, String b) {
+        if (a == null && b == null) return true;
+        if (a == null || b == null) return false;
+        return a.equals(b);
     }
 
     private AppUserEntity buscarUsuarioPorUid(UUID uidAutenticado) {
