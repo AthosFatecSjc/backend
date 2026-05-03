@@ -28,8 +28,15 @@ public class IndicadoresMapaService {
         this.objectMapper = objectMapper;
     }
 
-    public MapaCalorResponse obterMapaCalor(Long ano) {
-        List<MapaCalorConjuntoProjection> dados = conjuntoRepository.buscarDadosMapaCalor(ano);
+    public MapaCalorResponse obterMapaCalor(Long ano, Long mes) {
+        validarMes(mes);
+
+        List<Long> anosDisponiveis = conjuntoRepository.listarAnosDisponiveisMapaCalor();
+        Long anoReferencia = ano != null ? ano : primeiroOuNulo(anosDisponiveis);
+        List<Long> mesesDisponiveis = conjuntoRepository.listarMesesDisponiveisMapaCalor(anoReferencia);
+        Long mesReferencia = mes != null ? mes : primeiroOuNulo(mesesDisponiveis);
+
+        List<MapaCalorConjuntoProjection> dados = conjuntoRepository.buscarDadosMapaCalor(anoReferencia, mesReferencia);
         List<MapaCalorConjuntoResponse> conjuntos = new ArrayList<>();
 
         for (MapaCalorConjuntoProjection item : dados) {
@@ -78,7 +85,21 @@ public class IndicadoresMapaService {
                     geometry));
         }
 
-        return new MapaCalorResponse(conjuntoRepository.listarAnosDisponiveisMapaCalor(), conjuntos);
+        return new MapaCalorResponse(anosDisponiveis, mesesDisponiveis, conjuntos);
+    }
+
+    private void validarMes(Long mes) {
+        if (mes != null && (mes < 1 || mes > 12)) {
+            throw new IllegalArgumentException("Parametro 'mes' deve estar entre 1 e 12.");
+        }
+    }
+
+    private Long primeiroOuNulo(List<Long> valores) {
+        if (valores == null || valores.isEmpty()) {
+            return null;
+        }
+
+        return valores.get(0);
     }
 
     private JsonNode parseGeometry(String geoJson) {

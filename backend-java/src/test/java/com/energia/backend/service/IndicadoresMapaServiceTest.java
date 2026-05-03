@@ -25,7 +25,7 @@ class IndicadoresMapaServiceTest {
 
     @Test
     void deveClassificarMapaCalorPelaMediaAritmeticaDeDecEFecContraMediaDosLimites() {
-        MapaCalorResponse response = service.obterMapaCalor(2026L);
+        MapaCalorResponse response = service.obterMapaCalor(2026L, 1L);
 
         MapaCalorConjuntoResponse conjunto = response.getConjuntos().get(0);
 
@@ -47,6 +47,10 @@ class IndicadoresMapaServiceTest {
 
                     if ("listarAnosDisponiveisMapaCalor".equals(method.getName())) {
                         return List.of(2026L);
+                    }
+
+                    if ("listarMesesDisponiveisMapaCalor".equals(method.getName())) {
+                        return List.of(1L);
                     }
 
                     throw new UnsupportedOperationException(method.getName());
