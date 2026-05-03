@@ -4,20 +4,27 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.http.ResponseEntity;
 
 import com.energia.backend.etl.LimitesCsvParser.LimiteFiltrado;
 import com.energia.backend.etl.exception.DuplicatesDetectedException;
+import com.energia.backend.etl.repository.EtlCleanupRepository;
 import com.energia.backend.etl.service.AneelExtractionLoggingService;
 import com.energia.backend.etl.service.ConjMetricTransformLoad;
 import com.energia.backend.etl.service.ConjuntoMetricasImport;
 import com.energia.backend.etl.service.DistribuidoraExcelImport;
 import com.energia.backend.etl.service.LimitesImport;
 import com.energia.backend.etl.service.LimitesTransformLoad;
+import com.energia.backend.etl.service.geographic.EtlService;
 
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -27,6 +34,11 @@ import lombok.extern.slf4j.Slf4j;
 public class EtlRunner {
 
     private final ApplicationArguments args;
+    private final EtlCleanupRepository cleanupRepository;
+    private final EtlService importService;
+
+    @Value("${etl_cnpj}")
+    private String cnpj;
 
     @Bean
     CommandLineRunner run(DistribuidoraExcelImport distService,
@@ -48,16 +60,13 @@ public class EtlRunner {
             }
             System.out.println("ENTROU NO ETL");
 
-            String cnpj = args.getOptionValues("cnpj") != null
-                    ? args.getOptionValues("cnpj").get(0)
-                    : null;
+            cleanupRepository.limparTabelas();
+
+            System.out.println("O CNPJ É " + cnpj);
 
             if (cnpj == null || cnpj.isBlank()) {
                 throw new IllegalArgumentException("Missing required argument: --cnpj=...");
             }
-
-            System.out.println("cnpj = " + cnpj);
-            System.out.println("after args");
 
             loggingService.logExtractionStart();
 
@@ -77,14 +86,12 @@ public class EtlRunner {
                 List<Long> conjuntos = new ArrayList<>();
 
                 try {
-                    List<String> cnpjs = getTargetCnpjs(cnpj);
-                    String json = conjService.importar(cnpjs);
+                    String cnpj_formatted = Utils.formatCnpj(cnpj);
+                    String json = conjService.importar(cnpj_formatted);
                     conjuntos = conjTransformService.processarJson(json);
-                } catch (DuplicatesDetectedException e) {
-                    loggingService.logExtractionFailDuplicata(e.getCount());
-                    errors.add("Duplicatas detectadas em métricas: " + e.getCount());
                 } catch (Exception e) {
-                    errors.add("Erro ao processar métricas de conjunto: " + e.getMessage());
+                    System.out.print("erro ao processar conjuntos e metricas");
+                    errors.add("Erro ao processar conjunto e métricas: " + e.getMessage());
                 }
 
                 try {
@@ -93,6 +100,14 @@ public class EtlRunner {
                     limitesTransformLoad.processarLista(listaLim);
                 } catch (Exception e) {
                     errors.add("Erro ao processar limites: " + e.getMessage());
+                }
+
+                try {
+                    importService.executarPipeline();
+
+                    
+                } catch (Exception e) {
+                    errors.add("Erro com etl de dados geográficos: " + e.getMessage());
                 }
 
                 System.out.println("ETL REALIZADO");
@@ -116,41 +131,4 @@ public class EtlRunner {
         };
     }
 
-    private List<String> getTargetCnpjs(String cnpj) {
-        String raw = System.getenv("ETL_CNPJS");
-        if (raw == null || raw.isBlank()) {
-            return List.of(cnpj);
-        }
-
-        List<String> cnpjs = Arrays.stream(raw.split(","))
-                .map(Utils::formatCnpj)
-                .filter(c -> c != null && !c.isBlank())
-                .distinct()
-                .toList();
-
-        if (cnpjs.isEmpty()) {
-            throw new IllegalArgumentException("ETL_CNPJS não contém CNPJs válidos");
-        }
-        return cnpjs;
-    }
-
-    // private List<Long> getTargetConjuntos() {
-    // String raw = System.getenv("ETL_CONJUNTOS_IDS");
-    // if (raw == null || raw.isBlank()) {
-    // return List.of(DEFAULT_CONJUNTO_ID);
-    // }
-
-    // List<Long> conjuntos = Arrays.stream(raw.split(","))
-    // .map(String::trim)
-    // .map(Utils::toLong)
-    // .filter(id -> id != null)
-    // .distinct()
-    // .toList();
-
-    // if (conjuntos.isEmpty()) {
-    // throw new IllegalArgumentException("ETL_CONJUNTOS_IDS não contém IDs
-    // válidos");
-    // }
-    // return conjuntos;
-    // }
 }

@@ -54,11 +54,10 @@ public class ConjMetricTransformLoad {
                 : (List<Map<String, Object>>) result.getOrDefault("records", List.of());
 
         if (registros.isEmpty()) {
-            throw new IllegalStateException("Erro na extração ANEEL: resposta de métricas sem registros");
+            throw new IllegalStateException("Erro na extração ANEEL");
         }
 
-        List<String> errosDuplicatas = new ArrayList<>();
-        int linhasValidas = 0;
+        int registrosValidos = 0;
 
         for (Map<String, Object> row : registros) {
 
@@ -83,6 +82,7 @@ public class ConjMetricTransformLoad {
                         anoIndice);
                 continue;
             }
+            registrosValidos++;
 
             LocalDate dataColeta = LocalDate.now();
 
@@ -175,29 +175,24 @@ public class ConjMetricTransformLoad {
                         "https://dadosabertos.aneel.gov.br/dataset/indicadores-coletivos-de-continuidade-dec-e-fec");
 
                 coletaDadosRepository.save(coleta);
-                linhasValidas++;
 
             } else {
-                String msgDuplicata = String.format(
-                        "Métrica duplicada pulada - Conjunto %d, Indicador %s, Período %d, Ano %d",
-                        conjunto.getId(),
-                        indicador.getIndicadorType(),
-                        numPeriodoIndice,
-                        anoIndice);
-                errosDuplicatas.add(msgDuplicata);
+                log.debug(
+                    "Métrica duplicada ignorada - Conjunto {}, Indicador {}, Período {}, Ano {}",
+                    conjunto.getId(),
+                    indicador.getIndicadorType(),
+                    numPeriodoIndice,
+                    anoIndice
+                );
             }
         }
 
-        if (linhasValidas == 0 && errosDuplicatas.isEmpty()) {
+        if (registrosValidos == 0) {
             throw new IllegalStateException(
-                    "Erro na extração ANEEL: nenhum registro válido de métricas foi processado");
+                "Erro na extração ANEEL: nenhum registro válido encontrado"
+            );
         }
 
-        if (!errosDuplicatas.isEmpty()) {
-            throw new DuplicatesDetectedException(
-                    errosDuplicatas.size(),
-                    String.join("; ", errosDuplicatas));
-        }
 
         return new ArrayList<>(conjuntosProcessados);
     }

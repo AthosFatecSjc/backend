@@ -2,6 +2,7 @@ package com.energia.backend.etl.service.geographic;
 
 import java.io.IOException;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
@@ -20,12 +21,15 @@ public class EtlService {
     private final DistribuidoraRepository distribuidoraRepository;
     private final GeoJsonLoadService geoJsonLoadService;
 
+    @Value("${etl_cnpj}")
+    private String cnpj;
+
     @Async
-    public void executarPipelineAsync(String cnpj) throws IOException, InterruptedException {
-        executarPipeline(cnpj);
+    public void executarPipelineAsync() throws IOException, InterruptedException {
+        executarPipeline();
     }
 
-    public void executarPipeline(String cnpj) throws IOException, InterruptedException {
+    public void executarPipeline() throws IOException, InterruptedException {
 
         Distribuidora dist = distribuidoraRepository.findByNumCnpj(cnpj)
                 .orElseThrow(() -> new IllegalStateException(

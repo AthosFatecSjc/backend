@@ -8,20 +8,16 @@ import org.springframework.web.client.RestTemplate;
 @Service
 public class ConjuntoMetricasImport {
     
-    public String importar (List<String> cnpjs){
+    public String importar (String cnpj){
         String baseUrl = "https://dadosabertos.aneel.gov.br/api/3/action/datastore_search_sql";
 
-        String cnpjList = cnpjs.stream()
-                .map(cnpj -> "'" + cnpj.replaceAll("[^0-9]", "") + "'")
-                .reduce((a, b) -> a + "," + b)
-                .orElse("");
     
         String sql = String.format(
             "SELECT * " +
             "FROM \"4493985c-baea-429c-9df5-3030422c71d7\" " +
             "WHERE (\"SigIndicador\" = 'FEC' OR \"SigIndicador\" = 'DEC') " +
-            "AND \"NumCNPJ\" IN (%s)",
-            cnpjList
+            "AND \"NumCNPJ\" = '%s'",
+            cnpj
         );
     
         String url = baseUrl + "?sql=" + sql;
