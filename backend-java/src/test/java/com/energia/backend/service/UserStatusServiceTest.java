@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -20,6 +21,10 @@ import com.energia.backend.model.AppUserEntity;
 import com.energia.backend.model.StatusEntity;
 import com.energia.backend.model.StatusUsuario;
 import com.energia.backend.model.UserStatusEntity;
+import com.energia.backend.model.log.LogCategory;
+import com.energia.backend.model.log.LogEvent;
+import com.energia.backend.model.log.ResultType;
+import com.energia.backend.model.log.SourceType;
 import com.energia.backend.repository.StatusJpaRepository;
 import com.energia.backend.repository.UserStatusJpaRepository;
 
@@ -27,6 +32,7 @@ class UserStatusServiceTest {
 
     private StatusJpaRepository statusRepository;
     private UserStatusJpaRepository userStatusRepository;
+    private LogService logService;
     private UserStatusService service;
 
     private AppUserEntity user;
@@ -36,7 +42,8 @@ class UserStatusServiceTest {
     void setup() {
         statusRepository = org.mockito.Mockito.mock(StatusJpaRepository.class);
         userStatusRepository = org.mockito.Mockito.mock(UserStatusJpaRepository.class);
-        service = new UserStatusService(statusRepository, userStatusRepository);
+        logService = org.mockito.Mockito.mock(LogService.class);
+        service = new UserStatusService(statusRepository, userStatusRepository, logService);
 
         user = AppUserEntity.builder()
                 .id(UUID.randomUUID())
@@ -78,6 +85,18 @@ class UserStatusServiceTest {
         assertEquals(user, saved.getUser());
         assertEquals(admin, saved.getAssignedBy());
         assertNull(saved.getRationaleForRejection());
+        
+        verify(logService).log(
+                eq(admin.getId().toString()),
+                eq(user.getId().toString()),
+                eq(SourceType.SYSTEM),
+                eq(LogEvent.USER_APPROVED),
+                eq(ResultType.SUCCESS),
+                eq(LogCategory.AUDIT),
+                eq("Cadastro de usuario aprovado"),
+                any(),
+                eq("user-management")
+        );
     }
 
     @Test
@@ -93,6 +112,18 @@ class UserStatusServiceTest {
 
         assertEquals("REJEITADO", saved.getStatus().getName());
         assertEquals("documentacao invalida", saved.getRationaleForRejection());
+        
+        verify(logService).log(
+                eq(admin.getId().toString()),
+                eq(user.getId().toString()),
+                eq(SourceType.SYSTEM),
+                eq(LogEvent.USER_REJECTED),
+                eq(ResultType.SUCCESS),
+                eq(LogCategory.AUDIT),
+                eq("Cadastro de usuario rejeitado"),
+                any(),
+                eq("user-management")
+        );
     }
 
     @Test
@@ -126,6 +157,8 @@ class UserStatusServiceTest {
         assertEquals(user, historico.getUser());
         assertEquals("ATIVO", historico.getStatus().getName());
         assertNotNull(historico.getAssignedAt());
+        
+        verify(logService).log(any(), any(), any(), any(), any(), any(), any(), any(), any());
     }
 
     private UserStatusEntity status(String nome, String motivo, LocalDateTime assignedAt) {

@@ -85,21 +85,21 @@ public class UsuarioCadastroService {
                 .findByNameIgnoreCase(StatusUsuario.PENDENTE.name())
                 .orElseThrow(() -> new RuntimeException("Status não encontrado"));
 
-        UserStatusEntity userStatus = new UserStatusEntity();
-        userStatus.setUser(user);
-        userStatus.setStatus(statusEntity);
-        userStatus.setAssignedAt(LocalDateTime.now());
-
-        UserStatusEntity savedUserStatus = userStatusRepository.save(userStatus);
-
-        user.getStatuses().add(savedUserStatus);
-
         RoleEntity role = roleRepository.findByNameIgnoreCase("USER")
                 .orElseThrow(() -> new RuntimeException("Role não encontrada"));
 
         user.setRoles(List.of(role));
 
-        AppUserEntity usuarioSalvo = appUserRepository.save(user);
+        AppUserEntity usuarioSalvo = appUserRepository.saveAndFlush(user);
+
+        UserStatusEntity userStatus = new UserStatusEntity();
+        userStatus.setUser(usuarioSalvo);
+        userStatus.setStatus(statusEntity);
+        userStatus.setAssignedAt(LocalDateTime.now());
+
+        UserStatusEntity savedUserStatus = userStatusRepository.save(userStatus);
+
+        usuarioSalvo.getStatuses().add(savedUserStatus);
 
         termsUserService.aprovarTermos(request.getTermsIds(), usuarioSalvo);
         return usuarioSalvo;
