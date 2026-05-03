@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -16,12 +17,14 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.mockito.InOrder;
 
 import com.energia.backend.dto.UsuarioCadastroRequest;
 import com.energia.backend.exception.EmailJaCadastradoException;
 import com.energia.backend.model.AppUserEntity;
 import com.energia.backend.model.RoleEntity;
 import com.energia.backend.model.StatusEntity;
+import com.energia.backend.model.UserStatusEntity;
 import com.energia.backend.model.user.AppUserModel;
 import com.energia.backend.repository.AppUserJpaRepository;
 import com.energia.backend.repository.JpaUsuarioCadastroRepository;
@@ -57,6 +60,8 @@ class UsuarioCadastroServiceTest {
                 UUID.randomUUID(),
                 "PENDENTE",
                 List.of())));
+        when(userStatusRepository.save(any(UserStatusEntity.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
         when(roleJpaRepository.findByNameIgnoreCase(any())).thenReturn(Optional.of(new RoleEntity(
                 UUID.randomUUID(),
                 "USER",
@@ -70,7 +75,7 @@ class UsuarioCadastroServiceTest {
                 .phone("11999998888")
                 .build();
 
-        when(appUserRepository.save(any())).thenReturn(mockUser);
+        when(appUserRepository.saveAndFlush(any())).thenReturn(mockUser);
 
         UsuarioCadastroService service = new UsuarioCadastroService(
                 usuarioCadastroRepository,
@@ -93,6 +98,10 @@ class UsuarioCadastroServiceTest {
         request.setTermsIds(List.of(UUID.randomUUID(), UUID.randomUUID()));
 
         AppUserEntity registeredUser = service.cadastrar(request);
+
+        InOrder inOrder = inOrder(appUserRepository, userStatusRepository);
+        inOrder.verify(appUserRepository).saveAndFlush(any(AppUserEntity.class));
+        inOrder.verify(userStatusRepository).save(any(UserStatusEntity.class));
 
         assertEquals("maria@teste.com", registeredUser.getEmail());
         assertEquals("11999998888", registeredUser.getPhone());

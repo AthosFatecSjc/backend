@@ -99,7 +99,7 @@ public class AdminInitializationService implements CommandLineRunner {
                         .phone(null)
                         .build());
 
-            AppUserEntity savedAdmin = appUserRepository.save(adminUser);
+            AppUserEntity savedAdmin = appUserRepository.saveAndFlush(adminUser);
 
             UserStatusEntity adminStatus = UserStatusEntity.builder()
                     .id(UUID.randomUUID())
@@ -109,7 +109,7 @@ public class AdminInitializationService implements CommandLineRunner {
                     .rationaleForRejection(null)
                     .build();
 
-            userStatusRepository.save(adminStatus);
+            userStatusRepository.saveAndFlush(adminStatus);
 
             logger.info("Admin user created successfully with email: {}", normalizedEmail);
         } catch (Exception ex) {
