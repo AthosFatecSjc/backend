@@ -39,6 +39,7 @@ public interface ConjuntoRepository extends JpaRepository<Conjunto, Long> {
                 FROM aneel.metricas m
                 JOIN aneel.sig_indicador si ON si.id = m.id_sig_indicador
                 WHERE (:ano IS NULL OR m.ano_indice = :ano)
+                  AND (:mes IS NULL OR m.num_periodo_indice = :mes)
             ),
             metricas_atuais AS (
                 SELECT
@@ -82,7 +83,7 @@ public interface ConjuntoRepository extends JpaRepository<Conjunto, Long> {
             WHERE c.geometry IS NOT NULL
             ORDER BY d.uf, razaoSocial, c.dsc_conj_und_consumidoras
             """, nativeQuery = true)
-    List<MapaCalorConjuntoProjection> buscarDadosMapaCalor(@Param("ano") Long ano);
+    List<MapaCalorConjuntoProjection> buscarDadosMapaCalor(@Param("ano") Long ano, @Param("mes") Long mes);
 
     @Query(value = """
             SELECT DISTINCT m.ano_indice
@@ -90,4 +91,12 @@ public interface ConjuntoRepository extends JpaRepository<Conjunto, Long> {
             ORDER BY m.ano_indice DESC
             """, nativeQuery = true)
     List<Long> listarAnosDisponiveisMapaCalor();
+
+    @Query(value = """
+            SELECT DISTINCT m.num_periodo_indice
+            FROM aneel.metricas m
+            WHERE (:ano IS NULL OR m.ano_indice = :ano)
+            ORDER BY m.num_periodo_indice DESC
+            """, nativeQuery = true)
+    List<Long> listarMesesDisponiveisMapaCalor(@Param("ano") Long ano);
 }
