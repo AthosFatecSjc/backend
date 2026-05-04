@@ -136,11 +136,11 @@ public class IndicadoresMapaService {
             return "ausente";
         }
 
-        if (ratio >= 1d) {
+        if (ratio >= 0.4d) {
             return "alto";
         }
 
-        if (ratio >= 0.5d) {
+        if (ratio >= 0.05d) {
             return "moderado";
         }
 
