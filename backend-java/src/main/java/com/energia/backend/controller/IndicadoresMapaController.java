@@ -21,8 +21,9 @@ public class IndicadoresMapaController {
 
     @GetMapping("/mapa-calor")
     public ResponseEntity<MapaCalorResponse> obterMapaCalor(
-            @RequestParam(required = false) Long ano
+            @RequestParam(required = false) Long ano,
+            @RequestParam(required = false) Long mes
     ) {
-        return ResponseEntity.ok(indicadoresMapaService.obterMapaCalor(ano));
+        return ResponseEntity.ok(indicadoresMapaService.obterMapaCalor(ano, mes));
     }
 }

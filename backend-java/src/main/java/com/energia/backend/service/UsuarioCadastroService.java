@@ -74,33 +74,32 @@ public class UsuarioCadastroService {
             throw new IllegalStateException("Usuario cadastrado nao aceitou nenhum termo");
         }
 
-        RoleEntity role = roleRepository.findByNameIgnoreCase("USER")
-            .orElseThrow(() -> new RuntimeException("Role não encontrada"));
-
-        StatusEntity statusEntity = statusRepository
-            .findByNameIgnoreCase(StatusUsuario.PENDENTE.name())
-            .orElseThrow(() -> new RuntimeException("Status não encontrado"));
-
         AppUserEntity user = new AppUserEntity();
         user.setName(request.getNomeCompleto().trim());
         user.setEmail(emailNormalizado);
         user.setPassword(passwordEncoder.encode(request.getSenha()));
         user.setPhone(sanitizeOptional(request.getTelefone()));
         user.setCreatedAt(LocalDateTime.now());
+      
+        StatusEntity statusEntity = statusRepository
+                .findByNameIgnoreCase(StatusUsuario.PENDENTE.name())
+                .orElseThrow(() -> new RuntimeException("Status não encontrado"));
+
+        RoleEntity role = roleRepository.findByNameIgnoreCase("USER")
+                .orElseThrow(() -> new RuntimeException("Role não encontrada"));
+
         user.setRoles(List.of(role));
 
-        
+        AppUserEntity usuarioSalvo = appUserRepository.saveAndFlush(user);
+
         UserStatusEntity userStatus = new UserStatusEntity();
-        userStatus.setUser(user);
+        userStatus.setUser(usuarioSalvo);
         userStatus.setStatus(statusEntity);
         userStatus.setAssignedAt(LocalDateTime.now());
 
-        // userStatus.setUser(user);
+        UserStatusEntity savedUserStatus = userStatusRepository.save(userStatus);
 
-        user.getStatuses().add(userStatus);
-
-        AppUserEntity usuarioSalvo = appUserRepository.save(user);
-        userStatusRepository.save(userStatus);
+        usuarioSalvo.getStatuses().add(savedUserStatus);
 
         termsUserService.aprovarTermos(request.getTermsIds(), usuarioSalvo);
         return usuarioSalvo;

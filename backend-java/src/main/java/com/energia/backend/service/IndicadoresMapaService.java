@@ -28,8 +28,15 @@ public class IndicadoresMapaService {
         this.objectMapper = objectMapper;
     }
 
-    public MapaCalorResponse obterMapaCalor(Long ano) {
-        List<MapaCalorConjuntoProjection> dados = conjuntoRepository.buscarDadosMapaCalor(ano);
+    public MapaCalorResponse obterMapaCalor(Long ano, Long mes) {
+        validarMes(mes);
+
+        List<Long> anosDisponiveis = conjuntoRepository.listarAnosDisponiveisMapaCalor();
+        Long anoReferencia = ano != null ? ano : primeiroOuNulo(anosDisponiveis);
+        List<Long> mesesDisponiveis = conjuntoRepository.listarMesesDisponiveisMapaCalor(anoReferencia);
+        Long mesReferencia = mes != null ? mes : primeiroOuNulo(mesesDisponiveis);
+
+        List<MapaCalorConjuntoProjection> dados = conjuntoRepository.buscarDadosMapaCalor(anoReferencia, mesReferencia);
         List<MapaCalorConjuntoResponse> conjuntos = new ArrayList<>();
 
         for (MapaCalorConjuntoProjection item : dados) {
@@ -49,8 +56,8 @@ public class IndicadoresMapaService {
                     item.getFecValor(),
                     item.getFecLim());
 
-            MapaCalorIndicadorResponse indicadorPrincipal = escolherIndicadorPrincipal(indicadorDec, indicadorFec);
-            String criticidade = classificarCriticidade(indicadorDec, indicadorFec);
+            MapaCalorIndicadorResponse indicadorPrincipal = indicadorMedia(indicadorDec, indicadorFec);
+            String criticidade = classificarCriticidade(indicadorPrincipal);
 
             List<MapaCalorIndicadorResponse> complementares = List.of(
                     indicador(
@@ -78,7 +85,21 @@ public class IndicadoresMapaService {
                     geometry));
         }
 
-        return new MapaCalorResponse(conjuntoRepository.listarAnosDisponiveisMapaCalor(), conjuntos);
+        return new MapaCalorResponse(anosDisponiveis, mesesDisponiveis, conjuntos);
+    }
+
+    private void validarMes(Long mes) {
+        if (mes != null && (mes < 1 || mes > 12)) {
+            throw new IllegalArgumentException("Parametro 'mes' deve estar entre 1 e 12.");
+        }
+    }
+
+    private Long primeiroOuNulo(List<Long> valores) {
+        if (valores == null || valores.isEmpty()) {
+            return null;
+        }
+
+        return valores.get(0);
     }
 
     private JsonNode parseGeometry(String geoJson) {
@@ -97,34 +118,29 @@ public class IndicadoresMapaService {
         return new MapaCalorIndicadorResponse(id, label, safeNumber(valor), safeNumber(limite));
     }
 
-    private MapaCalorIndicadorResponse escolherIndicadorPrincipal(
+    private MapaCalorIndicadorResponse indicadorMedia(
             MapaCalorIndicadorResponse dec,
             MapaCalorIndicadorResponse fec
     ) {
-        double ratioDec = calcularRazao(dec.getValor(), dec.getLimite());
-        double ratioFec = calcularRazao(fec.getValor(), fec.getLimite());
-
-        if (ratioFec > ratioDec) {
-            return fec;
-        }
-
-        return dec;
+        return new MapaCalorIndicadorResponse(
+                "media-dec-fec",
+                "Media DEC/FEC",
+                media(dec.getValor(), fec.getValor()),
+                media(dec.getLimite(), fec.getLimite()));
     }
 
-    private String classificarCriticidade(MapaCalorIndicadorResponse dec, MapaCalorIndicadorResponse fec) {
-        double ratioDec = calcularRazao(dec.getValor(), dec.getLimite());
-        double ratioFec = calcularRazao(fec.getValor(), fec.getLimite());
-        double ratioMax = Math.max(ratioDec, ratioFec);
+    private String classificarCriticidade(MapaCalorIndicadorResponse indicador) {
+        double ratio = calcularRazao(indicador.getValor(), indicador.getLimite());
 
-        if (ratioMax < 0) {
+        if (ratio < 0) {
             return "ausente";
         }
 
-        if (ratioMax >= 1d) {
+        if (ratio >= 1d) {
             return "alto";
         }
 
-        if (ratioMax >= 0.5d) {
+        if (ratio >= 0.5d) {
             return "moderado";
         }
 
@@ -141,6 +157,10 @@ public class IndicadoresMapaService {
 
     private double safeNumber(Double value) {
         return value == null ? 0d : value;
+    }
+
+    private double media(double primeiro, double segundo) {
+        return (primeiro + segundo) / 2d;
     }
 
     private String formatarPeriodo(Long periodo, Long ano) {
