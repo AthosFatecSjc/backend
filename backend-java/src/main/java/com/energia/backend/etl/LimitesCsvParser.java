@@ -52,6 +52,7 @@ public class LimitesCsvParser {
                     log.warn("Linha de limites ignorada por quantidade de colunas inválida: {}", line);
                     continue; 
                 }
+              
 
                 Long ideConj = Utils.toLong(cols[3].trim());
                 String sigIndicador = Utils.cleanNullable(cols[5].trim());
@@ -67,6 +68,7 @@ public class LimitesCsvParser {
                 if (ideConj == null || !permitidos.contains(ideConj)) {
                     continue; 
                 }
+                System.out.print("A linha de limites é: " + line);
 
                 linhas.add(new LimiteFiltrado(
                         ideConj,

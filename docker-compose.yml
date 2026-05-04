@@ -56,6 +56,8 @@ services:
       ADMIN_EMAIL: ${ADMIN_EMAIL}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
       ETL_FILE_DIST_PATH: ${ETL_FILE_DIST_CONTAINER_PATH}
+      TZ: ${TZ}
+      ETL_CNPJ: ${ETL_CNPJ}
     ports:
       - "${SERVER_PORT_JAVA}:8181"
     networks:

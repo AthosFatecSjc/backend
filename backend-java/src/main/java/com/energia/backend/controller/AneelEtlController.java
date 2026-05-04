@@ -18,14 +18,13 @@ public class AneelEtlController {
     private final EtlService importService;
 
     @PostMapping("/processar")
-    public ResponseEntity<String> processar(@RequestParam String cnpj) {
+    public ResponseEntity<String> processar() {
 
         try {
-            importService.executarPipeline(cnpj);
+            importService.executarPipelineAsync();
 
-            return ResponseEntity.ok(
-                "Processamento realizado com sucesso para o CNPJ: " + cnpj
-            );
+            return ResponseEntity.accepted()
+                    .body("ETL iniciado");
 
         } catch (Exception e) {
             return ResponseEntity.internalServerError()

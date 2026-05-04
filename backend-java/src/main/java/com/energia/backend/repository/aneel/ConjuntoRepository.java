@@ -3,14 +3,16 @@ package com.energia.backend.repository.aneel;
 import java.util.List;
 import java.util.Optional;
 
+import org.locationtech.jts.geom.Geometry;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import org.springframework.transaction.annotation.Transactional;
 
 import com.energia.backend.model.aneel.Conjunto;
 import com.energia.backend.repository.aneel.projection.MapaCalorConjuntoProjection;
+
+import jakarta.transaction.Transactional;
 
 public interface ConjuntoRepository extends JpaRepository<Conjunto, Long> {
     Optional<Conjunto> findByIdeConjUndConsumidoras(Long ide);
@@ -19,10 +21,10 @@ public interface ConjuntoRepository extends JpaRepository<Conjunto, Long> {
     @Transactional
     @Query(value = """
                 UPDATE aneel.conjunto
-                SET geometry = ST_SetSRID(ST_GeomFromGeoJSON(:geojson), 4674)
+                SET geometry = ST_SetSRID(:geojson, 4674)
                 WHERE ide_conj_und_consumidoras = :codId
             """, nativeQuery = true)
-    void atualizarGeometria(Long codId, String geojson);
+    int atualizarGeometria(Long codId, Geometry geojson);
 
     @Query(value = """
             WITH metricas_rankeadas AS (
@@ -92,6 +94,11 @@ public interface ConjuntoRepository extends JpaRepository<Conjunto, Long> {
             """, nativeQuery = true)
     List<Long> listarAnosDisponiveisMapaCalor();
 
+    @Transactional
+    @Modifying
+    @Query(value = "UPDATE aneel.conjunto SET geometry = NULL", nativeQuery = true)
+    int limparConjGeometrias();
+    
     @Query(value = """
             SELECT DISTINCT m.num_periodo_indice
             FROM aneel.metricas m

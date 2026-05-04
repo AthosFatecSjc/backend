@@ -80,7 +80,7 @@ public class UsuarioCadastroService {
         user.setPassword(passwordEncoder.encode(request.getSenha()));
         user.setPhone(sanitizeOptional(request.getTelefone()));
         user.setCreatedAt(LocalDateTime.now());
-
+      
         StatusEntity statusEntity = statusRepository
                 .findByNameIgnoreCase(StatusUsuario.PENDENTE.name())
                 .orElseThrow(() -> new RuntimeException("Status não encontrado"));
@@ -143,7 +143,7 @@ public class UsuarioCadastroService {
         }
 
         if (!termsUserService.checkRequiredTerms(request.getTermsIds(), null, LocalDateTime.now())) {
-            throw new IllegalArgumentException("Usuario deve aceitar todos os termos obrigatorios.");
+            throw new IllegalArgumentException("Usuario deve aceitar todos os termos obrigatorios:");
         }
     }
 

@@ -1,32 +1,40 @@
 package com.energia.backend.etl.service.geographic;
 
-import java.io.File;
 import java.io.IOException;
 
 import org.springframework.stereotype.Service;
 
+import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
+
 @Service
 public class GeoProcessingService {
-    public File converterParaGeoJson(File gdbDir) throws IOException, InterruptedException, java.io.IOException {
-        File geoJson = new File(gdbDir.getParent(), "output.json");
 
+    public String converterParaGeoJson(InMemoryGdb gdb) throws IOException, InterruptedException {
         ProcessBuilder pb = new ProcessBuilder(
                 "ogr2ogr",
                 "-f", "GeoJSON",
-                geoJson.getAbsolutePath(),
-                gdbDir.getAbsolutePath(),
-                "CONJ");
+                "/vsistdout/",
+                gdb.gdalSourcePath(),
+                "CONJ"
+        );
+
         pb.redirectErrorStream(true);
         Process process = pb.start();
-        String output = new String(process.getInputStream().readAllBytes());
-        int exitCode = process.waitFor();
-        System.out.println("OGR2OGR OUTPUT:\n" + output);
 
-        if (exitCode != 0) {
-            throw new RuntimeException("Erro ao converter GDB para GeoJSON");
+        try (OutputStream os = process.getOutputStream()) {
+            os.write(gdb.zipBytes());
+            os.flush();
         }
 
-        return geoJson;
-    }
+        String output = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+        int exitCode = process.waitFor();
 
+        if (exitCode != 0) {
+            throw new RuntimeException("Erro ao converter GDB para GeoJSON. Saída do ogr2ogr:\n" + output);
+        }
+        System.out.println("GEOJSON É: " + output);
+
+        return output;
+    }
 }

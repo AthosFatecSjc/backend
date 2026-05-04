@@ -24,43 +24,51 @@ public class DistribuidoraExcelImport {
     public void importar(String caminhoArquivo) {
 
         try (FileInputStream fis = new FileInputStream(caminhoArquivo);
-            Workbook workbook = WorkbookFactory.create(fis)) {
+                Workbook workbook = WorkbookFactory.create(fis)) {
 
             Sheet sheet = workbook.getSheetAt(0);
 
             List<Distribuidora> lista = new ArrayList<>();
             int linhasValidas = 0;
+            int linhasNovas = 0;
 
             for (Row row : sheet) {
 
-                if (row.getRowNum() == 0) continue; 
+                if (row.getRowNum() == 0)
+                    continue;
 
-                Long codigoIdDist = Utils.toLong(Utils.getRaw(row.getCell(13))); 
+                Long codigoIdDist = Utils.toLong(Utils.getRaw(row.getCell(13)));
+
                 if (codigoIdDist == null) {
                     log.warn("Linha {} ignorada: cod_id_dist inválido ou vazio", row.getRowNum());
                     continue;
                 }
-                if(repository.existsByCodigoIdDist(codigoIdDist)){
+
+                linhasValidas++;
+
+                if (repository.existsByCodigoIdDist(codigoIdDist)) {
+                    log.debug("Distribuidora já existe: {}", codigoIdDist);
                     continue;
                 }
-                
 
                 Distribuidora dist = mapRowToEntity(row);
 
-                
                 if (dist != null) {
                     lista.add(dist);
-                    linhasValidas++;
+                    linhasNovas++;
                 }
             }
 
             if (linhasValidas == 0) {
-                throw new IllegalStateException("Erro na extração ANEEL: planilha de distribuidoras sem registros válidos");
+                throw new IllegalStateException(
+                        "Erro na extração ANEEL: planilha de distribuidoras sem registros válidos");
             }
 
             repository.saveAll(lista);
 
-            log.info("Importação finalizada. Total: {}", lista.size());
+            log.info("Importação finalizada. Novos registros: {}, já existentes: {}",
+                    linhasNovas,
+                    linhasValidas - linhasNovas);
 
         } catch (Exception e) {
             log.error("Erro ao importar Excel", e);
@@ -73,7 +81,7 @@ public class DistribuidoraExcelImport {
         Distribuidora dist = new Distribuidora();
 
         String codigoIdDistRaw = Utils.getRaw(row.getCell(13));
-        String sigAgenteRaw = Utils.getRaw(row.getCell(1));             
+        String sigAgenteRaw = Utils.getRaw(row.getCell(1));
         String cnpjRaw = Utils.getRaw(row.getCell(10));
         String razaoSocialRaw = Utils.getRaw(row.getCell(11));
         String regiaoRaw = Utils.getRaw(row.getCell(8));
@@ -97,16 +105,15 @@ public class DistribuidoraExcelImport {
         dist.setUf(Utils.formatUf(ufRaw));
         dist.setContractType(Utils.parseContractType(contractTypeRaw));
 
-        if (Objects.isNull(dist.getRegiao()) || Objects.isNull(dist.getUf()) || Objects.isNull(dist.getContractType())) {
+        if (Objects.isNull(dist.getRegiao()) || Objects.isNull(dist.getUf())
+                || Objects.isNull(dist.getContractType())) {
             log.warn(
-                "Linha {} com dimensões faltantes para distribuidora {} (regiao/uf/contract_type nulos).",
-                row.getRowNum(),
-                dist.getNumCnpj()
-            );
+                    "Linha {} com dimensões faltantes para distribuidora {} (regiao/uf/contract_type nulos).",
+                    row.getRowNum(),
+                    dist.getNumCnpj());
         }
 
         return dist;
     }
- 
 
 }

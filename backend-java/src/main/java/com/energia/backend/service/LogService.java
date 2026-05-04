@@ -1,14 +1,16 @@
 package com.energia.backend.service;
 
+import org.springframework.stereotype.Service;
+import org.springframework.validation.annotation.Validated;
+
 import com.energia.backend.dto.LogRequest;
 import com.energia.backend.model.log.LogCategory;
 import com.energia.backend.model.log.LogEvent;
 import com.energia.backend.model.log.ResultType;
 import com.energia.backend.model.log.SourceType;
+
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-import org.springframework.validation.annotation.Validated;
 
 /**
  * Servico centralizado para registro de eventos e auditoria do sistema.
@@ -36,7 +38,7 @@ public class LogService {
             String metadata,
             String createdByModule
     ) {
-        logPersistenceService.persist(LogRequest.builder()
+        LogRequest logRequest = LogRequest.builder()
                 .actor(actorRef)
                 .targetRef(targetRef)
                 .sourceType(sourceType)
@@ -46,6 +48,9 @@ public class LogService {
                 .description(description)
                 .metadata(metadata)
                 .module(createdByModule)
-                .build());
+                .build();
+
+        System.out.println("LogService.log: " + logRequest); // Log para depuração
+        logPersistenceService.persist(logRequest);
     }
 }
