@@ -3,99 +3,111 @@ package com.energia.backend.service;
 import java.time.LocalDateTime;
 import java.util.UUID;
 import java.util.regex.Pattern;
+import java.util.List;
 
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.energia.backend.dto.Usuario;
 import com.energia.backend.dto.UsuarioCadastroRequest;
 import com.energia.backend.exception.EmailJaCadastradoException;
 import com.energia.backend.exception.PermissaoNegadaException;
 import com.energia.backend.model.AppUserEntity;
+import com.energia.backend.model.RoleEntity;
 import com.energia.backend.model.StatusEntity;
 import com.energia.backend.model.StatusUsuario;
 import com.energia.backend.model.UserStatusEntity;
 import com.energia.backend.repository.AppUserJpaRepository;
+import com.energia.backend.repository.JpaUsuarioCadastroRepository;
+import com.energia.backend.repository.RoleJpaRepository;
 import com.energia.backend.repository.StatusJpaRepository;
 import com.energia.backend.repository.UserStatusJpaRepository;
 import com.energia.backend.repository.UsuarioCadastroRepository;
 
 @Service
 public class UsuarioCadastroService {
-    private static final Pattern EMAIL_PATTERN = Pattern.compile("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$");
-
     private final UsuarioCadastroRepository usuarioCadastroRepository;
     private final AppUserJpaRepository appUserRepository;
-    private final TermsService termsService;
+    private final TermsUserService termsUserService;
     private final StatusJpaRepository statusRepository;
-    private final UserStatusJpaRepository userStatusRepository;
+    private final UserStatusService userStatusService;
     private final PasswordEncoder passwordEncoder;
+    private final JpaUsuarioCadastroRepository jpaUsuarioCadastroRepository;
+    private final RoleJpaRepository roleRepository;
+    private static final Pattern EMAIL_PATTERN = Pattern.compile("[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}");
+    private final UserStatusJpaRepository userStatusRepository;
 
     public UsuarioCadastroService(
             UsuarioCadastroRepository usuarioCadastroRepository,
             AppUserJpaRepository appUserRepository,
-            TermsService termsService,
+            TermsUserService termsUserService,
             StatusJpaRepository statusRepository,
             UserStatusJpaRepository userStatusRepository,
-            PasswordEncoder passwordEncoder
-    ) {
+            TermsService termsService,
+            UserStatusService userStatusService,
+            PasswordEncoder passwordEncoder,
+            JpaUsuarioCadastroRepository jpaUsuarioCadastroRepository,
+            RoleJpaRepository roleRepository,
+            UserStatusJpaRepository userStatusJpaRepository) {
         this.usuarioCadastroRepository = usuarioCadastroRepository;
         this.appUserRepository = appUserRepository;
-        this.termsService = termsService;
+        this.termsUserService = termsUserService;
         this.statusRepository = statusRepository;
-        this.userStatusRepository = userStatusRepository;
+        this.userStatusService = userStatusService;
         this.passwordEncoder = passwordEncoder;
+        this.jpaUsuarioCadastroRepository = jpaUsuarioCadastroRepository;
+        this.roleRepository = roleRepository;
+        this.userStatusRepository = userStatusJpaRepository;
     }
 
     @Transactional
-    public Usuario cadastrar(UsuarioCadastroRequest request) {
+    public AppUserEntity cadastrar(UsuarioCadastroRequest request) {
         validarRequest(request);
 
-        String emailNormalizado = normalizarEmail(request.getEmail());
+        String emailNormalizado = jpaUsuarioCadastroRepository.normalizarEmail(request.getEmail());
 
         if (usuarioCadastroRepository.existsByEmail(emailNormalizado)) {
-            throw new EmailJaCadastradoException("E-mail ja cadastrado.");
+            throw new EmailJaCadastradoException(emailNormalizado);
         }
 
-        try {
-            Usuario usuario = new Usuario();
-            usuario.setNomeCompleto(request.getNomeCompleto().trim());
-            usuario.setEmail(emailNormalizado);
-            usuario.setSenhaHash(passwordEncoder.encode(request.getSenha()));
-            usuario.setTelefone(normalizarOpcional(request.getTelefone()));
-            usuario.setStatus(StatusUsuario.PENDENTE);
-            usuario.setDataCadastro(LocalDateTime.now());
-
-            Usuario usuarioSalvo = usuarioCadastroRepository.save(usuario);
-
-            if (request.getTermsIds() != null && !request.getTermsIds().isEmpty()) {
-                AppUserEntity appUserSalvo = appUserRepository.findByEmailIgnoreCase(usuarioSalvo.getEmail())
-                        .orElseThrow(() -> new IllegalStateException("Usuario cadastrado nao encontrado para registrar termos."));
-                termsService.registrarTermosAceitos(request.getTermsIds(), appUserSalvo);
-            }
-
-            return usuarioSalvo;
-        } catch (DataIntegrityViolationException ex) {
-            throw new EmailJaCadastradoException("E-mail ja cadastrado.");
+        if (request.getTermsIds() == null || request.getTermsIds().isEmpty()) {
+            throw new IllegalStateException("Usuario cadastrado nao aceitou nenhum termo");
         }
+
+        AppUserEntity user = new AppUserEntity();
+        user.setName(request.getNomeCompleto().trim());
+        user.setEmail(emailNormalizado);
+        user.setPassword(passwordEncoder.encode(request.getSenha()));
+        user.setPhone(sanitizeOptional(request.getTelefone()));
+        user.setCreatedAt(LocalDateTime.now());
+      
+        StatusEntity statusEntity = statusRepository
+                .findByNameIgnoreCase(StatusUsuario.PENDENTE.name())
+                .orElseThrow(() -> new RuntimeException("Status não encontrado"));
+
+        RoleEntity role = roleRepository.findByNameIgnoreCase("USER")
+                .orElseThrow(() -> new RuntimeException("Role não encontrada"));
+
+        user.setRoles(List.of(role));
+
+        AppUserEntity usuarioSalvo = appUserRepository.saveAndFlush(user);
+
+        UserStatusEntity userStatus = new UserStatusEntity();
+        userStatus.setUser(usuarioSalvo);
+        userStatus.setStatus(statusEntity);
+        userStatus.setAssignedAt(LocalDateTime.now());
+
+        UserStatusEntity savedUserStatus = userStatusRepository.save(userStatus);
+
+        usuarioSalvo.getStatuses().add(savedUserStatus);
+
+        termsUserService.aprovarTermos(request.getTermsIds(), usuarioSalvo);
+        return usuarioSalvo;
+
     }
 
     @Transactional
     public void alterarStatusUsuario(UUID usuarioId, UUID adminId, StatusUsuario novoStatus, String motivo) {
-        validarDependenciasStatus();
-
-        if (novoStatus == null) {
-            throw new IllegalArgumentException("Status desejado e obrigatorio.");
-        }
-        if (novoStatus != StatusUsuario.APROVADO && novoStatus != StatusUsuario.REJEITADO) {
-            throw new IllegalArgumentException("Status deve ser APROVADO ou REJEITADO.");
-        }
-        if (novoStatus == StatusUsuario.REJEITADO && isBlank(motivo)) {
-            throw new IllegalArgumentException("Motivo da rejeicao e obrigatorio.");
-        }
-
         AppUserEntity usuario = appUserRepository.findById(usuarioId)
                 .orElseThrow(() -> new IllegalArgumentException("Usuario nao encontrado."));
         AppUserEntity admin = appUserRepository.findById(adminId)
@@ -107,26 +119,7 @@ public class UsuarioCadastroService {
             throw new PermissaoNegadaException("Apenas administradores podem alterar o status de usuarios.");
         }
 
-        UserStatusEntity statusAtual = userStatusRepository.findFirstByUserOrderByAssignedAtDesc(usuario)
-                .orElse(null);
-        if (statusAtual == null
-                || statusAtual.getStatus() == null
-                || !"PENDENTE".equalsIgnoreCase(statusAtual.getStatus().getName())) {
-            throw new IllegalStateException("So e permitido aprovar ou rejeitar usuarios com status PENDENTE.");
-        }
-
-        StatusEntity statusEntity = statusRepository.findByNameIgnoreCase(novoStatus.name())
-                .orElseThrow(() -> new IllegalArgumentException("Status " + novoStatus + " nao encontrado."));
-
-        UserStatusEntity novoUserStatus = UserStatusEntity.builder()
-                .user(usuario)
-                .status(statusEntity)
-                .assignedBy(admin)
-                .assignedAt(LocalDateTime.now())
-                .rationaleForRejection(novoStatus == StatusUsuario.REJEITADO ? motivo.trim() : null)
-                .build();
-
-        userStatusRepository.save(novoUserStatus);
+        userStatusService.transitionFromPending(usuario, admin, novoStatus, motivo);
     }
 
     private void validarRequest(UsuarioCadastroRequest request) {
@@ -148,23 +141,17 @@ public class UsuarioCadastroService {
         if (request.getSenha().trim().length() < 8) {
             throw new IllegalArgumentException("Senha deve ter no minimo 8 caracteres.");
         }
+
+        if (!termsUserService.checkRequiredTerms(request.getTermsIds(), null, LocalDateTime.now())) {
+            throw new IllegalArgumentException("Usuario deve aceitar todos os termos obrigatorios:");
+        }
     }
 
-    private String normalizarEmail(String email) {
-        return email.trim().toLowerCase();
-    }
-
-    private String normalizarOpcional(String value) {
+    private String sanitizeOptional(String value) {
         return isBlank(value) ? null : value.trim();
     }
 
     private boolean isBlank(String value) {
         return value == null || value.trim().isEmpty();
-    }
-
-    private void validarDependenciasStatus() {
-        if (statusRepository == null || userStatusRepository == null || appUserRepository == null) {
-            throw new IllegalStateException("DependÃªncias nÃ£o inicializadas para operaÃ§Ã£o de status.");
-        }
     }
 }

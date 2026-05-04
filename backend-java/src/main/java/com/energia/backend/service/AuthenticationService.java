@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -14,11 +15,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.energia.backend.dto.LoginRequest;
 import com.energia.backend.dto.LoginResponse;
+import com.energia.backend.dto.ResolverPendenciasTermosLoginRequest;
 import com.energia.backend.exception.LoginAuthenticationException;
 import com.energia.backend.model.AppUserEntity;
+import com.energia.backend.model.StatusUsuario;
 import com.energia.backend.model.UserStatusEntity;
 import com.energia.backend.repository.AppUserJpaRepository;
-import com.energia.backend.repository.UserStatusJpaRepository;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
@@ -29,8 +31,9 @@ import io.jsonwebtoken.security.Keys;
 public class AuthenticationService {
 
     private final AppUserJpaRepository userRepository;
-    private final UserStatusJpaRepository userStatusRepository;
+    private final UserStatusService userStatusService;
     private final PasswordEncoder passwordEncoder;
+    private final TermsUserService termsUserService;
 
     @Value("${jwt.secret:sua-chave-secreta-muito-longa-com-pelo-menos-256-bits-de-comprimento-para-hs512}")
     private String jwtSecret;
@@ -40,51 +43,75 @@ public class AuthenticationService {
 
     public AuthenticationService(
             AppUserJpaRepository userRepository,
-            UserStatusJpaRepository userStatusRepository,
-            PasswordEncoder passwordEncoder
-    ) {
+            UserStatusService userStatusService,
+            PasswordEncoder passwordEncoder,
+            TermsUserService termsUserService) {
         this.userRepository = userRepository;
-        this.userStatusRepository = userStatusRepository;
+        this.userStatusService = userStatusService;
         this.passwordEncoder = passwordEncoder;
+        this.termsUserService = termsUserService;
     }
 
     @Transactional(readOnly = true)
     public LoginResponse authenticate(LoginRequest request) {
         validarRequest(request);
 
-        AppUserEntity user = userRepository.findByEmailIgnoreCase(request.getEmail())
+        AppUserEntity user = autenticarCredenciais(request.getEmail(), request.getSenha());
+        validarStatusParaAcesso(user);
+
+        return gerarRespostaDeLogin(user);
+    }
+
+    @Transactional
+    public LoginResponse resolverPendenciasETokenizar(ResolverPendenciasTermosLoginRequest request, String ipOrigem) {
+        validarRequest(request != null
+                ? new LoginRequest(request.getEmail(), request.getSenha())
+                : new LoginRequest(null, null));
+
+        AppUserEntity user = autenticarCredenciais(request.getEmail(), request.getSenha());
+        validarStatusParaAcesso(user);
+        termsUserService.aprovarTermos(
+                Stream.concat(request.getRequiredTermsIds().stream(),
+                        request.getOptionalAcceptedTermsIds().stream()).collect(Collectors.toList()),
+                user);
+        return gerarRespostaDeLogin(user);
+    }
+
+    private AppUserEntity autenticarCredenciais(String email, String senha) {
+        AppUserEntity user = userRepository.findByEmailIgnoreCase(email)
                 .orElseThrow(() -> new LoginAuthenticationException(
                         "Invalid email or password",
                         "INVALID_CREDENTIALS",
-                        HttpStatus.UNAUTHORIZED.value()
-                ));
+                        HttpStatus.UNAUTHORIZED.value()));
 
-        if (!passwordEncoder.matches(request.getSenha(), user.getPassword())) {
+        if (!passwordEncoder.matches(senha, user.getPassword())) {
             throw new LoginAuthenticationException(
                     "Invalid email or password",
                     "INVALID_CREDENTIALS",
-                    HttpStatus.UNAUTHORIZED.value()
-            );
+                    HttpStatus.UNAUTHORIZED.value());
         }
 
-        UserStatusEntity userStatus = userStatusRepository.findFirstByUserOrderByAssignedAtDesc(user)
+        return user;
+    }
+
+    private void validarStatusParaAcesso(AppUserEntity user) {
+        UserStatusEntity userStatus = userStatusService.resolveCurrentStatusEntry(user)
                 .orElseThrow(() -> new LoginAuthenticationException(
                         "User account has no status assigned",
                         "USER_NO_STATUS",
-                        HttpStatus.FORBIDDEN.value()
-                ));
+                        HttpStatus.FORBIDDEN.value()));
 
-        String statusName = userStatus.getStatus().getName();
+        String statusName = userStatus.getStatus() != null ? userStatus.getStatus().getName() : null;
+        StatusUsuario status = userStatusService.toOfficialStatus(statusName);
 
-        if ("PENDENTE".equals(statusName)) {
+        if (status == StatusUsuario.PENDENTE) {
             throw new LoginAuthenticationException(
                     "User account is pending administrator approval",
                     "USER_PENDING_APPROVAL",
-                    HttpStatus.FORBIDDEN.value()
-            );
+                    HttpStatus.FORBIDDEN.value());
         }
 
-        if ("REJEITADO".equals(statusName)) {
+        if (status == StatusUsuario.REJEITADO) {
             String reason = userStatus.getRationaleForRejection() != null
                     ? userStatus.getRationaleForRejection()
                     : "No reason provided";
@@ -92,26 +119,39 @@ public class AuthenticationService {
                     "User account has been rejected",
                     "USER_REJECTED",
                     HttpStatus.FORBIDDEN.value(),
-                    reason
-            );
+                    reason);
         }
 
-        if (!"APROVADO".equals(statusName) && !"ATIVO".equals(statusName)) {
+        if (status != StatusUsuario.ATIVO) {
             throw new LoginAuthenticationException(
                     "User account status is invalid: " + statusName,
                     "INVALID_USER_STATUS",
-                    HttpStatus.FORBIDDEN.value()
-            );
+                    HttpStatus.FORBIDDEN.value());
         }
+    }
 
+    private LoginResponse gerarRespostaDeLogin(AppUserEntity user) {
         List<String> roles = user.getRoles() != null
                 ? user.getRoles().stream()
-                    .map(role -> role.getName().toLowerCase().replaceAll("role_", ""))
-                    .collect(Collectors.toList())
+                        .map(role -> role.getName().toLowerCase().replaceAll("role_", ""))
+                        .collect(Collectors.toList())
                 : java.util.Collections.emptyList();
 
         String token = generateTokenWithRoles(user.getId(), user.getEmail(), user.getName(), roles);
-        return new LoginResponse(token, user.getId(), user.getEmail(), user.getName());
+        return new LoginResponse(token, user.getId(), user.getEmail(), user.getName(), resolvePrimaryRole(roles));
+    }
+
+    private String resolvePrimaryRole(List<String> roles) {
+        if (roles == null || roles.isEmpty()) {
+            return "USER";
+        }
+
+        boolean isAdmin = roles.stream().anyMatch(role -> "admin".equalsIgnoreCase(role));
+        if (isAdmin) {
+            return "ADMIN";
+        }
+
+        return roles.get(0).toUpperCase();
     }
 
     private void validarRequest(LoginRequest request) {
@@ -128,14 +168,14 @@ public class AuthenticationService {
 
     public String generateTokenWithRoles(UUID userId, String email, String username, List<String> roles) {
         Map<String, Object> claims = Map.of(
-            "userId", userId.toString(),
-            "email", email,
-            "username", username,
-            "roles", roles
-        );
+                "userId", userId.toString(),
+                "email", email,
+                "username", username,
+                "roles", roles);
         return createToken(claims, userId.toString());
     }
 
+    @SuppressWarnings("deprecation")
     private String createToken(Map<String, Object> claims, String subject) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + jwtExpiration);

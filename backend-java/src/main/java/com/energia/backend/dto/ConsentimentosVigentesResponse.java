@@ -1,29 +1,14 @@
 package com.energia.backend.dto;
 
+import java.util.List;
+
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+
+@Getter
+@AllArgsConstructor
 public class ConsentimentosVigentesResponse {
-    private final ConsentimentoDocumentoResponse terms;
-    private final ConsentimentoDocumentoResponse privacy;
-    private final ConsentimentoDocumentoResponse marketing;
-
-    public ConsentimentosVigentesResponse(
-            ConsentimentoDocumentoResponse terms,
-            ConsentimentoDocumentoResponse privacy,
-            ConsentimentoDocumentoResponse marketing
-    ) {
-        this.terms = terms;
-        this.privacy = privacy;
-        this.marketing = marketing;
-    }
-
-    public ConsentimentoDocumentoResponse getTerms() {
-        return terms;
-    }
-
-    public ConsentimentoDocumentoResponse getPrivacy() {
-        return privacy;
-    }
-
-    public ConsentimentoDocumentoResponse getMarketing() {
-        return marketing;
-    }
+    private final List<ConsentimentoDocumentoResponse> terms;
+    private final List<ConsentimentoDocumentoResponse> privacy;
+    private final List<ConsentimentoDocumentoResponse> marketing;
 }

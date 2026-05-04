@@ -5,8 +5,9 @@ import com.energia.backend.model.AnonymizationStatus;
 import com.energia.backend.model.RoleEntity;
 import com.energia.backend.model.StatusEntity;
 import com.energia.backend.model.StatusUsuario;
+import com.energia.backend.model.UserPersonalDataEntity;
 import com.energia.backend.model.UserStatusEntity;
-import com.energia.backend.dto.Usuario;
+import com.energia.backend.model.user.AppUserModel;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
@@ -43,21 +44,24 @@ public class JpaUsuarioCadastroRepository implements UsuarioCadastroRepository {
 
     @Override
     @Transactional
-    public Usuario save(Usuario usuario) {
+    public AppUserEntity save(AppUserModel user) {
         // Garantir que a role "user" existe
         RoleEntity userRole = roleRepository.findByNameIgnoreCase(DEFAULT_USER_ROLE)
                 .orElseGet(() -> roleRepository.save(RoleEntity.builder().name(DEFAULT_USER_ROLE).build()));
 
         AppUserEntity entity = AppUserEntity.builder()
-                .name(usuario.getNomeCompleto())
-                .email(normalizarEmail(usuario.getEmail()))
-                .password(usuario.getSenhaHash())
-                .phone(usuario.getTelefone())
+                .password(user.getPassword())
                 .anonymizationStatus(AnonymizationStatus.ACTIVE)
                 .roles(List.of(userRole))
                 .build();
 
-        AppUserEntity savedUser = appUserRepository.save(entity);
+        entity.setPersonalData(UserPersonalDataEntity.builder()
+                .name(user.getFullName())
+                .email(normalizarEmail(user.getEmail()))
+                .phone(sanitizeOptional(user.getPhone()))
+                .build());
+
+        AppUserEntity savedUser = appUserRepository.saveAndFlush(entity);
 
         StatusEntity statusPendente = statusRepository
                 .findByNameIgnoreCase(StatusUsuario.PENDENTE.name())
@@ -68,15 +72,25 @@ public class JpaUsuarioCadastroRepository implements UsuarioCadastroRepository {
         UserStatusEntity userStatus = UserStatusEntity.builder()
                 .user(savedUser)
                 .status(statusPendente)
-                .assignedAt(usuario.getDataCadastro() != null ? usuario.getDataCadastro() : LocalDateTime.now())
+                .assignedAt(user.getCreatedAt() != null ? user.getCreatedAt() : LocalDateTime.now())
                 .build();
 
-        userStatusRepository.save(userStatus);
-        return usuario;
+        userStatusRepository.saveAndFlush(userStatus);
+
+        savedUser.setStatuses(List.of(userStatus));
+
+        return savedUser;
     }
 
-    private String normalizarEmail(String email) {
+    public String normalizarEmail(String email) {
         return email == null ? null : email.trim().toLowerCase();
     }
-}
 
+    private String sanitizeOptional(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return null;
+        }
+
+        return value.trim();
+    }
+}

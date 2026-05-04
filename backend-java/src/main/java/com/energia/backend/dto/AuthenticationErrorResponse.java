@@ -1,5 +1,6 @@
 package com.energia.backend.dto;
 
+import java.util.Map;
 import java.time.ZonedDateTime;
 
 public class AuthenticationErrorResponse {
@@ -9,6 +10,7 @@ public class AuthenticationErrorResponse {
     private String message;
     private String severity;
     private String reason;
+    private Map<String, Object> details;
 
     public AuthenticationErrorResponse() {
     }
@@ -28,6 +30,18 @@ public class AuthenticationErrorResponse {
         this.message = message;
         this.severity = severity;
         this.reason = reason;
+    }
+
+    public AuthenticationErrorResponse(
+            int status,
+            String code,
+            String message,
+            String severity,
+            String reason,
+            Map<String, Object> details
+    ) {
+        this(status, code, message, severity, reason);
+        this.details = details;
     }
 
     public String getTimestamp() {
@@ -76,5 +90,13 @@ public class AuthenticationErrorResponse {
 
     public void setReason(String reason) {
         this.reason = reason;
+    }
+
+    public Map<String, Object> getDetails() {
+        return details;
+    }
+
+    public void setDetails(Map<String, Object> details) {
+        this.details = details;
     }
 }

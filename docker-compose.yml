@@ -9,7 +9,7 @@ services:
     ports:
       - "${POSTGRES_PORT_LOCAL}:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      # - postgres_data:/var/lib/postgresql/data
       - ./init-scripts/postgres:/docker-entrypoint-initdb.d
     networks:
       - energia-network
@@ -29,7 +29,7 @@ services:
     ports:
       - "${MONGO_PORT_LOCAL}:27017"
     volumes:
-      - mongodb_data:/data/db
+      # - mongodb_data:/data/db
       - ./init-scripts/mongo:/docker-entrypoint-initdb.d
     networks:
       - energia-network
@@ -47,12 +47,17 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      FLYWAY_USER: ${FLYWAY_USER}
+      FLYWAY_PASSWORD: ${FLYWAY_PASSWORD}
       SPRING_DATA_MONGODB_URI: mongodb://${MONGO_USERNAME}:${MONGO_PASSWORD}@${MONGO_HOST}:${MONGO_PORT}/${MONGO_DATABASE}?authSource=${MONGO_AUTH_SOURCE}
       SERVER_PORT: ${SERVER_PORT_JAVA}
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRATION: ${JWT_EXPIRATION}
       ADMIN_EMAIL: ${ADMIN_EMAIL}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      ETL_FILE_DIST_PATH: ${ETL_FILE_DIST_CONTAINER_PATH}
+      TZ: ${TZ}
+      ETL_CNPJ: ${ETL_CNPJ}
     ports:
       - "${SERVER_PORT_JAVA}:8181"
     networks:
@@ -67,7 +72,9 @@ services:
       interval: 15s
       timeout: 5s
       retries: 10
-
+    volumes:
+      - ${ETL_FILE_DIST_PATH}:${ETL_FILE_DIST_CONTAINER_PATH}
+   
   backend-python:
     build:
       context: ./backend-python
@@ -86,6 +93,16 @@ services:
       MONGO_AUTH_SOURCE: ${MONGO_AUTH_SOURCE}
       CORS_ORIGINS: ${CORS_ORIGINS}
       PORT: ${SERVER_PORT_PYTHON}
+      ANEEL_PERDAS_REPORT_URL: ${ANEEL_PERDAS_REPORT_URL}
+      ANEEL_PERDAS_PAGE_INDEX: ${ANEEL_PERDAS_PAGE_INDEX}
+      ANEEL_PERDAS_PAGE_NAME: ${ANEEL_PERDAS_PAGE_NAME}
+      ANEEL_PERDAS_VISUAL_TITLE: ${ANEEL_PERDAS_VISUAL_TITLE}
+      ANEEL_PERDAS_EXPORT_MODE: ${ANEEL_PERDAS_EXPORT_MODE}
+      ANEEL_PERDAS_MAX_ROWS: ${ANEEL_PERDAS_MAX_ROWS}
+      ANEEL_PERDAS_TIMEOUT_MS: ${ANEEL_PERDAS_TIMEOUT_MS}
+      ANEEL_PERDAS_RETENTION_YEARS: ${ANEEL_PERDAS_RETENTION_YEARS}
+      ANEEL_PERDAS_HEADLESS: ${ANEEL_PERDAS_HEADLESS}
+      ANEEL_PERDAS_ARCHIVE_DIR: ${ANEEL_PERDAS_ARCHIVE_DIR}
     ports:
       - "${SERVER_PORT_PYTHON}:8000"
     networks:
@@ -100,6 +117,41 @@ services:
       interval: 15s
       timeout: 10s
       retries: 10
+
+  backend-python-cron:
+    build:
+      context: ./backend-python
+    container_name: energia-backend-python-cron
+    command: ["/usr/local/bin/start-cron.sh"]
+    environment:
+      POSTGRES_HOST: ${POSTGRES_HOST}
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      MONGO_HOST: ${MONGO_HOST}
+      MONGO_PORT: ${MONGO_PORT}
+      MONGO_DATABASE: ${MONGO_DATABASE}
+      MONGO_USERNAME: ${MONGO_USERNAME}
+      MONGO_PASSWORD: ${MONGO_PASSWORD}
+      MONGO_AUTH_SOURCE: ${MONGO_AUTH_SOURCE}
+      ANEEL_PERDAS_REPORT_URL: ${ANEEL_PERDAS_REPORT_URL}
+      ANEEL_PERDAS_PAGE_INDEX: ${ANEEL_PERDAS_PAGE_INDEX}
+      ANEEL_PERDAS_PAGE_NAME: ${ANEEL_PERDAS_PAGE_NAME}
+      ANEEL_PERDAS_VISUAL_TITLE: ${ANEEL_PERDAS_VISUAL_TITLE}
+      ANEEL_PERDAS_EXPORT_MODE: ${ANEEL_PERDAS_EXPORT_MODE}
+      ANEEL_PERDAS_MAX_ROWS: ${ANEEL_PERDAS_MAX_ROWS}
+      ANEEL_PERDAS_TIMEOUT_MS: ${ANEEL_PERDAS_TIMEOUT_MS}
+      ANEEL_PERDAS_RETENTION_YEARS: ${ANEEL_PERDAS_RETENTION_YEARS}
+      ANEEL_PERDAS_HEADLESS: ${ANEEL_PERDAS_HEADLESS}
+      ANEEL_PERDAS_ARCHIVE_DIR: ${ANEEL_PERDAS_ARCHIVE_DIR}
+    networks:
+      - energia-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
 
   pgadmin:
     image: dpage/pgadmin4
@@ -133,9 +185,9 @@ services:
         mongodb:
           condition: service_healthy
 
-volumes:
-  postgres_data:
-  mongodb_data:
+# volumes:
+#   postgres_data:
+#   mongodb_data:
 
 networks:
   energia-network:

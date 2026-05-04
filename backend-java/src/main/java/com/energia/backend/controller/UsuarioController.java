@@ -1,6 +1,8 @@
 package com.energia.backend.controller;
 
 import java.security.Principal;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
@@ -16,33 +18,60 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.energia.backend.dto.AlterarRoleUsuarioRequest;
 import com.energia.backend.dto.AnonimizarUsuarioRequest;
 import com.energia.backend.dto.AnonimizarUsuarioResponse;
 import com.energia.backend.dto.AprovacaoRejeicaoUsuarioRequest;
+import com.energia.backend.dto.AtualizarEmailRequest;
+import com.energia.backend.dto.UserTermResponse;
 import com.energia.backend.dto.MinhaContaResponse;
 import com.energia.backend.dto.MinhaContaUpdateRequest;
-import com.energia.backend.dto.Usuario;
+import com.energia.backend.dto.RegistrarTermosRequest;
+import com.energia.backend.dto.TermosResponse;
 import com.energia.backend.dto.UsuarioCadastroRequest;
 import com.energia.backend.dto.UsuarioCadastroResponse;
+import com.energia.backend.exception.UsuarioNaoEncontradoException;
+import com.energia.backend.model.AppUserEntity;
+import com.energia.backend.model.StatusUsuario;
+import com.energia.backend.repository.AppUserJpaRepository;
 import com.energia.backend.service.AnonimizacaoService;
 import com.energia.backend.service.MinhaContaService;
+import com.energia.backend.service.TermsUserService;
 import com.energia.backend.service.UsuarioCadastroService;
 
+import com.energia.backend.service.UserRoleService;
+
+
+import jakarta.validation.Valid;
+import jakarta.servlet.http.HttpServletRequest;
+
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 @RestController
 @RequestMapping("/usuarios")
 public class UsuarioController {
     private final UsuarioCadastroService cadastroService;
     private final MinhaContaService minhaContaService;
     private final AnonimizacaoService anonimizacaoService;
+    private final AppUserJpaRepository appUserRepository;
+    private final TermsUserService termsUserService;
+    private final UserRoleService userRoleService;
 
     public UsuarioController(
             UsuarioCadastroService cadastroService,
             MinhaContaService minhaContaService,
-            AnonimizacaoService anonimizacaoService
+            AnonimizacaoService anonimizacaoService,
+            AppUserJpaRepository appUserRepository,
+            TermsUserService termsUserService,
+            UserRoleService userRoleService
     ) {
         this.cadastroService = cadastroService;
         this.minhaContaService = minhaContaService;
         this.anonimizacaoService = anonimizacaoService;
+        this.appUserRepository = appUserRepository;
+        this.termsUserService = termsUserService;
+        this.userRoleService = userRoleService;
     }
 
     @PatchMapping("/{id}/status")
@@ -50,55 +79,130 @@ public class UsuarioController {
     public ResponseEntity<String> alterarStatusUsuario(
             @PathVariable("id") UUID usuarioId,
             @RequestBody AprovacaoRejeicaoUsuarioRequest request,
-            Principal principal
-    ) {
-        UUID adminId = obterUidDoUsuarioAutenticado(principal);
+            Principal principal) {
+        UUID adminId = obterUid(principal);
         cadastroService.alterarStatusUsuario(usuarioId, adminId, request.getStatus(), request.getMotivo());
         return ResponseEntity.ok("Status do usuario atualizado com sucesso.");
     }
 
-    @PostMapping("/cadastro")
-    public ResponseEntity<UsuarioCadastroResponse> cadastrar(@RequestBody UsuarioCadastroRequest request) {
-        Usuario usuario = cadastroService.cadastrar(request);
+    @PatchMapping("/{id}/role")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<String> alterarRoleUsuario(
+            @PathVariable("id") UUID usuarioId,
+            @RequestBody AlterarRoleUsuarioRequest request,
+            Principal principal
+    ) {
+        UUID adminId = obterUid(principal);
+        userRoleService.alterarRoleUsuario(usuarioId, adminId, request.getRoleName());
+        return ResponseEntity.ok("Role do usuario atualizado com sucesso.");
+    }
 
-        UsuarioCadastroResponse response = new UsuarioCadastroResponse(
-                "Cadastro realizado com sucesso. Aguardando aprovacao do administrador.",
-                usuario.getEmail(),
-                usuario.getStatus()
-        );
+    @PostMapping(
+        value = "/cadastro",
+        consumes = "application/json",
+        produces = "application/json"
+    )
+    public ResponseEntity<UsuarioCadastroResponse> cadastrar(
+            @Valid @RequestBody UsuarioCadastroRequest request,
+            HttpServletRequest httpRequest) {
+        log.info("User registration requested for email={} from IP={}",
+                request.getEmail(),
+                httpRequest.getRemoteAddr());
 
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        AppUserEntity registeredUser = cadastroService.cadastrar(request);
+
+        log.info("User registration successful for email={} with id={}",
+                registeredUser.getEmail(),
+                registeredUser.getId());
+
+        UsuarioCadastroResponse response = UsuarioCadastroResponse.builder()
+                .mensagem("Registration completed successfully. Awaiting administrator approval")
+                .email(registeredUser.getEmail())
+                .status(new ArrayList<StatusUsuario>(List.of(StatusUsuario.PENDENTE)))
+                .build();
+
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(response);
     }
 
     @GetMapping("/minha-conta")
     public ResponseEntity<MinhaContaResponse> consultarMinhaConta(Principal principal) {
-        MinhaContaResponse response = minhaContaService.consultar(obterUidDoUsuarioAutenticado(principal));
+        MinhaContaResponse response = minhaContaService.consultar(obterUid(principal));
         return ResponseEntity.ok(response);
     }
 
     @PutMapping("/minha-conta")
     public ResponseEntity<MinhaContaResponse> atualizarMinhaConta(
             Principal principal,
-            @RequestBody MinhaContaUpdateRequest request
-    ) {
-        MinhaContaResponse response = minhaContaService.atualizar(obterUidDoUsuarioAutenticado(principal), request);
+            @RequestBody MinhaContaUpdateRequest request) {
+        MinhaContaResponse response = minhaContaService.atualizar(obterUid(principal), request);
         return ResponseEntity.ok(response);
+    }
+
+    @PatchMapping("/{id}/email")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<MinhaContaResponse> atualizarEmail(
+            Principal principal,
+            @PathVariable("id") UUID usuarioId,
+            @RequestBody AtualizarEmailRequest request) {
+        MinhaContaResponse response = minhaContaService.atualizarEmail(
+                obterUid(principal),
+                usuarioId,
+                request);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/meus-termos/historico")
+    public ResponseEntity<List<UserTermResponse>> listarHistoricoTermos(Principal principal) {
+        return ResponseEntity.ok(termsUserService.listarHistorico(obterUid(principal)));
+    }
+
+    @GetMapping("/meus-termos/pendentes")
+    public ResponseEntity<List<TermosResponse>> listarTermosPendentes(Principal principal) {
+        List<TermosResponse> termosResponses = termsUserService
+            .listarTermosPendentes(obterUid(principal), false)
+            .stream()
+            .map(TermosResponse::fromEntity)
+            .toList();
+
+    return ResponseEntity.ok(termosResponses);
+    }
+
+    @PostMapping("/meus-termos/aceites")
+    public ResponseEntity<Void> aceitarTermosPendentes(
+            Principal principal,
+            @RequestBody RegistrarTermosRequest request,
+            HttpServletRequest httpRequest) {
+        termsUserService.aprovarTermos(
+                request.getTermsIds(),
+                obterUsuario(principal));
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/meus-termos/revogacao")
+    public ResponseEntity<Void> revogarTermoOpcional(
+            Principal principal,
+            @RequestBody RegistrarTermosRequest request,
+            HttpServletRequest httpRequest) {
+        termsUserService.revogarTermos(
+            request.getTermsIds(),
+            obterUsuario(principal));
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/{usuarioId}/anonimizar")
     public ResponseEntity<AnonimizarUsuarioResponse> anonimizarUsuario(
             Principal principal,
-            @PathVariable UUID usuarioId
-    ) {
-        UUID actorId = obterUidDoUsuarioAutenticado(principal);
+            @PathVariable UUID usuarioId) {
+        UUID actorId = obterUid(principal);
         AnonimizarUsuarioResponse response = anonimizacaoService.anonimizar(
                 actorId,
-                new AnonimizarUsuarioRequest(usuarioId)
-        );
+                new AnonimizarUsuarioRequest(usuarioId));
         return ResponseEntity.ok(response);
     }
 
-    private UUID obterUidDoUsuarioAutenticado(Principal principal) {
+    private UUID obterUid(Principal principal) {
         if (principal == null || principal.getName() == null || principal.getName().trim().isEmpty()) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuario nao autenticado.");
         }
@@ -106,7 +210,14 @@ public class UsuarioController {
         try {
             return UUID.fromString(principal.getName().trim());
         } catch (IllegalArgumentException ex) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Identificador do usuario autenticado invalido.");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,
+                    "Identificador do usuario autenticado invalido.");
         }
+    }
+
+    private AppUserEntity obterUsuario(Principal principal) {
+        UUID userId = obterUid(principal);
+        return appUserRepository.findById(userId)
+                .orElseThrow(() -> new UsuarioNaoEncontradoException("Usuario autenticado nao encontrado."));
     }
 }

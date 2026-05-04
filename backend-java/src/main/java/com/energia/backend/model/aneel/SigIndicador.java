@@ -22,7 +22,7 @@ public class SigIndicador {
 	private List<Metricas> metrics;
 	
 	@Enumerated(EnumType.STRING)
-    @Column(name = "indicador_type", nullable = false)
+    @Column(name = "indicador_type", nullable = false, unique=true)
     private IndicadorType indicadorType;
 
 

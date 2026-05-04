@@ -1,8 +1,5 @@
 package com.energia.backend.model;
 
-import com.energia.backend.model.StatusEntity;
-import com.energia.backend.model.AppUserEntity;
-
 import jakarta.persistence.*;
 import lombok.*;
 

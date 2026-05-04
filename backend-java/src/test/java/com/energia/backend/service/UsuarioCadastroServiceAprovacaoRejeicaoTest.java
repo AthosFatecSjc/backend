@@ -1,26 +1,29 @@
 package com.energia.backend.service;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import com.energia.backend.exception.PermissaoNegadaException;
 import com.energia.backend.model.AppUserEntity;
 import com.energia.backend.model.RoleEntity;
-import com.energia.backend.model.StatusEntity;
 import com.energia.backend.model.StatusUsuario;
-import com.energia.backend.model.UserStatusEntity;
 import com.energia.backend.repository.AppUserJpaRepository;
+import com.energia.backend.repository.JpaUsuarioCadastroRepository;
+import com.energia.backend.repository.RoleJpaRepository;
 import com.energia.backend.repository.StatusJpaRepository;
 import com.energia.backend.repository.UserStatusJpaRepository;
 import com.energia.backend.repository.UsuarioCadastroRepository;
@@ -29,11 +32,15 @@ class UsuarioCadastroServiceAprovacaoRejeicaoTest {
 
     private UsuarioCadastroRepository usuarioCadastroRepository;
     private AppUserJpaRepository appUserRepository;
-    private TermsService termsService;
+    private TermsUserService termsUserService;
     private StatusJpaRepository statusRepository;
     private UserStatusJpaRepository userStatusRepository;
+    private TermsService termsService;
+    private UserStatusService userStatusService;
     private PasswordEncoder passwordEncoder;
     private UsuarioCadastroService service;
+    private JpaUsuarioCadastroRepository jpaUsuarioCadastroRepository;
+    private RoleJpaRepository roleJpaRepository;
 
     private UUID usuarioId;
     private UUID adminId;
@@ -44,17 +51,26 @@ class UsuarioCadastroServiceAprovacaoRejeicaoTest {
     void setup() {
         usuarioCadastroRepository = mock(UsuarioCadastroRepository.class);
         appUserRepository = mock(AppUserJpaRepository.class);
-        termsService = mock(TermsService.class);
+        termsUserService = mock(TermsUserService.class);
         statusRepository = mock(StatusJpaRepository.class);
         userStatusRepository = mock(UserStatusJpaRepository.class);
+        termsService = mock(TermsService.class);
+        userStatusService = mock(UserStatusService.class);
         passwordEncoder = mock(PasswordEncoder.class);
+        jpaUsuarioCadastroRepository = mock(JpaUsuarioCadastroRepository.class);
+        roleJpaRepository = mock(RoleJpaRepository.class);
         service = new UsuarioCadastroService(
                 usuarioCadastroRepository,
                 appUserRepository,
-                termsService,
+                termsUserService,
                 statusRepository,
                 userStatusRepository,
-                passwordEncoder
+                termsService,
+                userStatusService,
+                passwordEncoder,
+                jpaUsuarioCadastroRepository,
+                roleJpaRepository,
+                userStatusRepository
         );
 
         usuarioId = UUID.randomUUID();
@@ -78,41 +94,25 @@ class UsuarioCadastroServiceAprovacaoRejeicaoTest {
     }
 
     @Test
-    void deveAprovarUsuarioComRegistroDeStatus() {
-        mockStatusAtual("PENDENTE");
-        when(statusRepository.findByNameIgnoreCase("APROVADO"))
-                .thenReturn(Optional.of(StatusEntity.builder().id(UUID.randomUUID()).name("APROVADO").build()));
+    void deveAtivarUsuarioComDelegacaoParaUserStatusService() {
+        service.alterarStatusUsuario(usuarioId, adminId, StatusUsuario.ATIVO, null);
 
-        service.alterarStatusUsuario(usuarioId, adminId, StatusUsuario.APROVADO, null);
-
-        ArgumentCaptor<UserStatusEntity> captor = ArgumentCaptor.forClass(UserStatusEntity.class);
-        verify(userStatusRepository).save(captor.capture());
-        UserStatusEntity status = captor.getValue();
-
-        assertEquals(usuario, status.getUser());
-        assertEquals(admin, status.getAssignedBy());
-        assertEquals("APROVADO", status.getStatus().getName());
-        assertNull(status.getRationaleForRejection());
+        verify(userStatusService).transitionFromPending(usuario, admin, StatusUsuario.ATIVO, null);
     }
 
     @Test
-    void deveRejeitarUsuarioComMotivo() {
-        mockStatusAtual("PENDENTE");
-        when(statusRepository.findByNameIgnoreCase("REJEITADO"))
-                .thenReturn(Optional.of(StatusEntity.builder().id(UUID.randomUUID()).name("REJEITADO").build()));
-
+    void deveRejeitarUsuarioComMotivoDelegandoParaUserStatusService() {
         service.alterarStatusUsuario(usuarioId, adminId, StatusUsuario.REJEITADO, "Dados inconsistentes");
 
-        ArgumentCaptor<UserStatusEntity> captor = ArgumentCaptor.forClass(UserStatusEntity.class);
-        verify(userStatusRepository).save(captor.capture());
-        UserStatusEntity status = captor.getValue();
-
-        assertEquals("REJEITADO", status.getStatus().getName());
-        assertEquals("Dados inconsistentes", status.getRationaleForRejection());
+        verify(userStatusService).transitionFromPending(usuario, admin, StatusUsuario.REJEITADO, "Dados inconsistentes");
     }
 
     @Test
-    void rejeicaoSemMotivoDeveLancarExcecao() {
+    void rejeicaoSemMotivoDevePropagarExcecaoDoUserStatusService() {
+        doThrow(new IllegalArgumentException("Motivo da rejeicao e obrigatorio."))
+                .when(userStatusService)
+                .transitionFromPending(any(AppUserEntity.class), any(AppUserEntity.class), eq(StatusUsuario.REJEITADO), eq(" "));
+
         IllegalArgumentException ex = assertThrows(
                 IllegalArgumentException.class,
                 () -> service.alterarStatusUsuario(usuarioId, adminId, StatusUsuario.REJEITADO, " ")
@@ -124,49 +124,12 @@ class UsuarioCadastroServiceAprovacaoRejeicaoTest {
     @Test
     void naoPermiteAlterarStatusSeNaoForAdmin() {
         admin.setRoles(List.of());
-        mockStatusAtual("PENDENTE");
 
         PermissaoNegadaException ex = assertThrows(
                 PermissaoNegadaException.class,
-                () -> service.alterarStatusUsuario(usuarioId, adminId, StatusUsuario.APROVADO, null)
+                () -> service.alterarStatusUsuario(usuarioId, adminId, StatusUsuario.ATIVO, null)
         );
 
         assertEquals("Apenas administradores podem alterar o status de usuarios.", ex.getMessage());
-    }
-
-    @Test
-    void naoPermiteAlterarStatusSeNaoEstiverPendente() {
-        mockStatusAtual("APROVADO");
-
-        IllegalStateException ex = assertThrows(
-                IllegalStateException.class,
-                () -> service.alterarStatusUsuario(usuarioId, adminId, StatusUsuario.REJEITADO, "motivo")
-        );
-
-        assertEquals("So e permitido aprovar ou rejeitar usuarios com status PENDENTE.", ex.getMessage());
-    }
-
-    @Test
-    void naoPermiteAlterarParaStatusDiferenteDeAprovadoOuRejeitado() {
-        IllegalArgumentException ex = assertThrows(
-                IllegalArgumentException.class,
-                () -> service.alterarStatusUsuario(usuarioId, adminId, StatusUsuario.PENDENTE, null)
-        );
-
-        assertEquals("Status deve ser APROVADO ou REJEITADO.", ex.getMessage());
-    }
-
-    private void mockStatusAtual(String nomeStatus) {
-        UserStatusEntity statusAtual = UserStatusEntity.builder()
-                .user(usuario)
-                .status(StatusEntity.builder().id(UUID.randomUUID()).name(nomeStatus).build())
-                .assignedBy(admin)
-                .assignedAt(LocalDateTime.now().minusMinutes(10))
-                .build();
-
-        when(userStatusRepository.findFirstByUserOrderByAssignedAtDesc(usuario))
-                .thenReturn(Optional.of(statusAtual));
-        when(userStatusRepository.save(any(UserStatusEntity.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
     }
 }

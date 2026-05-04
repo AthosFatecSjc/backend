@@ -25,9 +25,6 @@ import java.util.UUID;
 public class UserPrivacyAnonymizationService {
 
     static final int STRATEGY_VERSION = 1;
-    static final String ANONYMIZED_NAME = "ANONYMIZED USER";
-    static final String ANONYMIZED_EMAIL_DOMAIN = "@anon.io";
-    static final String PASSWORD_MARKER = "ANONYMIZED::";
     private static final String MODULE_NAME = "privacy-protection";
 
     private final AppUserJpaRepository appUserRepository;
@@ -53,7 +50,9 @@ public class UserPrivacyAnonymizationService {
                 .orElseThrow(() -> new EntityNotFoundException("Usuario nao encontrado para anonimizar."));
 
         LocalDateTime now = LocalDateTime.now();
-        applyAnonymizedValues(user, now);
+        user.clearPersonalData();
+        user.setAnonymizationStatus(AnonymizationStatus.ANONYMIZED);
+        user.setAnonymizedAt(now);
         appUserRepository.save(user);
 
         PrivacyAnonymizationRegistryEntity registry = registryRepository
@@ -74,15 +73,16 @@ public class UserPrivacyAnonymizationService {
         registryRepository.save(registry);
 
         logService.log(
-                actorRef,
-                userId.toString(),
-                SourceType.SYSTEM,
-                LogEvent.USER_ANONYMIZED,
-                ResultType.SUCCESS,
-                LogCategory.AUDIT,
-                "Anonimizacao registrada com protecao contra reativacao por restore.",
-                "reason=" + sanitizeMetadata(reason) + ";strategyVersion=" + STRATEGY_VERSION,
-                MODULE_NAME
+            actorRef,
+            userId.toString(),
+            SourceType.SYSTEM,
+            LogEvent.USER_ANONYMIZED,
+            ResultType.SUCCESS,
+            LogCategory.AUDIT,
+            "Anonimizacao registrada com protecao contra reativacao por restore.",
+            String.format("{\"reason\":%s,\"strategyVersion\":%d}",
+                reason == null ? "null" : '"' + reason.replace("\"", "'") + '"', STRATEGY_VERSION),
+            MODULE_NAME
         );
     }
 
@@ -101,11 +101,13 @@ public class UserPrivacyAnonymizationService {
         boolean needsReapply = requiresReapply(user);
 
         if (needsReapply) {
-            applyAnonymizedValues(user, now);
+            user.clearPersonalData();
+            user.setAnonymizationStatus(AnonymizationStatus.ANONYMIZED);
+            user.setAnonymizedAt(now);
             appUserRepository.save(user);
             registry.setLastReappliedAt(now);
 
-            logService.log(
+                logService.log(
                     "system",
                     registry.getEntityId().toString(),
                     SourceType.JOB,
@@ -113,9 +115,9 @@ public class UserPrivacyAnonymizationService {
                     ResultType.SUCCESS,
                     LogCategory.TECHNICAL,
                     "Anonimizacao reaplicada apos reconciliacao de restore.",
-                    "strategyVersion=" + registry.getStrategyVersion(),
+                    String.format("{\"strategyVersion\":%d}", registry.getStrategyVersion()),
                     MODULE_NAME
-            );
+                );
         }
 
         registry.setLastReconciledAt(now);
@@ -126,38 +128,8 @@ public class UserPrivacyAnonymizationService {
     boolean requiresReapply(AppUserEntity user) {
         return user.getAnonymizationStatus() != AnonymizationStatus.ANONYMIZED
                 || user.getAnonymizedAt() == null
-                || !ANONYMIZED_NAME.equals(user.getName())
-                || user.getPhone() != null
-                || !isAnonymizedEmail(user.getEmail())
-                || user.getPassword() == null
-                || !user.getPassword().startsWith(PASSWORD_MARKER);
+                || user.getPersonalData() != null;
     }
 
-    private void applyAnonymizedValues(AppUserEntity user, LocalDateTime anonymizedAt) {
-        user.setName(ANONYMIZED_NAME);
-        user.setEmail(buildAnonymizedEmail(user.getId()));
-        user.setPhone(null);
-        user.setPassword(PASSWORD_MARKER + compactUuid(user.getId()));
-        user.setAnonymizationStatus(AnonymizationStatus.ANONYMIZED);
-        user.setAnonymizedAt(anonymizedAt);
-    }
 
-    private String buildAnonymizedEmail(UUID userId) {
-        return "u" + compactUuid(userId) + ANONYMIZED_EMAIL_DOMAIN;
-    }
-
-    private String compactUuid(UUID userId) {
-        return userId.toString().replace("-", "");
-    }
-
-    private boolean isAnonymizedEmail(String email) {
-        return email != null
-                && email.endsWith(ANONYMIZED_EMAIL_DOMAIN)
-                && email.length() <= 50
-                && email.startsWith("u");
-    }
-
-    private String sanitizeMetadata(String value) {
-        return value == null ? "" : value.replace(";", ",");
-    }
 }

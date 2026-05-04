@@ -47,10 +47,10 @@ public class Metricas {
 	@Column(name = "ano_indice", nullable = false)
     private Long anoIndice;
 
-	@Column(name = "data_geracao_conj_dados", nullable = false)
+    @Column(name = "data_geracao_conj_dados")
     private LocalDate dataGeracaoConjDados;
 
-	@Column(name = "vlr_indice_enviado", nullable = false)
+    @Column(name = "vlr_indice_enviado")
     private Double vlrIndiceEnviado;
 
     

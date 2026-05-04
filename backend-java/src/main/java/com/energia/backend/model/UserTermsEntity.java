@@ -1,8 +1,5 @@
 package com.energia.backend.model;
 
-import com.energia.backend.model.TermsEntity;
-import com.energia.backend.model.AppUserEntity;
-
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -21,24 +18,18 @@ public class UserTermsEntity {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    // MANY → ONE (User)
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private AppUserEntity user;
 
-    // MANY → ONE (Terms)
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
     @JoinColumn(name = "terms_id", nullable = false)
     private TermsEntity terms;
 
-    @Column(name = "accepted_at", nullable = false)
-    private LocalDateTime acceptedAt;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "action", nullable = false, length = 20)
+    private UserTermsAction action;
 
-    @Column(name = "accepted_from_ip", nullable = false, length = 45)
-    private String acceptedFromIp;
-
-    @Column(name = "revoked_at")
-    private LocalDateTime revokedAt;
-
-
+    @Column(name = "action_at", nullable = false)
+    private LocalDateTime actionAt;
 }

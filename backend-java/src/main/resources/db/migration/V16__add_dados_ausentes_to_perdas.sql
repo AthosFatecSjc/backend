@@ -1,0 +1,2 @@
+ALTER TABLE aneel.perdas
+ADD COLUMN IF NOT EXISTS dados_ausentes TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[];
