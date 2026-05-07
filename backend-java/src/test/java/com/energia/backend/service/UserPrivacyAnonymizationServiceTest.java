@@ -36,10 +36,13 @@ class UserPrivacyAnonymizationServiceTest {
         AppUserJpaRepository userRepository = mock(AppUserJpaRepository.class);
         PrivacyAnonymizationRegistryRepository registryRepository =
                 mock(PrivacyAnonymizationRegistryRepository.class);
+        ExternalUserPrivacyRegistryService externalUserPrivacyRegistryService =
+                mock(ExternalUserPrivacyRegistryService.class);
         LogService logService = mock(LogService.class);
         UserPrivacyAnonymizationService service = new UserPrivacyAnonymizationService(
                 userRepository,
                 registryRepository,
+                externalUserPrivacyRegistryService,
                 logService,
                 90
         );
@@ -82,6 +85,7 @@ class UserPrivacyAnonymizationServiceTest {
         assertEquals(userId, registry.getEntityId());
         assertTrue(registry.isActive());
         assertNotNull(registry.getRetentionUntil());
+        verify(externalUserPrivacyRegistryService).markUserDeleted(eq(userId), any(LocalDateTime.class));
 
         verify(logService).log(
                 eq("admin-1"),
@@ -101,10 +105,13 @@ class UserPrivacyAnonymizationServiceTest {
         AppUserJpaRepository userRepository = mock(AppUserJpaRepository.class);
         PrivacyAnonymizationRegistryRepository registryRepository =
                 mock(PrivacyAnonymizationRegistryRepository.class);
+        ExternalUserPrivacyRegistryService externalUserPrivacyRegistryService =
+                mock(ExternalUserPrivacyRegistryService.class);
         LogService logService = mock(LogService.class);
         UserPrivacyAnonymizationService service = new UserPrivacyAnonymizationService(
                 userRepository,
                 registryRepository,
+                externalUserPrivacyRegistryService,
                 logService,
                 90
         );
@@ -160,10 +167,13 @@ class UserPrivacyAnonymizationServiceTest {
         AppUserJpaRepository userRepository = mock(AppUserJpaRepository.class);
         PrivacyAnonymizationRegistryRepository registryRepository =
                 mock(PrivacyAnonymizationRegistryRepository.class);
+        ExternalUserPrivacyRegistryService externalUserPrivacyRegistryService =
+                mock(ExternalUserPrivacyRegistryService.class);
         LogService logService = mock(LogService.class);
         UserPrivacyAnonymizationService service = new UserPrivacyAnonymizationService(
                 userRepository,
                 registryRepository,
+                externalUserPrivacyRegistryService,
                 logService,
                 90
         );
