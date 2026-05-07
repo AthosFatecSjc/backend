@@ -39,19 +39,22 @@ public class AdminInitializationService implements CommandLineRunner {
     private final StatusJpaRepository statusRepository;
     private final UserStatusJpaRepository userStatusRepository;
     private final PasswordEncoder passwordEncoder;
+    private final ExternalUserPrivacyRegistryService externalUserPrivacyRegistryService;
 
     public AdminInitializationService(
             AppUserJpaRepository appUserRepository,
             RoleJpaRepository roleRepository,
             StatusJpaRepository statusRepository,
             UserStatusJpaRepository userStatusRepository,
-            PasswordEncoder passwordEncoder
+            PasswordEncoder passwordEncoder,
+            ExternalUserPrivacyRegistryService externalUserPrivacyRegistryService
     ) {
         this.appUserRepository = appUserRepository;
         this.roleRepository = roleRepository;
         this.statusRepository = statusRepository;
         this.userStatusRepository = userStatusRepository;
         this.passwordEncoder = passwordEncoder;
+        this.externalUserPrivacyRegistryService = externalUserPrivacyRegistryService;
     }
 
     @Override
@@ -110,6 +113,7 @@ public class AdminInitializationService implements CommandLineRunner {
                     .build();
 
             userStatusRepository.saveAndFlush(adminStatus);
+            externalUserPrivacyRegistryService.upsertActiveUser(savedAdmin.getId(), savedAdmin.getEmail());
 
             logger.info("Admin user created successfully with email: {}", normalizedEmail);
         } catch (Exception ex) {
