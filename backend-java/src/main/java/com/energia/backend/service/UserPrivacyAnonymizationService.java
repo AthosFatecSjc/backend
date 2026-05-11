@@ -29,17 +29,20 @@ public class UserPrivacyAnonymizationService {
 
     private final AppUserJpaRepository appUserRepository;
     private final PrivacyAnonymizationRegistryRepository registryRepository;
+    private final ExternalUserPrivacyRegistryService externalUserPrivacyRegistryService;
     private final LogService logService;
     private final int backupRetentionDays;
 
     public UserPrivacyAnonymizationService(
             AppUserJpaRepository appUserRepository,
             PrivacyAnonymizationRegistryRepository registryRepository,
+            ExternalUserPrivacyRegistryService externalUserPrivacyRegistryService,
             LogService logService,
             @Value("${privacy.backup.retention-days:90}") int backupRetentionDays
     ) {
         this.appUserRepository = appUserRepository;
         this.registryRepository = registryRepository;
+        this.externalUserPrivacyRegistryService = externalUserPrivacyRegistryService;
         this.logService = logService;
         this.backupRetentionDays = backupRetentionDays;
     }
@@ -71,6 +74,7 @@ public class UserPrivacyAnonymizationService {
         registry.setLastReappliedAt(now);
         registry.setActive(true);
         registryRepository.save(registry);
+        externalUserPrivacyRegistryService.markUserDeleted(userId, now);
 
         logService.log(
             actorRef,

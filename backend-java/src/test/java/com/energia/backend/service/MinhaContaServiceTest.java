@@ -37,7 +37,14 @@ class MinhaContaServiceTest {
         AppUserJpaRepository appUserRepository = mock(AppUserJpaRepository.class);
         UserStatusService userStatusService = mock(UserStatusService.class);
         LogService logService = mock(LogService.class);
-        MinhaContaService service = new MinhaContaService(appUserRepository, userStatusService, logService);
+        ExternalUserPrivacyRegistryService externalUserPrivacyRegistryService =
+                mock(ExternalUserPrivacyRegistryService.class);
+        MinhaContaService service = new MinhaContaService(
+                appUserRepository,
+                userStatusService,
+                logService,
+                externalUserPrivacyRegistryService
+        );
 
         UUID userId = UUID.randomUUID();
         LocalDateTime dataCadastro = LocalDateTime.now().minusDays(5);
@@ -68,7 +75,14 @@ class MinhaContaServiceTest {
         AppUserJpaRepository appUserRepository = mock(AppUserJpaRepository.class);
         UserStatusService userStatusService = mock(UserStatusService.class);
         LogService logService = mock(LogService.class);
-        MinhaContaService service = new MinhaContaService(appUserRepository, userStatusService, logService);
+        ExternalUserPrivacyRegistryService externalUserPrivacyRegistryService =
+                mock(ExternalUserPrivacyRegistryService.class);
+        MinhaContaService service = new MinhaContaService(
+                appUserRepository,
+                userStatusService,
+                logService,
+                externalUserPrivacyRegistryService
+        );
 
         UUID userId = UUID.randomUUID();
         LocalDateTime dataCadastro = LocalDateTime.now().minusDays(7);
@@ -117,7 +131,14 @@ class MinhaContaServiceTest {
         AppUserJpaRepository appUserRepository = mock(AppUserJpaRepository.class);
         UserStatusService userStatusService = mock(UserStatusService.class);
         LogService logService = mock(LogService.class);
-        MinhaContaService service = new MinhaContaService(appUserRepository, userStatusService, logService);
+        ExternalUserPrivacyRegistryService externalUserPrivacyRegistryService =
+                mock(ExternalUserPrivacyRegistryService.class);
+        MinhaContaService service = new MinhaContaService(
+                appUserRepository,
+                userStatusService,
+                logService,
+                externalUserPrivacyRegistryService
+        );
 
         UUID userId = UUID.randomUUID();
 
@@ -159,7 +180,14 @@ class MinhaContaServiceTest {
         AppUserJpaRepository appUserRepository = mock(AppUserJpaRepository.class);
         UserStatusService userStatusService = mock(UserStatusService.class);
         LogService logService = mock(LogService.class);
-        MinhaContaService service = new MinhaContaService(appUserRepository, userStatusService, logService);
+        ExternalUserPrivacyRegistryService externalUserPrivacyRegistryService =
+                mock(ExternalUserPrivacyRegistryService.class);
+        MinhaContaService service = new MinhaContaService(
+                appUserRepository,
+                userStatusService,
+                logService,
+                externalUserPrivacyRegistryService
+        );
 
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
@@ -176,7 +204,14 @@ class MinhaContaServiceTest {
         AppUserJpaRepository appUserRepository = mock(AppUserJpaRepository.class);
         UserStatusService userStatusService = mock(UserStatusService.class);
         LogService logService = mock(LogService.class);
-        MinhaContaService service = new MinhaContaService(appUserRepository, userStatusService, logService);
+        ExternalUserPrivacyRegistryService externalUserPrivacyRegistryService =
+                mock(ExternalUserPrivacyRegistryService.class);
+        MinhaContaService service = new MinhaContaService(
+                appUserRepository,
+                userStatusService,
+                logService,
+                externalUserPrivacyRegistryService
+        );
 
         UUID adminId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
@@ -208,6 +243,7 @@ class MinhaContaServiceTest {
         MinhaContaResponse response = service.atualizarEmail(adminId, userId, request);
 
         assertEquals("novo@teste.com", response.getEmail());
+        verify(externalUserPrivacyRegistryService).upsertActiveUser(userId, "novo@teste.com");
         verify(logService).log(
                 adminId.toString(),
                 userId.toString(),
@@ -226,7 +262,14 @@ class MinhaContaServiceTest {
         AppUserJpaRepository appUserRepository = mock(AppUserJpaRepository.class);
         UserStatusService userStatusService = mock(UserStatusService.class);
         LogService logService = mock(LogService.class);
-        MinhaContaService service = new MinhaContaService(appUserRepository, userStatusService, logService);
+        ExternalUserPrivacyRegistryService externalUserPrivacyRegistryService =
+                mock(ExternalUserPrivacyRegistryService.class);
+        MinhaContaService service = new MinhaContaService(
+                appUserRepository,
+                userStatusService,
+                logService,
+                externalUserPrivacyRegistryService
+        );
 
         UUID actorId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();

@@ -14,7 +14,10 @@ db.createUser({
 db.createCollection('interrupcoes');
 db.createCollection('analises_tecnicas');
 db.createCollection('dados_historicos');
+db.createCollection('lgpd_user_registry');
 
 db.interrupcoes.createIndex({ "concessionaria_id": 1, "data": -1 });
 db.interrupcoes.createIndex({ "duracao": -1 });
 db.analises_tecnicas.createIndex({ "data_analise": -1 });
+db.lgpd_user_registry.createIndex({ "email": 1 }, { unique: true, sparse: true });
+db.lgpd_user_registry.createIndex({ "deletedAt": 1 });

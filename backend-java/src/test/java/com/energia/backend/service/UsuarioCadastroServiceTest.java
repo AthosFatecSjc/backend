@@ -8,6 +8,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.LocalDateTime;
@@ -49,6 +50,8 @@ class UsuarioCadastroServiceTest {
         TermsRepository termsRepository = mock(TermsRepository.class);
         JpaUsuarioCadastroRepository jpaUsuarioCadastroRepository = mock(JpaUsuarioCadastroRepository.class);
         RoleJpaRepository roleJpaRepository = mock(RoleJpaRepository.class);
+        ExternalUserPrivacyRegistryService externalUserPrivacyRegistryService =
+                mock(ExternalUserPrivacyRegistryService.class);
 
         when(passwordEncoder.encode(any())).thenReturn("encoded_SenhaFuerte123");
         when(usuarioCadastroRepository.existsByEmail(anyString())).thenReturn(false);
@@ -88,7 +91,8 @@ class UsuarioCadastroServiceTest {
                 passwordEncoder,
                 jpaUsuarioCadastroRepository,
                 roleJpaRepository,
-                userStatusRepository);
+                userStatusRepository,
+                externalUserPrivacyRegistryService);
 
         UsuarioCadastroRequest request = new UsuarioCadastroRequest();
         request.setNomeCompleto("Maria Silva");
@@ -109,6 +113,7 @@ class UsuarioCadastroServiceTest {
         assertNotNull(registeredUser.getPassword());
         assertNotEquals("SenhaFuerte123", registeredUser.getPassword());
         assertEquals("encoded_SenhaFuerte123", registeredUser.getPassword());
+        verify(externalUserPrivacyRegistryService).upsertActiveUser(mockUser.getId(), "maria@teste.com");
     }
 
     @Test
@@ -123,6 +128,8 @@ class UsuarioCadastroServiceTest {
         PasswordEncoder passwordEncoder = new MockPasswordEncoder();
         JpaUsuarioCadastroRepository jpaUsuarioCadastroRepository = mock(JpaUsuarioCadastroRepository.class);
         RoleJpaRepository roleJpaRepository = mock(RoleJpaRepository.class);
+        ExternalUserPrivacyRegistryService externalUserPrivacyRegistryService =
+                mock(ExternalUserPrivacyRegistryService.class);
 
         when(usuarioCadastroRepository.existsByEmail(any())).thenReturn(true);
         when(jpaUsuarioCadastroRepository.normalizarEmail(any())).thenReturn("duplicado@teste.com");
@@ -147,7 +154,8 @@ class UsuarioCadastroServiceTest {
                 passwordEncoder,
                 jpaUsuarioCadastroRepository,
                 roleJpaRepository,
-                userStatusRepository);
+                userStatusRepository,
+                externalUserPrivacyRegistryService);
 
         UsuarioCadastroRequest request = new UsuarioCadastroRequest();
         request.setNomeCompleto("Joao");
