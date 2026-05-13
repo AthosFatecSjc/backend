@@ -40,6 +40,7 @@ public class SecurityConfig {
                 .requestMatchers("/usuarios/cadastro").permitAll()
                 .requestMatchers("/documentos/consentimentos/vigentes").permitAll()
                 .requestMatchers("/indicadores/mapa/criticidade").permitAll()
+                .requestMatchers("/ops/emergency/emails/usuarios-nao-deletados").permitAll()
                 .requestMatchers("/admin/**").hasRole("ADMIN")
                 .requestMatchers("/usuarios/**").authenticated()
                 .requestMatchers("/indicadores/**").authenticated()
