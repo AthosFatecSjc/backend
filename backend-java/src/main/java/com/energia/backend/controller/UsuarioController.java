@@ -1,6 +1,7 @@
 package com.energia.backend.controller;
 
 import java.security.Principal;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -30,6 +31,7 @@ import com.energia.backend.dto.RegistrarTermosRequest;
 import com.energia.backend.dto.TermosResponse;
 import com.energia.backend.dto.UsuarioCadastroRequest;
 import com.energia.backend.dto.UsuarioCadastroResponse;
+import com.energia.backend.dto.UsuarioHistoricoTermosResponse;
 import com.energia.backend.exception.UsuarioNaoEncontradoException;
 import com.energia.backend.model.AppUserEntity;
 import com.energia.backend.model.StatusUsuario;
@@ -40,7 +42,6 @@ import com.energia.backend.service.TermsUserService;
 import com.energia.backend.service.UsuarioCadastroService;
 
 import com.energia.backend.service.UserRoleService;
-
 
 import jakarta.validation.Valid;
 import jakarta.servlet.http.HttpServletRequest;
@@ -64,8 +65,7 @@ public class UsuarioController {
             AnonimizacaoService anonimizacaoService,
             AppUserJpaRepository appUserRepository,
             TermsUserService termsUserService,
-            UserRoleService userRoleService
-    ) {
+            UserRoleService userRoleService) {
         this.cadastroService = cadastroService;
         this.minhaContaService = minhaContaService;
         this.anonimizacaoService = anonimizacaoService;
@@ -90,18 +90,13 @@ public class UsuarioController {
     public ResponseEntity<String> alterarRoleUsuario(
             @PathVariable("id") UUID usuarioId,
             @RequestBody AlterarRoleUsuarioRequest request,
-            Principal principal
-    ) {
+            Principal principal) {
         UUID adminId = obterUid(principal);
         userRoleService.alterarRoleUsuario(usuarioId, adminId, request.getRoleName());
         return ResponseEntity.ok("Role do usuario atualizado com sucesso.");
     }
 
-    @PostMapping(
-        value = "/cadastro",
-        consumes = "application/json",
-        produces = "application/json"
-    )
+    @PostMapping(value = "/cadastro", consumes = "application/json", produces = "application/json")
     public ResponseEntity<UsuarioCadastroResponse> cadastrar(
             @Valid @RequestBody UsuarioCadastroRequest request,
             HttpServletRequest httpRequest) {
@@ -154,22 +149,47 @@ public class UsuarioController {
     }
 
     @GetMapping("/meus-termos/historico")
-    public ResponseEntity<List<UserTermResponse>> listarHistoricoTermos(Principal principal) {
-        return ResponseEntity.ok(termsUserService.listarHistorico(obterUid(principal)));
+    public ResponseEntity<UsuarioHistoricoTermosResponse> listarHistorico(
+            Principal principal) {
+        UUID userId = obterUid(principal);
+
+        return ResponseEntity.ok(
+                termsUserService.listarHistoricoFormatado(userId));
+    }
+
+    @GetMapping("/historico")
+    public ResponseEntity<List<UsuarioHistoricoTermosResponse>> listarHistorico() {
+        return ResponseEntity.ok(
+                termsUserService.listarHistoricoFormatadoAllUsers());
     }
 
     @GetMapping("/meus-termos/pendentes")
     public ResponseEntity<List<TermosResponse>> listarTermosPendentes(Principal principal) {
         List<TermosResponse> termosResponses = termsUserService
-            .listarTermosPendentes(obterUid(principal), false)
-            .stream()
-            .map(TermosResponse::fromEntity)
-            .toList();
+                .listarTermosPendentes(obterUid(principal), false)
+                .stream()
+                .map(TermosResponse::fromEntity)
+                .toList();
 
-    return ResponseEntity.ok(termosResponses);
+        return ResponseEntity.ok(termosResponses);
     }
 
-    @PostMapping("/meus-termos/aceites")
+    @GetMapping("/meus-termos/aceitos")
+    public ResponseEntity<List<TermosResponse>> listarAceitos(
+            Principal principal) {
+        AppUserEntity user = cadastroService.getUserOrThrow(obterUid(principal));
+
+        List<TermosResponse> termosAceitos = termsUserService.findAcceptedUserTermsAtTime(
+                user,
+                LocalDateTime.now())
+                .stream()
+                .map(termsUserService::convertToTermosResponse)
+                .toList();
+
+        return ResponseEntity.ok(termosAceitos);
+    }
+
+    @PostMapping("/meus-termos/aprovar")
     public ResponseEntity<Void> aceitarTermosPendentes(
             Principal principal,
             @RequestBody RegistrarTermosRequest request,
@@ -186,8 +206,8 @@ public class UsuarioController {
             @RequestBody RegistrarTermosRequest request,
             HttpServletRequest httpRequest) {
         termsUserService.revogarTermos(
-            request.getTermsIds(),
-            obterUsuario(principal));
+                request.getTermsIds(),
+                obterUsuario(principal));
         return ResponseEntity.noContent().build();
     }
 

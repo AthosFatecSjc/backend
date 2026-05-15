@@ -27,4 +27,5 @@ public record TermosResponse(
                         entity.getEffectivityEndAt()
                 );
         }
+
 }

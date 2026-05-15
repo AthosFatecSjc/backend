@@ -41,7 +41,7 @@ public class SecurityConfig {
                 .requestMatchers("/documentos/consentimentos/vigentes").permitAll()
                 .requestMatchers("/indicadores/mapa/criticidade").permitAll()
                 .requestMatchers("/admin/**").hasRole("ADMIN")
-                .requestMatchers("/usuarios/**").authenticated()
+                .requestMatchers("/usuarios/**").permitAll()
                 .requestMatchers("/indicadores/**").authenticated()
                 .requestMatchers("/concessionarias/**").authenticated().anyRequest().authenticated()
             )

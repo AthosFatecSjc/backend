@@ -27,6 +27,7 @@ import com.energia.backend.repository.RoleJpaRepository;
 import com.energia.backend.repository.StatusJpaRepository;
 import com.energia.backend.repository.UserStatusJpaRepository;
 import com.energia.backend.repository.UsuarioCadastroRepository;
+import com.energia.backend.repository.UsuarioRepository;
 
 class UsuarioCadastroServiceAprovacaoRejeicaoTest {
 
@@ -41,6 +42,7 @@ class UsuarioCadastroServiceAprovacaoRejeicaoTest {
     private UsuarioCadastroService service;
     private JpaUsuarioCadastroRepository jpaUsuarioCadastroRepository;
     private RoleJpaRepository roleJpaRepository;
+    private UsuarioRepository userRepository;
 
     private UUID usuarioId;
     private UUID adminId;
@@ -59,6 +61,7 @@ class UsuarioCadastroServiceAprovacaoRejeicaoTest {
         passwordEncoder = mock(PasswordEncoder.class);
         jpaUsuarioCadastroRepository = mock(JpaUsuarioCadastroRepository.class);
         roleJpaRepository = mock(RoleJpaRepository.class);
+        userRepository = mock(UsuarioRepository.class);
         service = new UsuarioCadastroService(
                 usuarioCadastroRepository,
                 appUserRepository,
@@ -70,7 +73,8 @@ class UsuarioCadastroServiceAprovacaoRejeicaoTest {
                 passwordEncoder,
                 jpaUsuarioCadastroRepository,
                 roleJpaRepository,
-                userStatusRepository
+                userStatusRepository,
+                userRepository
         );
 
         usuarioId = UUID.randomUUID();
