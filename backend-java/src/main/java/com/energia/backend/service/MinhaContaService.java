@@ -24,15 +24,18 @@ public class MinhaContaService {
     private final AppUserJpaRepository appUserRepository;
     private final UserStatusService userStatusService;
     private final LogService logService;
+    private final ExternalUserPrivacyRegistryService externalUserPrivacyRegistryService;
 
     public MinhaContaService(
             AppUserJpaRepository appUserRepository,
             UserStatusService userStatusService,
-            LogService logService
+            LogService logService,
+            ExternalUserPrivacyRegistryService externalUserPrivacyRegistryService
     ) {
         this.appUserRepository = appUserRepository;
         this.userStatusService = userStatusService;
         this.logService = logService;
+        this.externalUserPrivacyRegistryService = externalUserPrivacyRegistryService;
     }
 
     @Transactional(readOnly = true)
@@ -98,6 +101,7 @@ public class MinhaContaService {
         String emailAnterior = usuario.getEmail();
         usuario.setEmail(novoEmail);
         AppUserEntity atualizado = appUserRepository.save(usuario);
+        externalUserPrivacyRegistryService.upsertActiveUser(atualizado.getId(), atualizado.getEmail());
 
         logService.log(
                 adminId.toString(),

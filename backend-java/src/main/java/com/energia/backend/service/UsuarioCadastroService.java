@@ -36,6 +36,7 @@ public class UsuarioCadastroService {
     private final PasswordEncoder passwordEncoder;
     private final JpaUsuarioCadastroRepository jpaUsuarioCadastroRepository;
     private final RoleJpaRepository roleRepository;
+    private final ExternalUserPrivacyRegistryService externalUserPrivacyRegistryService;
     private static final Pattern EMAIL_PATTERN = Pattern.compile("[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}");
     private final UserStatusJpaRepository userStatusRepository;
     private final UsuarioRepository userRepository;
@@ -52,7 +53,8 @@ public class UsuarioCadastroService {
             JpaUsuarioCadastroRepository jpaUsuarioCadastroRepository,
             RoleJpaRepository roleRepository,
             UserStatusJpaRepository userStatusJpaRepository,
-            UsuarioRepository userRepository) {
+            UsuarioRepository userRepository,
+            ExternalUserPrivacyRegistryService externalUserPrivacyRegistryService) {
         this.usuarioCadastroRepository = usuarioCadastroRepository;
         this.appUserRepository = appUserRepository;
         this.termsUserService = termsUserService;
@@ -63,6 +65,7 @@ public class UsuarioCadastroService {
         this.roleRepository = roleRepository;
         this.userStatusRepository = userStatusJpaRepository;
         this.userRepository = userRepository;
+        this.externalUserPrivacyRegistryService = externalUserPrivacyRegistryService;
     }
 
     @Transactional
@@ -107,6 +110,7 @@ public class UsuarioCadastroService {
         usuarioSalvo.getStatuses().add(savedUserStatus);
 
         termsUserService.aprovarTermos(request.getTermsIds(), usuarioSalvo);
+        externalUserPrivacyRegistryService.upsertActiveUser(usuarioSalvo.getId(), usuarioSalvo.getEmail());
         return usuarioSalvo;
 
     }

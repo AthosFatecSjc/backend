@@ -43,6 +43,7 @@ class UsuarioCadastroServiceAprovacaoRejeicaoTest {
     private JpaUsuarioCadastroRepository jpaUsuarioCadastroRepository;
     private RoleJpaRepository roleJpaRepository;
     private UsuarioRepository userRepository;
+    private ExternalUserPrivacyRegistryService externalUserPrivacyRegistryService;
 
     private UUID usuarioId;
     private UUID adminId;
@@ -62,6 +63,7 @@ class UsuarioCadastroServiceAprovacaoRejeicaoTest {
         jpaUsuarioCadastroRepository = mock(JpaUsuarioCadastroRepository.class);
         roleJpaRepository = mock(RoleJpaRepository.class);
         userRepository = mock(UsuarioRepository.class);
+        externalUserPrivacyRegistryService = mock(ExternalUserPrivacyRegistryService.class);
         service = new UsuarioCadastroService(
                 usuarioCadastroRepository,
                 appUserRepository,
@@ -74,7 +76,8 @@ class UsuarioCadastroServiceAprovacaoRejeicaoTest {
                 jpaUsuarioCadastroRepository,
                 roleJpaRepository,
                 userStatusRepository,
-                userRepository
+                userRepository,
+                externalUserPrivacyRegistryService
         );
 
         usuarioId = UUID.randomUUID();
