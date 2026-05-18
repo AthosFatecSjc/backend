@@ -14,6 +14,8 @@ public interface ExternalUserPrivacyRecordRepository
 
     List<ExternalUserPrivacyRecord> findAllByDeletedAtIsNotNull();
 
+    List<ExternalUserPrivacyRecord> findAllByDeletedAtIsNullAndEmailIsNotNull();
+
     List<ExternalUserPrivacyRecord> findAllByUserIdInAndDeletedAtIsNotNull(Collection<UUID> userIds);
 
     long countByDeletedAtAfter(LocalDateTime deletedAt);
