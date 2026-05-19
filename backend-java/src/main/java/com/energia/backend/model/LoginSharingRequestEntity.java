@@ -56,6 +56,12 @@ public class LoginSharingRequestEntity {
     @Column(name = "expires_at", nullable = false)
     private LocalDateTime expiresAt;
 
+    @Column(name = "public_token", unique = true, length = 64)
+    private String publicToken;
+
+    @Column(name = "public_token_expires_at")
+    private LocalDateTime publicTokenExpiresAt;
+
     @Column(name = "user_response_code")
     private String userResponseCode;
 

@@ -45,6 +45,7 @@ import com.energia.backend.service.UsuarioCadastroService;
 import com.energia.backend.service.UserRoleService;
 import com.energia.backend.service.LoginSharingService;
 import com.energia.backend.dto.LoginSharingRequestDto;
+import com.energia.backend.dto.LoginSharingPublicStatusDto;
 import com.energia.backend.dto.LoginSharingResponseDto;
 import com.energia.backend.dto.LoginSharingConsentRequest;
 import com.energia.backend.dto.LoginSharingUserDataDto;
@@ -270,10 +271,12 @@ public class UsuarioController {
         return ResponseEntity.ok(response);
     }
 
-    @GetMapping("/login-sharing/request/{requestId}")
-    public ResponseEntity<LoginSharingResponseDto> getRequestByIdDirect(@PathVariable UUID requestId) {
-        log.info("Reading login sharing request {} by id", requestId);
-        LoginSharingResponseDto response = loginSharingService.getRequestById(requestId);
+    @GetMapping({"/login-sharing/public/{requestId}", "/login-sharing/request/{requestId}"})
+    public ResponseEntity<LoginSharingPublicStatusDto> getRequestByIdDirect(
+            @PathVariable UUID requestId,
+            @RequestParam(value = "token", required = false) String token) {
+        log.info("Public status requested for login sharing request {}", requestId);
+        LoginSharingPublicStatusDto response = loginSharingService.getPublicRequestStatus(requestId, token);
         return ResponseEntity.ok(response);
     }
 
@@ -289,11 +292,23 @@ public class UsuarioController {
         return ResponseEntity.ok(response);
     }
 
-    @GetMapping("/login-sharing/{requestId}/user-data")
+    @PostMapping({"/login-sharing/{requestId}/revoke", "/login-sharing/{requestId}/revogar"})
+    public ResponseEntity<LoginSharingResponseDto> revokeRequest(
+            @PathVariable UUID requestId,
+            Principal principal,
+            @RequestParam(value = "userId", required = false) UUID userId) {
+        UUID resolvedUserId = resolverUsuarioId(principal, userId);
+        log.info("User {} revoking login sharing request {}", resolvedUserId, requestId);
+        LoginSharingResponseDto response = loginSharingService.revokeRequest(requestId, resolvedUserId);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping({"/login-sharing/public/{requestId}/user-data", "/login-sharing/{requestId}/user-data"})
     public ResponseEntity<LoginSharingUserDataDto> getUserDataByRequest(
-            @PathVariable UUID requestId) {
-        log.info("External agent fetching user data for request {}", requestId);
-        LoginSharingUserDataDto userData = loginSharingService.getUserDataByRequest(requestId);
+            @PathVariable UUID requestId,
+            @RequestParam(value = "token", required = false) String token) {
+        log.info("Public user data requested for login sharing request {}", requestId);
+        LoginSharingUserDataDto userData = loginSharingService.getPublicUserDataByRequest(requestId, token);
         return ResponseEntity.ok(userData);
     }
 

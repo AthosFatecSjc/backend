@@ -3,6 +3,7 @@ package com.energia.backend.dto;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+import com.energia.backend.model.LoginSharingRequestEntity;
 import com.energia.backend.model.LoginSharingStatus;
 
 import lombok.AllArgsConstructor;
@@ -14,8 +15,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class LoginSharingResponseDto {
-    
+public class LoginSharingPublicStatusDto {
+
     private UUID requestId;
     private String externalAgentName;
     private String externalAgentEmail;
@@ -23,12 +24,10 @@ public class LoginSharingResponseDto {
     private LocalDateTime requestedAt;
     private LocalDateTime respondedAt;
     private LocalDateTime expiresAt;
-    private String publicToken;
-    private LocalDateTime publicTokenExpiresAt;
     private String reason;
-    
-    public static LoginSharingResponseDto fromEntity(com.energia.backend.model.LoginSharingRequestEntity entity) {
-        return LoginSharingResponseDto.builder()
+
+    public static LoginSharingPublicStatusDto fromEntity(LoginSharingRequestEntity entity) {
+        return LoginSharingPublicStatusDto.builder()
                 .requestId(entity.getId())
                 .externalAgentName(entity.getExternalAgentName())
                 .externalAgentEmail(entity.getExternalAgentEmail())
@@ -36,8 +35,6 @@ public class LoginSharingResponseDto {
                 .requestedAt(entity.getRequestedAt())
                 .respondedAt(entity.getRespondedAt())
                 .expiresAt(entity.getExpiresAt())
-                .publicToken(entity.getPublicToken())
-                .publicTokenExpiresAt(entity.getPublicTokenExpiresAt())
                 .reason(entity.getReason())
                 .build();
     }

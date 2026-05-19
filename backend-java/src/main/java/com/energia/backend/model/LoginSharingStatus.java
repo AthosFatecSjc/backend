@@ -4,5 +4,6 @@ public enum LoginSharingStatus {
     PENDING,
     APPROVED,
     REJECTED,
-    EXPIRED
+    EXPIRED,
+    REVOKED
 }
