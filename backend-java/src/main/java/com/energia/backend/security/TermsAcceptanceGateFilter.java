@@ -68,6 +68,7 @@ public class TermsAcceptanceGateFilter extends OncePerRequestFilter {
                 || path.startsWith("/documentos/consentimentos/vigentes")
                 || path.startsWith("/usuarios/meus-termos")
                 || path.startsWith("/usuarios/minha-conta")
+                || path.startsWith("/usuarios/login-sharing")
                 || path.startsWith("/terms");
     }
 }
