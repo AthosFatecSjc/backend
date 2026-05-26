@@ -4,9 +4,9 @@ import com.energia.backend.model.log.LogCategory;
 import com.energia.backend.model.log.LogEvent;
 import com.energia.backend.model.log.ResultType;
 import com.energia.backend.model.log.SourceType;
-import com.energia.backend.model.privacy.PrivacyAnonymizationRegistryEntity;
+import com.energia.backend.model.privacy.PrivacyDeletionRegistryEntity;
 import com.energia.backend.model.privacy.RestoreAction;
-import com.energia.backend.repository.PrivacyAnonymizationRegistryRepository;
+import com.energia.backend.repository.PrivacyDeletionRegistryRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,34 +17,34 @@ public class BackupRestoreReconciliationService {
 
     private static final String MODULE_NAME = "privacy-protection";
 
-    private final PrivacyAnonymizationRegistryRepository registryRepository;
-    private final UserPrivacyAnonymizationService anonymizationService;
+    private final PrivacyDeletionRegistryRepository registryRepository;
+    private final UserPrivacyDeletionService deletionService;
     private final LogService logService;
 
     public BackupRestoreReconciliationService(
-            PrivacyAnonymizationRegistryRepository registryRepository,
-            UserPrivacyAnonymizationService anonymizationService,
+            PrivacyDeletionRegistryRepository registryRepository,
+            UserPrivacyDeletionService deletionService,
             LogService logService
     ) {
         this.registryRepository = registryRepository;
-        this.anonymizationService = anonymizationService;
+        this.deletionService = deletionService;
         this.logService = logService;
     }
 
     @Transactional
     public int reconcile() {
-        List<PrivacyAnonymizationRegistryEntity> registries =
-                registryRepository.findAllByActiveTrueOrderByAnonymizedAtAsc();
+        List<PrivacyDeletionRegistryEntity> registries =
+                registryRepository.findAllByActiveTrueOrderByDeletedAtAsc();
 
         int reappliedCount = 0;
         int failedCount = 0;
-        for (PrivacyAnonymizationRegistryEntity registry : registries) {
+        for (PrivacyDeletionRegistryEntity registry : registries) {
             if (registry.getRestoreAction() != RestoreAction.REAPPLY) {
                 continue;
             }
 
             try {
-                if (anonymizationService.reapplyAnonymizationIfNeeded(registry)) {
+                if (deletionService.reapplyDeletionIfNeeded(registry)) {
                     reappliedCount++;
                 }
             } catch (RuntimeException ex) {
@@ -56,7 +56,7 @@ public class BackupRestoreReconciliationService {
                     LogEvent.BACKUP_RESTORE_RECONCILIATION,
                     ResultType.FAIL,
                     LogCategory.TECHNICAL,
-                    "Falha ao reaplicar anonymization para registro individual.",
+                    "Falha ao reaplicar deletion para registro individual.",
                     String.format("{\"error\":%s}", ex.getMessage() == null ? "null" : '"' + ex.getMessage().replace("\"", "'") + '"'),
                     MODULE_NAME
                 );
@@ -70,7 +70,7 @@ public class BackupRestoreReconciliationService {
                 LogEvent.BACKUP_RESTORE_RECONCILIATION,
                 failedCount == 0 ? ResultType.SUCCESS : ResultType.FAIL,
                 LogCategory.TECHNICAL,
-                "Reconsolidacao de anonimizations apos restore executada.",
+                "Reconsolidacao de deleções apos restore executada.",
                 "reappliedCount=" + reappliedCount
                         + ";failedCount=" + failedCount
                         + ";checkedCount=" + registries.size(),
