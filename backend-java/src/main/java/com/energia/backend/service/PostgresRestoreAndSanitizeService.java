@@ -14,6 +14,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.Optional;
 import java.util.Set;
@@ -89,21 +90,36 @@ public class PostgresRestoreAndSanitizeService {
                 String sql = "DELETE FROM energia.user_personal_data WHERE user_id = ?";
                 int deletedRows = jdbcTemplate.update(sql, userId);
 
-                if (deletedRows > 0) {
-                    logger.debug("Deletados {} registros pessoais do usuário: {}", deletedRows, userId);
-                }
+                LocalDateTime deletionTime = privacyRegistryService.findDeletedAtByUserId(userId);
 
-                String updateSql = """
+                String updateAppUser = """
                         UPDATE energia.app_user
                         SET deletion_status = ?,
-                            deleted_at = CURRENT_TIMESTAMP
+                            deleted_at = ?
                         WHERE id = ?
                         """;
 
                 jdbcTemplate.update(
-                        updateSql,
+                        updateAppUser,
                         DeletionStatus.DELETED.name(),
+                        deletionTime,
                         userId);
+
+                String insertRegistry = """
+                        INSERT INTO energia.privacy_deletion_registry (
+                            entity_type,
+                            entity_id,
+                            deleted_at,
+                            last_reconciled_at
+                        )
+                        VALUES (?, ?, ?, ?)
+                        """;
+                jdbcTemplate.update(
+                        insertRegistry,
+                        "APP_USER",
+                        userId,
+                        deletionTime,
+                        LocalDateTime.now());
 
             } catch (Exception e) {
                 logger.error("Erro ao sanitizar dados do usuário {}", userId, e);
