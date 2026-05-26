@@ -19,8 +19,8 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.energia.backend.dto.AlterarRoleUsuarioRequest;
-import com.energia.backend.dto.AnonimizarUsuarioRequest;
-import com.energia.backend.dto.AnonimizarUsuarioResponse;
+import com.energia.backend.dto.DeletarUsuarioRequest;
+import com.energia.backend.dto.DeletarUsuarioResponse;
 import com.energia.backend.dto.AprovacaoRejeicaoUsuarioRequest;
 import com.energia.backend.dto.AtualizarEmailRequest;
 import com.energia.backend.dto.UserTermResponse;
@@ -34,7 +34,7 @@ import com.energia.backend.exception.UsuarioNaoEncontradoException;
 import com.energia.backend.model.AppUserEntity;
 import com.energia.backend.model.StatusUsuario;
 import com.energia.backend.repository.AppUserJpaRepository;
-import com.energia.backend.service.AnonimizacaoService;
+import com.energia.backend.service.DelecaoService;
 import com.energia.backend.service.MinhaContaService;
 import com.energia.backend.service.TermsUserService;
 import com.energia.backend.service.UsuarioCadastroService;
@@ -53,7 +53,7 @@ import lombok.extern.slf4j.Slf4j;
 public class UsuarioController {
     private final UsuarioCadastroService cadastroService;
     private final MinhaContaService minhaContaService;
-    private final AnonimizacaoService anonimizacaoService;
+    private final DelecaoService delecaoService;
     private final AppUserJpaRepository appUserRepository;
     private final TermsUserService termsUserService;
     private final UserRoleService userRoleService;
@@ -61,14 +61,14 @@ public class UsuarioController {
     public UsuarioController(
             UsuarioCadastroService cadastroService,
             MinhaContaService minhaContaService,
-            AnonimizacaoService anonimizacaoService,
+            DelecaoService delecaoService,
             AppUserJpaRepository appUserRepository,
             TermsUserService termsUserService,
             UserRoleService userRoleService
     ) {
         this.cadastroService = cadastroService;
         this.minhaContaService = minhaContaService;
-        this.anonimizacaoService = anonimizacaoService;
+        this.delecaoService = delecaoService;
         this.appUserRepository = appUserRepository;
         this.termsUserService = termsUserService;
         this.userRoleService = userRoleService;
@@ -191,14 +191,14 @@ public class UsuarioController {
         return ResponseEntity.noContent().build();
     }
 
-    @PostMapping("/{usuarioId}/anonimizar")
-    public ResponseEntity<AnonimizarUsuarioResponse> anonimizarUsuario(
+    @PostMapping("/{usuarioId}/deletar")
+    public ResponseEntity<DeletarUsuarioResponse> deletarUsuario(
             Principal principal,
             @PathVariable UUID usuarioId) {
         UUID actorId = obterUid(principal);
-        AnonimizarUsuarioResponse response = anonimizacaoService.anonimizar(
+        DeletarUsuarioResponse response = delecaoService.deletar(
                 actorId,
-                new AnonimizarUsuarioRequest(usuarioId));
+                new DeletarUsuarioRequest(usuarioId));
         return ResponseEntity.ok(response);
     }
 

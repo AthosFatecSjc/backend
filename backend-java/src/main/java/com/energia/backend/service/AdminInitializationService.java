@@ -12,7 +12,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.energia.backend.model.AnonymizationStatus;
+import com.energia.backend.model.DeletionStatus;
 import com.energia.backend.model.AppUserEntity;
 import com.energia.backend.model.RoleEntity;
 import com.energia.backend.model.StatusEntity;
@@ -92,7 +92,7 @@ public class AdminInitializationService implements CommandLineRunner {
             AppUserEntity adminUser = AppUserEntity.builder()
                     .id(UUID.randomUUID())
                     .password(encodedPassword)
-                    .anonymizationStatus(AnonymizationStatus.ACTIVE)
+                    .deletionStatus(DeletionStatus.ACTIVE)
                     .roles(List.of(adminRole))
                     .build();
 

@@ -1,5 +1,5 @@
 package com.energia.backend.model.privacy;
 
-public enum AnonymizedEntityType {
+public enum DeletedEntityType {
     APP_USER
 }
