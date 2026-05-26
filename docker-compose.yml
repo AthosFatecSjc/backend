@@ -64,7 +64,7 @@ services:
       MAIL_SMTP_STARTTLS_ENABLE: ${MAIL_SMTP_STARTTLS_ENABLE:-false}
       EMERGENCY_MAIL_API_KEY: ${EMERGENCY_MAIL_API_KEY:-}
       ETL_FILE_DIST_PATH: ${ETL_FILE_DIST_CONTAINER_PATH}
-      TZ: ${TZ}
+      TZ: ${TZ:-America/Sao_Paulo}
       ETL_CNPJ: ${ETL_CNPJ}
       BACKUP_DIRECTORY: ${BACKUP_DIRECTORY}
     ports:
@@ -169,12 +169,19 @@ services:
     environment:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
+      PGADMIN_REPLACE_SERVERS_ON_STARTUP: "True"
+      PGPASS_FILE: /pgpass
     ports:
       - "8080:80"
+    volumes:
+      - ./init-scripts/pgadmin/servers.json:/pgadmin4/servers.json
+      - ./init-scripts/pgadmin/pgpass:/pgpass:ro
     networks:
       - energia-network
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
  
   mongo-express:
     image: mongo-express:latest
