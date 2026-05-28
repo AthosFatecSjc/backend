@@ -6,7 +6,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.energia.backend.model.AnonymizationStatus;
+import com.energia.backend.model.DeletionStatus;
 import com.energia.backend.model.AppUserEntity;
 import com.energia.backend.repository.AppUserJpaRepository;
 
@@ -34,8 +34,8 @@ public class ExternalUserPrivacyRegistryBootstrapService implements ApplicationR
     @Transactional(readOnly = true)
     public void run(ApplicationArguments args) {
         for (AppUserEntity user : appUserRepository.findAll()) {
-            if (user.getAnonymizationStatus() == AnonymizationStatus.ANONYMIZED) {
-                externalUserPrivacyRegistryService.markUserDeleted(user.getId(), user.getAnonymizedAt());
+            if (user.getDeletionStatus() == DeletionStatus.DELETED) {
+                externalUserPrivacyRegistryService.markUserDeleted(user.getId(), user.getDeletedAt());
                 continue;
             }
 

@@ -6,47 +6,47 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.energia.backend.dto.AnonimizarUsuarioRequest;
-import com.energia.backend.dto.AnonimizarUsuarioResponse;
+import com.energia.backend.dto.DeletarUsuarioRequest;
+import com.energia.backend.dto.DeletarUsuarioResponse;
 import com.energia.backend.exception.PermissaoNegadaException;
-import com.energia.backend.exception.UsuarioJaAnonimizadoException;
+import com.energia.backend.exception.UsuarioJaDeletadoException;
 import com.energia.backend.exception.UsuarioNaoEncontradoException;
-import com.energia.backend.model.AnonymizationStatus;
+import com.energia.backend.model.DeletionStatus;
 import com.energia.backend.model.AppUserEntity;
 import com.energia.backend.repository.AppUserJpaRepository;
 
 @Service
-public class AnonimizacaoService {
+public class DelecaoService {
 
     private static final String ADMIN_ROLE = "ADMIN";
 
     private final AppUserJpaRepository appUserRepository;
-    private final UserPrivacyAnonymizationService userPrivacyAnonymizationService;
+    private final UserPrivacyDeletionService userPrivacyDeletionService;
 
-    public AnonimizacaoService(
+    public DelecaoService(
             AppUserJpaRepository appUserRepository,
-            UserPrivacyAnonymizationService userPrivacyAnonymizationService
+            UserPrivacyDeletionService userPrivacyDeletionService
     ) {
         this.appUserRepository = appUserRepository;
-        this.userPrivacyAnonymizationService = userPrivacyAnonymizationService;
+        this.userPrivacyDeletionService = userPrivacyDeletionService;
     }
 
     @Transactional
-    public AnonimizarUsuarioResponse anonimizar(UUID actorId, AnonimizarUsuarioRequest request) {
+    public DeletarUsuarioResponse deletar(UUID actorId, DeletarUsuarioRequest request) {
         AppUserEntity actor = buscarUsuarioPorId(actorId);
         AppUserEntity usuario = buscarUsuarioPorId(request.usuarioId());
-        validarJaAnonimizado(usuario);
+        validarJaDeletado(usuario);
         validarPermissao(actor, usuario);
 
         String reason = actorId.equals(usuario.getId())
                 ? "Solicitacao de exclusao pelo proprio usuario"
-                : "Anonimizacao administrativa";
+                : "Delecao administrativa";
 
-        userPrivacyAnonymizationService.anonymizeUser(usuario.getId(), actor.getId().toString(), reason);
+        userPrivacyDeletionService.deleteUser(usuario.getId(), actor.getId().toString(), reason);
 
-        return new AnonimizarUsuarioResponse(
+        return new DeletarUsuarioResponse(
                 usuario.getId(),
-                "Usuario anonimizado com sucesso.",
+                "Usuario deletado com sucesso.",
                 LocalDateTime.now()
         );
     }
@@ -67,13 +67,13 @@ public class AnonimizacaoService {
         boolean isSelf = actor.getId() != null && actor.getId().equals(target.getId());
 
         if (!isAdmin && !isSelf) {
-            throw new PermissaoNegadaException("Apenas administradores ou o proprio usuario podem anonimizar.");
+            throw new PermissaoNegadaException("Apenas administradores ou o proprio usuario podem deletar.");
         }
     }
 
-    private void validarJaAnonimizado(AppUserEntity usuario) {
-        if (usuario.getAnonymizationStatus() == AnonymizationStatus.ANONYMIZED) {
-            throw new UsuarioJaAnonimizadoException("Usuario ja foi anonimizado anteriormente.");
+    private void validarJaDeletado(AppUserEntity usuario) {
+        if (usuario.getDeletionStatus() == DeletionStatus.DELETED) {
+            throw new UsuarioJaDeletadoException("Usuario ja foi deletado anteriormente.");
         }
     }
 }

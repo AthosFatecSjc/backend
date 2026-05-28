@@ -13,21 +13,21 @@ import static org.mockito.Mockito.when;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
-import com.energia.backend.dto.AnonimizarUsuarioRequest;
-import com.energia.backend.dto.AnonimizarUsuarioResponse;
+import com.energia.backend.dto.DeletarUsuarioRequest;
+import com.energia.backend.dto.DeletarUsuarioResponse;
 import com.energia.backend.exception.PermissaoNegadaException;
-import com.energia.backend.exception.UsuarioJaAnonimizadoException;
+import com.energia.backend.exception.UsuarioJaDeletadoException;
 import com.energia.backend.exception.UsuarioNaoEncontradoException;
 import com.energia.backend.repository.AppUserJpaRepository;
-import com.energia.backend.service.AnonimizacaoService;
+import com.energia.backend.service.DelecaoService;
 import com.energia.backend.service.TermsUserService;
 import com.energia.backend.service.UserRoleService;
 
-class UsuarioControllerAnonimizacaoTest {
+class UsuarioControllerDelecaoTest {
 
         @Test
-        void deveAnonimizarUsuarioComSucesso() {
-                AnonimizacaoService anonimizacaoService = mock(AnonimizacaoService.class);
+        void deveDeletarUsuarioComSucesso() {
+                DelecaoService delecaoService = mock(DelecaoService.class);
                 com.energia.backend.service.UsuarioCadastroService cadastroService = mock(
                                 com.energia.backend.service.UsuarioCadastroService.class);
                 com.energia.backend.service.MinhaContaService minhaContaService = mock(
@@ -39,7 +39,7 @@ class UsuarioControllerAnonimizacaoTest {
                 UsuarioController controller = new UsuarioController(
                                 cadastroService,
                                 minhaContaService,
-                                anonimizacaoService,
+                                delecaoService,
                                 appUserRepository,
                                 termsUserService,
                                 userRoleService);
@@ -48,27 +48,27 @@ class UsuarioControllerAnonimizacaoTest {
                 UUID usuarioId = UUID.randomUUID();
                 LocalDateTime agora = LocalDateTime.now();
 
-                AnonimizarUsuarioResponse response = new AnonimizarUsuarioResponse(
+                DeletarUsuarioResponse response = new DeletarUsuarioResponse(
                                 usuarioId,
-                                "Usuario anonimizado com sucesso.",
+                                "Usuario deletado com sucesso.",
                                 agora);
 
-                when(anonimizacaoService.anonimizar(any(), any())).thenReturn(response);
+                when(delecaoService.deletar(any(), any())).thenReturn(response);
 
                 java.security.Principal principal = () -> adminId.toString();
 
-                ResponseEntity<AnonimizarUsuarioResponse> resultado = controller.anonimizarUsuario(principal,
+                ResponseEntity<DeletarUsuarioResponse> resultado = controller.deletarUsuario(principal,
                                 usuarioId);
 
                 assertEquals(HttpStatus.OK, resultado.getStatusCode());
                 assertEquals(usuarioId, resultado.getBody().usuarioId());
-                assertEquals("Usuario anonimizado com sucesso.", resultado.getBody().mensagem());
-                verify(anonimizacaoService).anonimizar(adminId, new AnonimizarUsuarioRequest(usuarioId));
+                assertEquals("Usuario deletado com sucesso.", resultado.getBody().mensagem());
+                verify(delecaoService).deletar(adminId, new DeletarUsuarioRequest(usuarioId));
         }
 
         @Test
         void deveLancarPermissaoNegadaQuandoNaoForAdmin() {
-                AnonimizacaoService anonimizacaoService = mock(AnonimizacaoService.class);
+                DelecaoService delecaoService = mock(DelecaoService.class);
                 com.energia.backend.service.UsuarioCadastroService cadastroService = mock(
                                 com.energia.backend.service.UsuarioCadastroService.class);
                 com.energia.backend.service.MinhaContaService minhaContaService = mock(
@@ -80,7 +80,7 @@ class UsuarioControllerAnonimizacaoTest {
                 UsuarioController controller = new UsuarioController(
                                 cadastroService,
                                 minhaContaService,
-                                anonimizacaoService,
+                                delecaoService,
                                 appUserRepository,
                                 termsUserService,
                                 userRoleService);
@@ -88,18 +88,18 @@ class UsuarioControllerAnonimizacaoTest {
                 UUID userId = UUID.randomUUID();
                 UUID usuarioId = UUID.randomUUID();
 
-                when(anonimizacaoService.anonimizar(any(), any()))
+                when(delecaoService.deletar(any(), any()))
                                 .thenThrow(new PermissaoNegadaException(
-                                                "Apenas administradores podem anonimizar usuarios."));
+                                                "Apenas administradores podem deletar usuarios."));
 
                 java.security.Principal principal = () -> userId.toString();
 
-                assertThrows(PermissaoNegadaException.class, () -> controller.anonimizarUsuario(principal, usuarioId));
+                assertThrows(PermissaoNegadaException.class, () -> controller.deletarUsuario(principal, usuarioId));
         }
 
         @Test
-        void deveLancarUsuarioJaAnonimizadoQuandoJaFoiAnonimizado() {
-                AnonimizacaoService anonimizacaoService = mock(AnonimizacaoService.class);
+        void deveLancarUsuarioJaDeletadoQuandoJaFoiDeletado() {
+                DelecaoService delecaoService = mock(DelecaoService.class);
                 com.energia.backend.service.UsuarioCadastroService cadastroService = mock(
                                 com.energia.backend.service.UsuarioCadastroService.class);
                 com.energia.backend.service.MinhaContaService minhaContaService = mock(
@@ -111,7 +111,7 @@ class UsuarioControllerAnonimizacaoTest {
                 UsuarioController controller = new UsuarioController(
                                 cadastroService,
                                 minhaContaService,
-                                anonimizacaoService,
+                                delecaoService,
                                 appUserRepository,
                                 termsUserService,
                                 userRoleService);
@@ -119,19 +119,19 @@ class UsuarioControllerAnonimizacaoTest {
                 UUID adminId = UUID.randomUUID();
                 UUID usuarioId = UUID.randomUUID();
 
-                when(anonimizacaoService.anonimizar(any(), any()))
-                                .thenThrow(new UsuarioJaAnonimizadoException(
-                                                "Usuario ja foi anonimizado anteriormente."));
+                when(delecaoService.deletar(any(), any()))
+                                .thenThrow(new UsuarioJaDeletadoException(
+                                                "Usuario ja foi deletado anteriormente."));
 
                 java.security.Principal principal = () -> adminId.toString();
 
-                assertThrows(UsuarioJaAnonimizadoException.class,
-                                () -> controller.anonimizarUsuario(principal, usuarioId));
+                assertThrows(UsuarioJaDeletadoException.class,
+                                () -> controller.deletarUsuario(principal, usuarioId));
         }
 
         @Test
         void deveLancarUsuarioNaoEncontradoQuandoIdInvalido() {
-                AnonimizacaoService anonimizacaoService = mock(AnonimizacaoService.class);
+                DelecaoService delecaoService = mock(DelecaoService.class);
                 com.energia.backend.service.UsuarioCadastroService cadastroService = mock(
                                 com.energia.backend.service.UsuarioCadastroService.class);
                 com.energia.backend.service.MinhaContaService minhaContaService = mock(
@@ -143,7 +143,7 @@ class UsuarioControllerAnonimizacaoTest {
                 UsuarioController controller = new UsuarioController(
                                 cadastroService,
                                 minhaContaService,
-                                anonimizacaoService,
+                                delecaoService,
                                 appUserRepository,
                                 termsUserService,
                                 userRoleService
@@ -152,12 +152,12 @@ class UsuarioControllerAnonimizacaoTest {
                 UUID adminId = UUID.randomUUID();
                 UUID usuarioInexistente = UUID.randomUUID();
 
-                when(anonimizacaoService.anonimizar(any(), any()))
+                when(delecaoService.deletar(any(), any()))
                                 .thenThrow(new UsuarioNaoEncontradoException("Usuario nao encontrado."));
 
                 java.security.Principal principal = () -> adminId.toString();
 
                 assertThrows(UsuarioNaoEncontradoException.class,
-                                () -> controller.anonimizarUsuario(principal, usuarioInexistente));
+                                () -> controller.deletarUsuario(principal, usuarioInexistente));
         }
 }

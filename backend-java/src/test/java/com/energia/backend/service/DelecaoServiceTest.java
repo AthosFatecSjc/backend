@@ -14,27 +14,27 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.energia.backend.dto.AnonimizarUsuarioRequest;
-import com.energia.backend.dto.AnonimizarUsuarioResponse;
+import com.energia.backend.dto.DeletarUsuarioRequest;
+import com.energia.backend.dto.DeletarUsuarioResponse;
 import com.energia.backend.exception.PermissaoNegadaException;
-import com.energia.backend.exception.UsuarioJaAnonimizadoException;
+import com.energia.backend.exception.UsuarioJaDeletadoException;
 import com.energia.backend.exception.UsuarioNaoEncontradoException;
-import com.energia.backend.model.AnonymizationStatus;
+import com.energia.backend.model.DeletionStatus;
 import com.energia.backend.model.AppUserEntity;
 import com.energia.backend.model.RoleEntity;
 import com.energia.backend.repository.AppUserJpaRepository;
 
-class AnonimizacaoServiceTest {
+class DelecaoServiceTest {
 
     @Test
-    void deveAnonimizarUsuarioComSucesso() {
+    void deveDeletarUsuarioComSucesso() {
         // Setup repositories
         AppUserJpaRepository appUserRepository = mock(AppUserJpaRepository.class);
-        UserPrivacyAnonymizationService userPrivacyAnonymizationService = mock(UserPrivacyAnonymizationService.class);
+        UserPrivacyDeletionService userPrivacyDeletionService = mock(UserPrivacyDeletionService.class);
 
-        AnonimizacaoService service = new AnonimizacaoService(
+        DelecaoService service = new DelecaoService(
                 appUserRepository,
-                userPrivacyAnonymizationService
+                userPrivacyDeletionService
         );
 
         // Setup admin com role ADMIN
@@ -52,7 +52,7 @@ class AnonimizacaoServiceTest {
                 .roles(List.of(adminRole))
                 .build();
 
-        // Setup usuário a ser anonimizado
+        // Setup usuário a ser deletado
         UUID usuarioId = UUID.randomUUID();
         AppUserEntity usuario = AppUserEntity.builder()
                 .id(usuarioId)
@@ -67,25 +67,25 @@ class AnonimizacaoServiceTest {
         when(appUserRepository.findById(usuarioId)).thenReturn(Optional.of(usuario));
 
         // Execute
-        AnonimizarUsuarioRequest request = new AnonimizarUsuarioRequest(usuarioId);
-        AnonimizarUsuarioResponse response = service.anonimizar(adminId, request);
+        DeletarUsuarioRequest request = new DeletarUsuarioRequest(usuarioId);
+        DeletarUsuarioResponse response = service.deletar(adminId, request);
 
         // Verify
         assertEquals(usuarioId, response.usuarioId());
-        assertEquals("Usuario anonimizado com sucesso.", response.mensagem());
+        assertEquals("Usuario deletado com sucesso.", response.mensagem());
 
-        // Verify que o serviço central de anonimização foi acionado
-        verify(userPrivacyAnonymizationService).anonymizeUser(eq(usuarioId), eq(adminId.toString()), anyString());
+        // Verify que o serviço central de deleção foi acionado
+        verify(userPrivacyDeletionService).deleteUser(eq(usuarioId), eq(adminId.toString()), anyString());
     }
 
     @Test
-    void deveAnonimizarUsuarioPorEleMesmo() {
+    void deveDeletarUsuarioPorEleMesmo() {
         AppUserJpaRepository appUserRepository = mock(AppUserJpaRepository.class);
-        UserPrivacyAnonymizationService userPrivacyAnonymizationService = mock(UserPrivacyAnonymizationService.class);
+        UserPrivacyDeletionService userPrivacyDeletionService = mock(UserPrivacyDeletionService.class);
 
-        AnonimizacaoService service = new AnonimizacaoService(
+        DelecaoService service = new DelecaoService(
                 appUserRepository,
-                userPrivacyAnonymizationService
+                userPrivacyDeletionService
         );
 
         UUID usuarioId = UUID.randomUUID();
@@ -99,21 +99,21 @@ class AnonimizacaoServiceTest {
 
         when(appUserRepository.findById(usuarioId)).thenReturn(Optional.of(usuario));
 
-        AnonimizarUsuarioResponse response = service.anonimizar(usuarioId, new AnonimizarUsuarioRequest(usuarioId));
+        DeletarUsuarioResponse response = service.deletar(usuarioId, new DeletarUsuarioRequest(usuarioId));
 
         assertEquals(usuarioId, response.usuarioId());
-        assertEquals("Usuario anonimizado com sucesso.", response.mensagem());
-        verify(userPrivacyAnonymizationService).anonymizeUser(eq(usuarioId), eq(usuarioId.toString()), anyString());
+        assertEquals("Usuario deletado com sucesso.", response.mensagem());
+        verify(userPrivacyDeletionService).deleteUser(eq(usuarioId), eq(usuarioId.toString()), anyString());
     }
 
     @Test
-    void naoDeveAnonimizarSemPermissaoDeAdmin() {
+    void naoDeveDeletarSemPermissaoDeAdmin() {
         AppUserJpaRepository appUserRepository = mock(AppUserJpaRepository.class);
-        UserPrivacyAnonymizationService userPrivacyAnonymizationService = mock(UserPrivacyAnonymizationService.class);
+        UserPrivacyDeletionService userPrivacyDeletionService = mock(UserPrivacyDeletionService.class);
 
-        AnonimizacaoService service = new AnonimizacaoService(
+        DelecaoService service = new DelecaoService(
                 appUserRepository,
-                userPrivacyAnonymizationService
+                userPrivacyDeletionService
         );
 
         // Setup usuário sem role ADMIN
@@ -138,18 +138,18 @@ class AnonimizacaoServiceTest {
         when(appUserRepository.findById(usuarioId)).thenReturn(Optional.of(usuario));
 
         // Execute e verify exception
-        AnonimizarUsuarioRequest request = new AnonimizarUsuarioRequest(usuarioId);
-        assertThrows(PermissaoNegadaException.class, () -> service.anonimizar(userId, request));
+        DeletarUsuarioRequest request = new DeletarUsuarioRequest(usuarioId);
+        assertThrows(PermissaoNegadaException.class, () -> service.deletar(userId, request));
     }
 
     @Test
-    void naoDeveAnonimizarUsuarioJaAnonimizado() {
+    void naoDeveDeletarUsuarioJaDeletado() {
         AppUserJpaRepository appUserRepository = mock(AppUserJpaRepository.class);
-        UserPrivacyAnonymizationService userPrivacyAnonymizationService = mock(UserPrivacyAnonymizationService.class);
+        UserPrivacyDeletionService userPrivacyDeletionService = mock(UserPrivacyDeletionService.class);
 
-        AnonimizacaoService service = new AnonimizacaoService(
+        DelecaoService service = new DelecaoService(
                 appUserRepository,
-                userPrivacyAnonymizationService
+                userPrivacyDeletionService
         );
 
         // Setup admin
@@ -163,32 +163,32 @@ class AnonimizacaoServiceTest {
                 .roles(List.of(adminRole))
                 .build();
 
-        // Setup usuário já anonimizado
+        // Setup usuário já deletado
         UUID usuarioId = UUID.randomUUID();
-        AppUserEntity usuarioAnonimizado = AppUserEntity.builder()
+        AppUserEntity usuarioDeletado = AppUserEntity.builder()
                 .id(usuarioId)
-                .name("ANONYMIZED USER")
+                .name("DELETED USER")
                 .email("u" + usuarioId.toString().replace("-", "") + "@anon.io")
-                .password("ANONYMIZED::" + usuarioId.toString().replace("-", ""))
-                .anonymizationStatus(AnonymizationStatus.ANONYMIZED)
+                .password("DELETED::" + usuarioId.toString().replace("-", ""))
+                .deletionStatus(DeletionStatus.DELETED)
                 .build();
 
         when(appUserRepository.findById(adminId)).thenReturn(Optional.of(admin));
-        when(appUserRepository.findById(usuarioId)).thenReturn(Optional.of(usuarioAnonimizado));
+        when(appUserRepository.findById(usuarioId)).thenReturn(Optional.of(usuarioDeletado));
 
         // Execute e verify exception
-        AnonimizarUsuarioRequest request = new AnonimizarUsuarioRequest(usuarioId);
-        assertThrows(UsuarioJaAnonimizadoException.class, () -> service.anonimizar(adminId, request));
+        DeletarUsuarioRequest request = new DeletarUsuarioRequest(usuarioId);
+        assertThrows(UsuarioJaDeletadoException.class, () -> service.deletar(adminId, request));
     }
 
     @Test
-    void naoDeveAnonimizarUsuarioInexistente() {
+    void naoDeveDeletarUsuarioInexistente() {
         AppUserJpaRepository appUserRepository = mock(AppUserJpaRepository.class);
-        UserPrivacyAnonymizationService userPrivacyAnonymizationService = mock(UserPrivacyAnonymizationService.class);
+        UserPrivacyDeletionService userPrivacyDeletionService = mock(UserPrivacyDeletionService.class);
 
-        AnonimizacaoService service = new AnonimizacaoService(
+        DelecaoService service = new DelecaoService(
                 appUserRepository,
-                userPrivacyAnonymizationService
+                userPrivacyDeletionService
         );
 
         // Setup admin
@@ -207,7 +207,7 @@ class AnonimizacaoServiceTest {
 
         // Execute e verify exception
         UUID usuarioInexistente = UUID.randomUUID();
-        AnonimizarUsuarioRequest request = new AnonimizarUsuarioRequest(usuarioInexistente);
-        assertThrows(UsuarioNaoEncontradoException.class, () -> service.anonimizar(adminId, request));
+        DeletarUsuarioRequest request = new DeletarUsuarioRequest(usuarioInexistente);
+        assertThrows(UsuarioNaoEncontradoException.class, () -> service.deletar(adminId, request));
     }
 }

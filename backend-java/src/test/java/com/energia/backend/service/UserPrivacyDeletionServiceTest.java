@@ -1,16 +1,16 @@
 package com.energia.backend.service;
 
-import com.energia.backend.model.AnonymizationStatus;
+import com.energia.backend.model.DeletionStatus;
 import com.energia.backend.model.AppUserEntity;
 import com.energia.backend.model.UserPersonalDataEntity;
 import com.energia.backend.model.log.LogCategory;
 import com.energia.backend.model.log.LogEvent;
 import com.energia.backend.model.log.ResultType;
 import com.energia.backend.model.log.SourceType;
-import com.energia.backend.model.privacy.AnonymizedEntityType;
-import com.energia.backend.model.privacy.PrivacyAnonymizationRegistryEntity;
+import com.energia.backend.model.privacy.DeletedEntityType;
+import com.energia.backend.model.privacy.PrivacyDeletionRegistryEntity;
 import com.energia.backend.repository.AppUserJpaRepository;
-import com.energia.backend.repository.PrivacyAnonymizationRegistryRepository;
+import com.energia.backend.repository.PrivacyDeletionRegistryRepository;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
@@ -29,17 +29,17 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-class UserPrivacyAnonymizationServiceTest {
+class UserPrivacyDeletionServiceTest {
 
     @Test
-    void deveAnonimizarUsuarioERegistrarProtecaoContraRestore() {
+    void deveDeletarUsuarioERegistrarProtecaoContraRestore() {
         AppUserJpaRepository userRepository = mock(AppUserJpaRepository.class);
-        PrivacyAnonymizationRegistryRepository registryRepository =
-                mock(PrivacyAnonymizationRegistryRepository.class);
+        PrivacyDeletionRegistryRepository registryRepository =
+                mock(PrivacyDeletionRegistryRepository.class);
         ExternalUserPrivacyRegistryService externalUserPrivacyRegistryService =
                 mock(ExternalUserPrivacyRegistryService.class);
         LogService logService = mock(LogService.class);
-        UserPrivacyAnonymizationService service = new UserPrivacyAnonymizationService(
+        UserPrivacyDeletionService service = new UserPrivacyDeletionService(
                 userRepository,
                 registryRepository,
                 externalUserPrivacyRegistryService,
@@ -57,31 +57,31 @@ class UserPrivacyAnonymizationServiceTest {
         AppUserEntity user = AppUserEntity.builder()
                 .id(userId)
                 .password("hash-antigo")
-                .anonymizationStatus(AnonymizationStatus.ACTIVE)
+                .deletionStatus(DeletionStatus.ACTIVE)
                 .personalData(personalData)
                 .build();
         personalData.setUser(user);
 
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
-        when(registryRepository.findByEntityTypeAndEntityId(AnonymizedEntityType.APP_USER, userId))
+        when(registryRepository.findByEntityTypeAndEntityId(DeletedEntityType.APP_USER, userId))
                 .thenReturn(Optional.empty());
 
-        service.anonymizeUser(userId, "admin-1", "Solicitacao do titular");
+        service.deleteUser(userId, "admin-1", "Solicitacao do titular");
 
-        assertEquals(AnonymizationStatus.ANONYMIZED, user.getAnonymizationStatus());
-        assertNotNull(user.getAnonymizedAt());
+        assertEquals(DeletionStatus.DELETED, user.getDeletionStatus());
+        assertNotNull(user.getDeletedAt());
         assertNull(user.getPersonalData());
         assertNull(user.getName());
         assertNull(user.getPhone());
         assertNull(user.getEmail());
         assertEquals("hash-antigo", user.getPassword());
 
-        ArgumentCaptor<PrivacyAnonymizationRegistryEntity> registryCaptor =
-                ArgumentCaptor.forClass(PrivacyAnonymizationRegistryEntity.class);
+        ArgumentCaptor<PrivacyDeletionRegistryEntity> registryCaptor =
+                ArgumentCaptor.forClass(PrivacyDeletionRegistryEntity.class);
         verify(registryRepository).save(registryCaptor.capture());
 
-        PrivacyAnonymizationRegistryEntity registry = registryCaptor.getValue();
-        assertEquals(AnonymizedEntityType.APP_USER, registry.getEntityType());
+        PrivacyDeletionRegistryEntity registry = registryCaptor.getValue();
+        assertEquals(DeletedEntityType.APP_USER, registry.getEntityType());
         assertEquals(userId, registry.getEntityId());
         assertTrue(registry.isActive());
         assertNotNull(registry.getRetentionUntil());
@@ -91,7 +91,7 @@ class UserPrivacyAnonymizationServiceTest {
                 eq("admin-1"),
                 eq(userId.toString()),
                 eq(SourceType.SYSTEM),
-                eq(LogEvent.USER_ANONYMIZED),
+                eq(LogEvent.USER_DELETED),
                 eq(ResultType.SUCCESS),
                 eq(LogCategory.AUDIT),
                 any(),
@@ -101,14 +101,14 @@ class UserPrivacyAnonymizationServiceTest {
     }
 
     @Test
-    void deveReaplicarAnonimizacaoQuandoRestoreReativarDadosPessoais() {
+    void deveReaplicarDelecaoQuandoRestoreReativarDadosPessoais() {
         AppUserJpaRepository userRepository = mock(AppUserJpaRepository.class);
-        PrivacyAnonymizationRegistryRepository registryRepository =
-                mock(PrivacyAnonymizationRegistryRepository.class);
+        PrivacyDeletionRegistryRepository registryRepository =
+                mock(PrivacyDeletionRegistryRepository.class);
         ExternalUserPrivacyRegistryService externalUserPrivacyRegistryService =
                 mock(ExternalUserPrivacyRegistryService.class);
         LogService logService = mock(LogService.class);
-        UserPrivacyAnonymizationService service = new UserPrivacyAnonymizationService(
+        UserPrivacyDeletionService service = new UserPrivacyDeletionService(
                 userRepository,
                 registryRepository,
                 externalUserPrivacyRegistryService,
@@ -126,13 +126,13 @@ class UserPrivacyAnonymizationServiceTest {
         AppUserEntity restoredUser = AppUserEntity.builder()
                 .id(userId)
                 .password("hash-antigo")
-                .anonymizationStatus(AnonymizationStatus.ACTIVE)
+                .deletionStatus(DeletionStatus.ACTIVE)
                 .personalData(restoredData)
                 .build();
         restoredData.setUser(restoredUser);
 
-        PrivacyAnonymizationRegistryEntity registry = PrivacyAnonymizationRegistryEntity.builder()
-                .entityType(AnonymizedEntityType.APP_USER)
+        PrivacyDeletionRegistryEntity registry = PrivacyDeletionRegistryEntity.builder()
+                .entityType(DeletedEntityType.APP_USER)
                 .entityId(userId)
                 .strategyVersion(1)
                 .active(true)
@@ -140,10 +140,10 @@ class UserPrivacyAnonymizationServiceTest {
 
         when(userRepository.findById(userId)).thenReturn(Optional.of(restoredUser));
 
-        boolean reapplied = service.reapplyAnonymizationIfNeeded(registry);
+        boolean reapplied = service.reapplyDeletionIfNeeded(registry);
 
         assertTrue(reapplied);
-        assertEquals(AnonymizationStatus.ANONYMIZED, restoredUser.getAnonymizationStatus());
+        assertEquals(DeletionStatus.DELETED, restoredUser.getDeletionStatus());
         assertNull(restoredUser.getPersonalData());
         assertNull(restoredUser.getName());
         assertNull(restoredUser.getPhone());
@@ -153,7 +153,7 @@ class UserPrivacyAnonymizationServiceTest {
                 eq("system"),
                 eq(userId.toString()),
                 eq(SourceType.JOB),
-                eq(LogEvent.USER_ANONYMIZATION_REAPPLIED),
+                eq(LogEvent.USER_DELETION_REAPPLIED),
                 eq(ResultType.SUCCESS),
                 eq(LogCategory.TECHNICAL),
                 any(),
@@ -163,14 +163,14 @@ class UserPrivacyAnonymizationServiceTest {
     }
 
     @Test
-    void naoDeveReaplicarQuandoUsuarioJaEstiverAnonimizado() {
+    void naoDeveReaplicarQuandoUsuarioJaEstiverDeletado() {
         AppUserJpaRepository userRepository = mock(AppUserJpaRepository.class);
-        PrivacyAnonymizationRegistryRepository registryRepository =
-                mock(PrivacyAnonymizationRegistryRepository.class);
+        PrivacyDeletionRegistryRepository registryRepository =
+                mock(PrivacyDeletionRegistryRepository.class);
         ExternalUserPrivacyRegistryService externalUserPrivacyRegistryService =
                 mock(ExternalUserPrivacyRegistryService.class);
         LogService logService = mock(LogService.class);
-        UserPrivacyAnonymizationService service = new UserPrivacyAnonymizationService(
+        UserPrivacyDeletionService service = new UserPrivacyDeletionService(
                 userRepository,
                 registryRepository,
                 externalUserPrivacyRegistryService,
@@ -179,24 +179,24 @@ class UserPrivacyAnonymizationServiceTest {
         );
 
         UUID userId = UUID.randomUUID();
-        AppUserEntity anonymizedUser = AppUserEntity.builder()
+        AppUserEntity deletedUser = AppUserEntity.builder()
                 .id(userId)
-                .anonymizationStatus(AnonymizationStatus.ANONYMIZED)
+                .deletionStatus(DeletionStatus.DELETED)
                 .build();
-        anonymizedUser.setAnonymizedAt(LocalDateTime.now());
+        deletedUser.setDeletedAt(LocalDateTime.now());
 
-        PrivacyAnonymizationRegistryEntity registry = PrivacyAnonymizationRegistryEntity.builder()
-                .entityType(AnonymizedEntityType.APP_USER)
+        PrivacyDeletionRegistryEntity registry = PrivacyDeletionRegistryEntity.builder()
+                .entityType(DeletedEntityType.APP_USER)
                 .entityId(userId)
                 .strategyVersion(1)
                 .active(true)
                 .build();
 
-        when(userRepository.findById(userId)).thenReturn(Optional.of(anonymizedUser));
+        when(userRepository.findById(userId)).thenReturn(Optional.of(deletedUser));
 
-        boolean reapplied = service.reapplyAnonymizationIfNeeded(registry);
+        boolean reapplied = service.reapplyDeletionIfNeeded(registry);
 
         assertEquals(false, reapplied);
-        verify(userRepository, never()).save(anonymizedUser);
+        verify(userRepository, never()).save(deletedUser);
     }
 }
