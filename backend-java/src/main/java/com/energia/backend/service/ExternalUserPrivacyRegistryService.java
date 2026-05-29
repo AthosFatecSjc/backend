@@ -79,4 +79,11 @@ public class ExternalUserPrivacyRegistryService {
         }
         return email.trim().toLowerCase();
     }
+
+    public LocalDateTime findDeletedAtByUserId(UUID userId) {
+        return repository.findById(userId)
+                .map(ExternalUserPrivacyRecord::getDeletedAt)
+                .orElse(null);
+    }
+    
 }

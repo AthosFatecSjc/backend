@@ -1,16 +1,16 @@
 package com.energia.backend.service;
 
-import com.energia.backend.model.AnonymizationStatus;
+import com.energia.backend.model.DeletionStatus;
 import com.energia.backend.model.AppUserEntity;
 import com.energia.backend.model.log.LogCategory;
 import com.energia.backend.model.log.LogEvent;
 import com.energia.backend.model.log.ResultType;
 import com.energia.backend.model.log.SourceType;
-import com.energia.backend.model.privacy.AnonymizedEntityType;
-import com.energia.backend.model.privacy.PrivacyAnonymizationRegistryEntity;
+import com.energia.backend.model.privacy.DeletedEntityType;
+import com.energia.backend.model.privacy.PrivacyDeletionRegistryEntity;
 import com.energia.backend.model.privacy.RestoreAction;
 import com.energia.backend.repository.AppUserJpaRepository;
-import com.energia.backend.repository.PrivacyAnonymizationRegistryRepository;
+import com.energia.backend.repository.PrivacyDeletionRegistryRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -22,20 +22,20 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Service
-public class UserPrivacyAnonymizationService {
+public class UserPrivacyDeletionService {
 
     static final int STRATEGY_VERSION = 1;
     private static final String MODULE_NAME = "privacy-protection";
 
     private final AppUserJpaRepository appUserRepository;
-    private final PrivacyAnonymizationRegistryRepository registryRepository;
+    private final PrivacyDeletionRegistryRepository registryRepository;
     private final ExternalUserPrivacyRegistryService externalUserPrivacyRegistryService;
     private final LogService logService;
     private final int backupRetentionDays;
 
-    public UserPrivacyAnonymizationService(
+    public UserPrivacyDeletionService(
             AppUserJpaRepository appUserRepository,
-            PrivacyAnonymizationRegistryRepository registryRepository,
+            PrivacyDeletionRegistryRepository registryRepository,
             ExternalUserPrivacyRegistryService externalUserPrivacyRegistryService,
             LogService logService,
             @Value("${privacy.backup.retention-days:90}") int backupRetentionDays
@@ -48,24 +48,24 @@ public class UserPrivacyAnonymizationService {
     }
 
     @Transactional
-    public void anonymizeUser(UUID userId, String actorRef, String reason) {
+    public void deleteUser(UUID userId, String actorRef, String reason) {
         AppUserEntity user = appUserRepository.findById(userId)
-                .orElseThrow(() -> new EntityNotFoundException("Usuario nao encontrado para anonimizar."));
+                .orElseThrow(() -> new EntityNotFoundException("Usuario nao encontrado para deletar."));
 
         LocalDateTime now = LocalDateTime.now();
         user.clearPersonalData();
-        user.setAnonymizationStatus(AnonymizationStatus.ANONYMIZED);
-        user.setAnonymizedAt(now);
+        user.setDeletionStatus(DeletionStatus.DELETED);
+        user.setDeletedAt(now);
         appUserRepository.save(user);
 
-        PrivacyAnonymizationRegistryEntity registry = registryRepository
-                .findByEntityTypeAndEntityId(AnonymizedEntityType.APP_USER, userId)
-                .orElseGet(PrivacyAnonymizationRegistryEntity::new);
+        PrivacyDeletionRegistryEntity registry = registryRepository
+                .findByEntityTypeAndEntityId(DeletedEntityType.APP_USER, userId)
+                .orElseGet(PrivacyDeletionRegistryEntity::new);
 
-        registry.setEntityType(AnonymizedEntityType.APP_USER);
+        registry.setEntityType(DeletedEntityType.APP_USER);
         registry.setEntityId(userId);
-        registry.setAnonymizedAt(now);
-        registry.setAnonymizedBy(actorRef);
+        registry.setDeletedAt(now);
+        registry.setDeletedBy(actorRef);
         registry.setReason(reason);
         registry.setStrategyVersion(STRATEGY_VERSION);
         registry.setRestoreAction(RestoreAction.REAPPLY);
@@ -80,10 +80,10 @@ public class UserPrivacyAnonymizationService {
             actorRef,
             userId.toString(),
             SourceType.SYSTEM,
-            LogEvent.USER_ANONYMIZED,
+            LogEvent.USER_DELETED,
             ResultType.SUCCESS,
             LogCategory.AUDIT,
-            "Anonimizacao registrada com protecao contra reativacao por restore.",
+            "Delecao registrada com protecao contra reativacao por restore.",
             String.format("{\"reason\":%s,\"strategyVersion\":%d}",
                 reason == null ? "null" : '"' + reason.replace("\"", "'") + '"', STRATEGY_VERSION),
             MODULE_NAME
@@ -91,7 +91,7 @@ public class UserPrivacyAnonymizationService {
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public boolean reapplyAnonymizationIfNeeded(PrivacyAnonymizationRegistryEntity registry) {
+    public boolean reapplyDeletionIfNeeded(PrivacyDeletionRegistryEntity registry) {
         Optional<AppUserEntity> maybeUser = appUserRepository.findById(registry.getEntityId());
         LocalDateTime now = LocalDateTime.now();
 
@@ -106,8 +106,8 @@ public class UserPrivacyAnonymizationService {
 
         if (needsReapply) {
             user.clearPersonalData();
-            user.setAnonymizationStatus(AnonymizationStatus.ANONYMIZED);
-            user.setAnonymizedAt(now);
+            user.setDeletionStatus(DeletionStatus.DELETED);
+            user.setDeletedAt(now);
             appUserRepository.save(user);
             registry.setLastReappliedAt(now);
 
@@ -115,10 +115,10 @@ public class UserPrivacyAnonymizationService {
                     "system",
                     registry.getEntityId().toString(),
                     SourceType.JOB,
-                    LogEvent.USER_ANONYMIZATION_REAPPLIED,
+                    LogEvent.USER_DELETION_REAPPLIED,
                     ResultType.SUCCESS,
                     LogCategory.TECHNICAL,
-                    "Anonimizacao reaplicada apos reconciliacao de restore.",
+                    "Delecao reaplicada apos reconciliacao de restore.",
                     String.format("{\"strategyVersion\":%d}", registry.getStrategyVersion()),
                     MODULE_NAME
                 );
@@ -130,8 +130,8 @@ public class UserPrivacyAnonymizationService {
     }
 
     boolean requiresReapply(AppUserEntity user) {
-        return user.getAnonymizationStatus() != AnonymizationStatus.ANONYMIZED
-                || user.getAnonymizedAt() == null
+        return user.getDeletionStatus() != DeletionStatus.DELETED
+                || user.getDeletedAt() == null
                 || user.getPersonalData() != null;
     }
 

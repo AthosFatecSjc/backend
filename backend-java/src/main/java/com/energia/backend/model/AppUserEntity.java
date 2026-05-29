@@ -69,11 +69,11 @@ public class AppUserEntity {
     private LocalDateTime createdAt;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "anonymization_status", length = 20)
-    private AnonymizationStatus anonymizationStatus;
+    @Column(name = "deletion_status", length = 20)
+    private DeletionStatus deletionStatus;
 
-    @Column(name = "anonymized_at")
-    private LocalDateTime anonymizedAt;
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
 
     // MANY-TO-MANY → ROLE
     @ManyToMany(fetch = FetchType.LAZY)
@@ -96,8 +96,8 @@ public class AppUserEntity {
         if (this.createdAt == null) {
             this.createdAt = LocalDateTime.now();
         }
-        if (this.anonymizationStatus == null) {
-            this.anonymizationStatus = AnonymizationStatus.ACTIVE;
+        if (this.deletionStatus == null) {
+            this.deletionStatus = DeletionStatus.ACTIVE;
         }
         ensurePersonalDataLink();
     }

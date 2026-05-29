@@ -20,11 +20,11 @@ import java.util.UUID;
 
 @Entity
 @Table(
-        name = "privacy_anonymization_registry",
+        name = "privacy_deletion_registry",
         schema = "energia",
         uniqueConstraints = {
                 @UniqueConstraint(
-                        name = "uq_privacy_anonymization_registry_entity",
+                        name = "uq_privacy_deletion_registry_entity",
                         columnNames = {"entity_type", "entity_id"}
                 )
         }
@@ -34,7 +34,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class PrivacyAnonymizationRegistryEntity {
+public class PrivacyDeletionRegistryEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -42,28 +42,28 @@ public class PrivacyAnonymizationRegistryEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "entity_type", nullable = false, length = 50)
-    private AnonymizedEntityType entityType;
+    private DeletedEntityType entityType;
 
     @Column(name = "entity_id", nullable = false)
     private UUID entityId;
 
-    @Column(name = "anonymized_at", nullable = false)
-    private LocalDateTime anonymizedAt;
+    @Column(name = "deleted_at", nullable = false)
+    private LocalDateTime deletedAt;
 
-    @Column(name = "anonymized_by", length = 100)
-    private String anonymizedBy;
+    @Column(name = "deleted_by", length = 100)
+    private String deletedBy;
 
     @Column(name = "reason", columnDefinition = "TEXT")
     private String reason;
 
-    @Column(name = "strategy_version", nullable = false)
+    @Column(name = "strategy_version")
     private Integer strategyVersion;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "restore_action", nullable = false, length = 20)
+    @Column(name = "restore_action", length = 20)
     private RestoreAction restoreAction;
 
-    @Column(name = "retention_until", nullable = false)
+    @Column(name = "retention_until")
     private LocalDateTime retentionUntil;
 
     @Column(name = "last_reconciled_at")
@@ -72,6 +72,6 @@ public class PrivacyAnonymizationRegistryEntity {
     @Column(name = "last_reapplied_at")
     private LocalDateTime lastReappliedAt;
 
-    @Column(name = "active", nullable = false)
+    @Column(name = "active")
     private boolean active;
 }

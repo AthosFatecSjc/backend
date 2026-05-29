@@ -1,6 +1,6 @@
 package com.energia.backend.model;
 
-public enum AnonymizationStatus {
+public enum DeletionStatus {
     ACTIVE,
-    ANONYMIZED
+    DELETED
 }

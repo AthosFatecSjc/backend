@@ -11,14 +11,14 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 
-import com.energia.backend.model.AnonymizationStatus;
+import com.energia.backend.model.DeletionStatus;
 import com.energia.backend.model.AppUserEntity;
 import com.energia.backend.repository.AppUserJpaRepository;
 
 class ExternalUserPrivacyRegistryBootstrapServiceTest {
 
     @Test
-    void deveSincronizarUsuariosAtivosEAnonimizadosNoStartup() {
+    void deveSincronizarUsuariosAtivosEDeletadosNoStartup() {
         AppUserJpaRepository appUserRepository = mock(AppUserJpaRepository.class);
         ExternalUserPrivacyRegistryService registryService = mock(ExternalUserPrivacyRegistryService.class);
         ExternalUserPrivacyRegistryBootstrapService service =
@@ -31,12 +31,12 @@ class ExternalUserPrivacyRegistryBootstrapServiceTest {
         AppUserEntity activeUser = AppUserEntity.builder()
                 .id(activeUserId)
                 .email("active@teste.com")
-                .anonymizationStatus(AnonymizationStatus.ACTIVE)
+                .deletionStatus(DeletionStatus.ACTIVE)
                 .build();
         AppUserEntity deletedUser = AppUserEntity.builder()
                 .id(deletedUserId)
-                .anonymizationStatus(AnonymizationStatus.ANONYMIZED)
-                .anonymizedAt(deletedAt)
+                .deletionStatus(DeletionStatus.DELETED)
+                .deletedAt(deletedAt)
                 .build();
 
         when(appUserRepository.findAll()).thenReturn(List.of(activeUser, deletedUser));
