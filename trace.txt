@@ -1,0 +1,43 @@
+* Host localhost:8181 was resolved.
+* IPv6: ::1
+* IPv4: 127.0.0.1
+*   Trying [::1]:8181...
+* Established connection to localhost (::1 port 8181) from ::1 port 64934 
+* using HTTP/1.x
+=> Send header, 122 bytes (0x7a)
+0000: POST /ops/emergency/emails/usuarios-nao-deletados HTTP/1.1
+003c: Host: localhost:8181
+0052: User-Agent: curl/8.19.0
+006b: Accept: */*
+0078: 
+* Request completely sent off
+<= Recv header, 15 bytes (0xf)
+0000: HTTP/1.1 403 
+<= Recv header, 14 bytes (0xe)
+0000: Vary: Origin
+<= Recv header, 37 bytes (0x25)
+0000: Vary: Access-Control-Request-Method
+<= Recv header, 38 bytes (0x26)
+0000: Vary: Access-Control-Request-Headers
+<= Recv header, 33 bytes (0x21)
+0000: X-Content-Type-Options: nosniff
+<= Recv header, 21 bytes (0x15)
+0000: X-XSS-Protection: 0
+<= Recv header, 63 bytes (0x3f)
+0000: Cache-Control: no-cache, no-store, max-age=0, must-revalidate
+<= Recv header, 18 bytes (0x12)
+0000: Pragma: no-cache
+<= Recv header, 12 bytes (0xc)
+0000: Expires: 0
+<= Recv header, 23 bytes (0x17)
+0000: X-Frame-Options: DENY
+<= Recv header, 19 bytes (0x13)
+0000: Content-Length: 0
+<= Recv header, 37 bytes (0x25)
+0000: Date: Fri, 29 May 2026 19:34:09 GMT
+<= Recv header, 2 bytes (0x2)
+0000: 
+* Connection #0 to host localhost:8181 left intact
+* URL rejected: Port number was not a decimal number between 0 and 65535
+* URL rejected: Malformed input to a URL function
+* URL rejected: Malformed input to a URL function

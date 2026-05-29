@@ -3,34 +3,37 @@ package com.energia.backend.service;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
+import org.bson.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.mail.MailException;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 
 import com.energia.backend.dto.BulkEmailResponse;
-import com.energia.backend.model.privacy.ExternalUserPrivacyRecord;
-import com.energia.backend.repository.ExternalUserPrivacyRecordRepository;
 
 @Service
 public class BulkUserEmailService {
 
     private static final Logger logger = LoggerFactory.getLogger(BulkUserEmailService.class);
 
-    private final ExternalUserPrivacyRecordRepository privacyRecordRepository;
+    private final MongoTemplate mongoTemplate;
     private final JavaMailSender mailSender;
     private final String fromAddress;
 
     public BulkUserEmailService(
-            ExternalUserPrivacyRecordRepository privacyRecordRepository,
+            MongoTemplate mongoTemplate,
             JavaMailSender mailSender,
             @Value("${app.mail.from:no-reply@energia.local}") String fromAddress
     ) {
-        this.privacyRecordRepository = privacyRecordRepository;
+        this.mongoTemplate = mongoTemplate;
         this.mailSender = mailSender;
         this.fromAddress = fromAddress;
     }
@@ -39,15 +42,17 @@ public class BulkUserEmailService {
         String normalizedSubject = requireText(subject, "Assunto e obrigatorio.");
         String normalizedBody = requireText(body, "Mensagem e obrigatoria.");
 
-        List<ExternalUserPrivacyRecord> activeRecords =
-                privacyRecordRepository.findAllByDeletedAtIsNullAndEmailIsNotNull();
+        Query query = Query.query(Criteria.where("deletedAt").is(null).and("email").ne(null));
+        query.fields().include("email").exclude("_id");
 
-        Set<String> recipients = new LinkedHashSet<>();
-        for (ExternalUserPrivacyRecord record : activeRecords) {
-            if (record.getEmail() != null && !record.getEmail().trim().isEmpty()) {
-                recipients.add(record.getEmail().trim().toLowerCase());
-            }
-        }
+        List<Document> activeRecords = mongoTemplate.find(query, Document.class, "lgpd_user_registry");
+
+        Set<String> recipients = activeRecords.stream()
+                .map(record -> record.getString("email"))
+                .filter(email -> email != null && !email.trim().isEmpty())
+                .map(String::trim)
+                .map(String::toLowerCase)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
 
         int sentCount = 0;
         int failedCount = 0;

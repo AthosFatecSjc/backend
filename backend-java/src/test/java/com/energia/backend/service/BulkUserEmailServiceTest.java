@@ -3,49 +3,42 @@ package com.energia.backend.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.time.LocalDateTime;
 import java.util.List;
-import java.util.UUID;
 
+import org.bson.Document;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.mail.MailSendException;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 
 import com.energia.backend.dto.BulkEmailResponse;
-import com.energia.backend.model.privacy.ExternalUserPrivacyRecord;
-import com.energia.backend.repository.ExternalUserPrivacyRecordRepository;
 
 class BulkUserEmailServiceTest {
 
     @Test
     void deveEnviarEmailSomenteParaUsuariosNaoDeletadosDoRegistroExterno() {
-        ExternalUserPrivacyRecordRepository repository = mock(ExternalUserPrivacyRecordRepository.class);
+        MongoTemplate mongoTemplate = mock(MongoTemplate.class);
         JavaMailSender mailSender = mock(JavaMailSender.class);
         BulkUserEmailService service = new BulkUserEmailService(
-                repository,
+                mongoTemplate,
                 mailSender,
                 "incidentes@energia.local"
         );
 
-        when(repository.findAllByDeletedAtIsNullAndEmailIsNotNull()).thenReturn(List.of(
-                ExternalUserPrivacyRecord.builder()
-                        .userId(UUID.randomUUID())
-                        .email("USER1@TESTE.COM")
-                        .deletedAt(null)
-                        .build(),
-                ExternalUserPrivacyRecord.builder()
-                        .userId(UUID.randomUUID())
-                        .email("user2@teste.com")
-                        .deletedAt(null)
-                        .build()
-        ));
+        when(mongoTemplate.find(any(Query.class), eq(Document.class), eq("lgpd_user_registry")))
+                .thenReturn(List.of(
+                        new Document("email", "USER1@TESTE.COM"),
+                        new Document("email", "user2@teste.com")
+                ));
 
         BulkEmailResponse response = service.sendToAllNonDeletedUsers(
                 "Comunicado importante",
@@ -67,31 +60,20 @@ class BulkUserEmailServiceTest {
 
     @Test
     void deveDeduplicarDestinatariosEContinuarQuandoUmEnvioFalhar() {
-        ExternalUserPrivacyRecordRepository repository = mock(ExternalUserPrivacyRecordRepository.class);
+        MongoTemplate mongoTemplate = mock(MongoTemplate.class);
         JavaMailSender mailSender = mock(JavaMailSender.class);
         BulkUserEmailService service = new BulkUserEmailService(
-                repository,
+                mongoTemplate,
                 mailSender,
                 "incidentes@energia.local"
         );
 
-        when(repository.findAllByDeletedAtIsNullAndEmailIsNotNull()).thenReturn(List.of(
-                ExternalUserPrivacyRecord.builder()
-                        .userId(UUID.randomUUID())
-                        .email("user1@teste.com")
-                        .deletedAt(null)
-                        .build(),
-                ExternalUserPrivacyRecord.builder()
-                        .userId(UUID.randomUUID())
-                        .email(" USER1@TESTE.COM ")
-                        .deletedAt(null)
-                        .build(),
-                ExternalUserPrivacyRecord.builder()
-                        .userId(UUID.randomUUID())
-                        .email("user2@teste.com")
-                        .deletedAt(null)
-                        .build()
-        ));
+        when(mongoTemplate.find(any(Query.class), eq(Document.class), eq("lgpd_user_registry")))
+                .thenReturn(List.of(
+                        new Document("email", "user1@teste.com"),
+                        new Document("email", " USER1@TESTE.COM "),
+                        new Document("email", "user2@teste.com")
+                ));
         doThrow(new MailSendException("smtp offline"))
                 .when(mailSender)
                 .send(any(SimpleMailMessage.class));
@@ -109,10 +91,10 @@ class BulkUserEmailServiceTest {
 
     @Test
     void deveRejeitarAssuntoOuMensagemVazios() {
-        ExternalUserPrivacyRecordRepository repository = mock(ExternalUserPrivacyRecordRepository.class);
+        MongoTemplate mongoTemplate = mock(MongoTemplate.class);
         JavaMailSender mailSender = mock(JavaMailSender.class);
         BulkUserEmailService service = new BulkUserEmailService(
-                repository,
+                mongoTemplate,
                 mailSender,
                 "incidentes@energia.local"
         );
@@ -131,26 +113,20 @@ class BulkUserEmailServiceTest {
     }
 
     @Test
-    void naoDeveConsultarBancoPrincipalParaMontarDestinatarios() {
-        ExternalUserPrivacyRecordRepository repository = mock(ExternalUserPrivacyRecordRepository.class);
+    void devePesquisarApenasEmailsNoRegistroExterno() {
+        MongoTemplate mongoTemplate = mock(MongoTemplate.class);
         JavaMailSender mailSender = mock(JavaMailSender.class);
         BulkUserEmailService service = new BulkUserEmailService(
-                repository,
+                mongoTemplate,
                 mailSender,
                 "incidentes@energia.local"
         );
 
-        when(repository.findAllByDeletedAtIsNullAndEmailIsNotNull()).thenReturn(List.of(
-                ExternalUserPrivacyRecord.builder()
-                        .userId(UUID.randomUUID())
-                        .email("ativo@teste.com")
-                        .deletedAt(null)
-                        .createdAt(LocalDateTime.now())
-                        .build()
-        ));
+        when(mongoTemplate.find(any(Query.class), eq(Document.class), eq("lgpd_user_registry")))
+                .thenReturn(List.of(new Document("email", "ativo@teste.com")));
 
         service.sendToAllNonDeletedUsers("Assunto", "Mensagem");
 
-        verify(repository).findAllByDeletedAtIsNullAndEmailIsNotNull();
+        verify(mongoTemplate).find(any(Query.class), eq(Document.class), eq("lgpd_user_registry"));
     }
 }
