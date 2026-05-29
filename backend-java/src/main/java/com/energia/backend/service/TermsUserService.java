@@ -1,6 +1,8 @@
 package com.energia.backend.service;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -10,7 +12,10 @@ import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 
+import com.energia.backend.dto.TermoPeriodoResponse;
+import com.energia.backend.dto.TermosResponse;
 import com.energia.backend.dto.UserTermResponse;
+import com.energia.backend.dto.UsuarioHistoricoTermosResponse;
 import com.energia.backend.exception.DocumentosObrigatoriosNaoConfiguradosException;
 import com.energia.backend.model.AppUserEntity;
 import com.energia.backend.model.TermsEntity;
@@ -55,11 +60,11 @@ public class TermsUserService {
 
         List<TermsEntity> termos = termsRepository.findAllById(termosIds);
 
-        for (TermsEntity termo : termos) {
-            checarAcaoRepetida(userEntity, termo.getId(), UserTermsAction.ACCEPTED);
-        }
+        List<TermsEntity> termosParaSalvar = termos.stream()
+                .filter(termo -> !isAcaoRepetida(userEntity, termo.getId(), UserTermsAction.ACCEPTED))
+                .toList();
 
-        salvarTermos(userEntity, termos, UserTermsAction.ACCEPTED);
+        salvarTermos(userEntity, termosParaSalvar, UserTermsAction.ACCEPTED);
     }
 
     // ok
@@ -75,10 +80,13 @@ public class TermsUserService {
                         "Não é permitido recusar/revogar termo obrigatório: "
                                 + termo.getTermType().getName());
             }
-            checarAcaoRepetida(userEntity, termo.getId(), UserTermsAction.REVOKED);
         }
 
-        salvarTermos(userEntity, termos, UserTermsAction.REVOKED);
+        List<TermsEntity> termosParaSalvar = termos.stream()
+                .filter(termo -> !isAcaoRepetida(userEntity, termo.getId(), UserTermsAction.REVOKED))
+                .toList();
+
+        salvarTermos(userEntity, termosParaSalvar, UserTermsAction.REVOKED);
     }
 
     // ok
@@ -94,10 +102,13 @@ public class TermsUserService {
                         "Termo obrigatorio deve ser aceito: "
                                 + termo.getTermType().getName());
             }
-            checarAcaoRepetida(userEntity, termo.getId(), UserTermsAction.ACKNOWLEDGED);
         }
+        List<TermsEntity> termosParaCiencia = termos.stream()
+                .filter(termo -> !isAcaoRepetida(userEntity, termo.getId(), UserTermsAction.REVOKED))
+                .toList();
 
-        salvarTermos(userEntity, termos, UserTermsAction.ACKNOWLEDGED);
+
+        salvarTermos(userEntity, termosParaCiencia, UserTermsAction.ACKNOWLEDGED);
     }
 
     // OK
@@ -195,6 +206,12 @@ public class TermsUserService {
                 });
     }
 
+    private boolean isAcaoRepetida(AppUserEntity user, UUID termId, UserTermsAction action) {
+        return userTermsRespository.findTopByUserAndTermsIdOrderByActionAtDesc(user, termId)
+                .map(lastAction -> lastAction.getAction() == action)
+                .orElse(false);
+    }
+
     // ok
     private String buildKey(UserTermsEntity ut) {
         return ut.getTerms().getTermType().getId() + "_" + ut.getTerms().getClause();
@@ -223,6 +240,146 @@ public class TermsUserService {
                 LocalDateTime.now()).stream()
                 .filter(terms -> !apenasObrigatorios || terms.getTermType().getIsRequired())
                 .toList();
+    }
+
+    public TermosResponse convertToTermosResponse(
+            UserTermResponse response) {
+        TermsEntity term = termsRepository.findById(response.termId())
+                .orElseThrow(() -> new RuntimeException("Termo não encontrado"));
+
+        return new TermosResponse(
+                response.termId(),
+                response.typeName(),
+                response.required(),
+                term.getContent(),
+                term.getClause(),
+                term.getEffectivityStartAt(),
+                term.getEffectivityEndAt());
+    }
+
+    public UsuarioHistoricoTermosResponse listarHistoricoFormatado(UUID userId) {
+
+        List<UserTermsEntity> history = userTermsRespository.findHistoryByUserId(userId);
+
+        List<TermoPeriodoResponse> termos = new ArrayList<>();
+
+        Map<UUID, List<UserTermsEntity>> grouped = history.stream()
+                .collect(Collectors.groupingBy(
+                        item -> item.getTerms().getId()));
+
+        for (Map.Entry<UUID, List<UserTermsEntity>> entry : grouped.entrySet()) {
+
+            List<UserTermsEntity> actions = entry.getValue()
+                    .stream()
+                    .sorted(Comparator.comparing(UserTermsEntity::getActionAt))
+                    .toList();
+
+            for (int i = 0; i < actions.size(); i++) {
+
+                UserTermsEntity current = actions.get(i);
+
+                if (!current.getAction().name().equals("ACCEPTED")) {
+                    continue;
+                }
+
+                LocalDateTime inicio = current.getActionAt();
+
+                LocalDateTime fim = current.getTerms().getEffectivityEndAt();
+
+                for (int j = i + 1; j < actions.size(); j++) {
+
+                    UserTermsEntity next = actions.get(j);
+
+                    if (next.getAction().name().equals("REVOKED")) {
+                        fim = minDate(
+                                next.getActionAt(),
+                                current.getTerms().getEffectivityEndAt());
+                        break;
+                    }
+                }
+
+                termos.add(new TermoPeriodoResponse(
+                        current.getTerms().getId(),
+                        inicio,
+                        fim));
+            }
+        }
+
+        return new UsuarioHistoricoTermosResponse(
+                userId,
+                termos);
+    }
+
+    public List<UsuarioHistoricoTermosResponse> listarHistoricoFormatadoAllUsers() {
+
+        List<UserTermsEntity> history = userTermsRespository.findHistoryAllUsers();
+
+        Map<UUID, List<UserTermsEntity>> groupedByUser = history.stream()
+                .collect(Collectors.groupingBy(item -> item.getUser().getId()));
+
+        List<UsuarioHistoricoTermosResponse> resposta = new ArrayList<>();
+
+        for (Map.Entry<UUID, List<UserTermsEntity>> userEntry : groupedByUser.entrySet()) {
+
+            UUID userId = userEntry.getKey();
+            List<UserTermsEntity> userHistory = userEntry.getValue();
+
+            Map<UUID, List<UserTermsEntity>> groupedByTerm = userHistory.stream()
+                    .collect(Collectors.groupingBy(item -> item.getTerms().getId()));
+
+            List<TermoPeriodoResponse> termos = new ArrayList<>();
+
+            for (Map.Entry<UUID, List<UserTermsEntity>> termEntry : groupedByTerm.entrySet()) {
+
+                List<UserTermsEntity> actions = termEntry.getValue()
+                        .stream()
+                        .sorted(Comparator.comparing(UserTermsEntity::getActionAt))
+                        .toList();
+
+                for (int i = 0; i < actions.size(); i++) {
+
+                    UserTermsEntity current = actions.get(i);
+
+                    if (!current.getAction().name().equals("ACCEPTED")) {
+                        continue;
+                    }
+
+                    LocalDateTime inicio = current.getActionAt();
+                    LocalDateTime fim = current.getTerms().getEffectivityEndAt();
+
+                    for (int j = i + 1; j < actions.size(); j++) {
+                        UserTermsEntity next = actions.get(j);
+
+                        if (next.getAction().name().equals("REVOKED")) {
+                            fim = minDate(
+                                    next.getActionAt(),
+                                    current.getTerms().getEffectivityEndAt());
+                            break;
+                        }
+                    }
+
+                    termos.add(new TermoPeriodoResponse(
+                            current.getTerms().getId(),
+                            inicio,
+                            fim));
+                }
+            }
+
+            resposta.add(new UsuarioHistoricoTermosResponse(userId, termos));
+        }
+
+        return resposta;
+    }
+
+    private LocalDateTime minDate(
+            LocalDateTime a,
+            LocalDateTime b) {
+        if (a == null)
+            return b;
+        if (b == null)
+            return a;
+
+        return a.isBefore(b) ? a : b;
     }
 
     // public List<TermosResponse> listarPendenciasObrigatorias(UUID userId) {

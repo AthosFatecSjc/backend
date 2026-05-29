@@ -38,4 +38,12 @@ public interface UserTermsRepository extends JpaRepository<UserTermsEntity, UUID
         AppUserEntity user,
         UUID termsId
     );
+
+    @Query("""
+        select ut
+        from UserTermsEntity ut
+        join fetch ut.terms t
+        order by ut.actionAt desc
+    """)
+    List<UserTermsEntity> findHistoryAllUsers();
 }

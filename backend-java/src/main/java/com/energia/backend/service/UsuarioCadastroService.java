@@ -23,6 +23,8 @@ import com.energia.backend.repository.RoleJpaRepository;
 import com.energia.backend.repository.StatusJpaRepository;
 import com.energia.backend.repository.UserStatusJpaRepository;
 import com.energia.backend.repository.UsuarioCadastroRepository;
+import com.energia.backend.repository.UsuarioRepository;
+
 
 @Service
 public class UsuarioCadastroService {
@@ -37,6 +39,7 @@ public class UsuarioCadastroService {
     private final ExternalUserPrivacyRegistryService externalUserPrivacyRegistryService;
     private static final Pattern EMAIL_PATTERN = Pattern.compile("[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}");
     private final UserStatusJpaRepository userStatusRepository;
+    private final UsuarioRepository userRepository;
 
     public UsuarioCadastroService(
             UsuarioCadastroRepository usuarioCadastroRepository,
@@ -50,6 +53,7 @@ public class UsuarioCadastroService {
             JpaUsuarioCadastroRepository jpaUsuarioCadastroRepository,
             RoleJpaRepository roleRepository,
             UserStatusJpaRepository userStatusJpaRepository,
+            UsuarioRepository userRepository,
             ExternalUserPrivacyRegistryService externalUserPrivacyRegistryService) {
         this.usuarioCadastroRepository = usuarioCadastroRepository;
         this.appUserRepository = appUserRepository;
@@ -60,6 +64,7 @@ public class UsuarioCadastroService {
         this.jpaUsuarioCadastroRepository = jpaUsuarioCadastroRepository;
         this.roleRepository = roleRepository;
         this.userStatusRepository = userStatusJpaRepository;
+        this.userRepository = userRepository;
         this.externalUserPrivacyRegistryService = externalUserPrivacyRegistryService;
     }
 
@@ -83,7 +88,7 @@ public class UsuarioCadastroService {
         user.setPassword(passwordEncoder.encode(request.getSenha()));
         user.setPhone(sanitizeOptional(request.getTelefone()));
         user.setCreatedAt(LocalDateTime.now());
-      
+
         StatusEntity statusEntity = statusRepository
                 .findByNameIgnoreCase(StatusUsuario.PENDENTE.name())
                 .orElseThrow(() -> new RuntimeException("Status não encontrado"));
@@ -157,5 +162,10 @@ public class UsuarioCadastroService {
 
     private boolean isBlank(String value) {
         return value == null || value.trim().isEmpty();
+    }
+
+    public AppUserEntity getUserOrThrow(UUID userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found: " + userId));
     }
 }
