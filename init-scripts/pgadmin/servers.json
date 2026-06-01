@@ -1,0 +1,14 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "Energia Postgres",
+      "Group": "Energia",
+      "Host": "energia-postgres",
+      "Port": 5432,
+      "MaintenanceDB": "energia_db",
+      "Username": "energia_user",
+      "SSLMode": "prefer",
+      "PassFile": "/pgpass"
+    }
+  }
+}

@@ -12,7 +12,7 @@ import com.energia.backend.exception.EmailJaCadastradoException;
 import com.energia.backend.exception.LoginAuthenticationException;
 import com.energia.backend.exception.PermissaoNegadaException;
 import com.energia.backend.exception.TermoNaoEncontradoException;
-import com.energia.backend.exception.UsuarioJaAnonimizadoException;
+import com.energia.backend.exception.UsuarioJaDeletadoException;
 import com.energia.backend.exception.UsuarioNaoEncontradoException;
 import com.energia.backend.dto.error.ErrorResponseDto;
 
@@ -98,12 +98,12 @@ public class GlobalExceptionHandler {
         );
     }
 
-    @ExceptionHandler(UsuarioJaAnonimizadoException.class)
-    public ResponseEntity<ErrorResponseDto> handleUsuarioJaAnonimizado(UsuarioJaAnonimizadoException ex) {
+    @ExceptionHandler(UsuarioJaDeletadoException.class)
+    public ResponseEntity<ErrorResponseDto> handleUsuarioJaDeletado(UsuarioJaDeletadoException ex) {
         return ResponseEntity
             .status(HttpStatus.CONFLICT)
             .body(ErrorResponseDto.builder()
-                .error("USUARIO_JA_ANONIMIZADO")
+                .error("USUARIO_JA_DELETADO")
                 .message(ex.getMessage())
                 .build()
             );

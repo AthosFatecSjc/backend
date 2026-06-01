@@ -5,4 +5,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import com.energia.backend.model.aneel.Perdas;
 
 public interface PerdasRepository extends JpaRepository<Perdas, Long> {
+
+    boolean existsByDistribuidoraIdAndAno(Long distribuidoraId, Long ano);
 }

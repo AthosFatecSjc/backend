@@ -4,9 +4,9 @@ import com.energia.backend.model.log.LogCategory;
 import com.energia.backend.model.log.LogEvent;
 import com.energia.backend.model.log.ResultType;
 import com.energia.backend.model.log.SourceType;
-import com.energia.backend.model.privacy.PrivacyAnonymizationRegistryEntity;
+import com.energia.backend.model.privacy.PrivacyDeletionRegistryEntity;
 import com.energia.backend.model.privacy.RestoreAction;
-import com.energia.backend.repository.PrivacyAnonymizationRegistryRepository;
+import com.energia.backend.repository.PrivacyDeletionRegistryRepository;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -24,39 +24,39 @@ class BackupRestoreReconciliationServiceTest {
 
     @Test
     void deveContinuarProcessandoQuandoUmaReaplicacaoFalhar() {
-        PrivacyAnonymizationRegistryRepository registryRepository =
-                mock(PrivacyAnonymizationRegistryRepository.class);
-        UserPrivacyAnonymizationService anonymizationService = mock(UserPrivacyAnonymizationService.class);
+        PrivacyDeletionRegistryRepository registryRepository =
+                mock(PrivacyDeletionRegistryRepository.class);
+        UserPrivacyDeletionService deletionService = mock(UserPrivacyDeletionService.class);
         LogService logService = mock(LogService.class);
         BackupRestoreReconciliationService service = new BackupRestoreReconciliationService(
                 registryRepository,
-                anonymizationService,
+                deletionService,
                 logService
         );
 
-        PrivacyAnonymizationRegistryEntity failedRegistry = PrivacyAnonymizationRegistryEntity.builder()
+        PrivacyDeletionRegistryEntity failedRegistry = PrivacyDeletionRegistryEntity.builder()
                 .entityId(UUID.randomUUID())
                 .restoreAction(RestoreAction.REAPPLY)
                 .active(true)
                 .build();
-        PrivacyAnonymizationRegistryEntity successfulRegistry = PrivacyAnonymizationRegistryEntity.builder()
+        PrivacyDeletionRegistryEntity successfulRegistry = PrivacyDeletionRegistryEntity.builder()
                 .entityId(UUID.randomUUID())
                 .restoreAction(RestoreAction.REAPPLY)
                 .active(true)
                 .build();
 
-        when(registryRepository.findAllByActiveTrueOrderByAnonymizedAtAsc())
+        when(registryRepository.findAllByActiveTrueOrderByDeletedAtAsc())
                 .thenReturn(List.of(failedRegistry, successfulRegistry));
-        when(anonymizationService.reapplyAnonymizationIfNeeded(failedRegistry))
+        when(deletionService.reapplyDeletionIfNeeded(failedRegistry))
                 .thenThrow(new IllegalStateException("registro inconsistente"));
-        when(anonymizationService.reapplyAnonymizationIfNeeded(successfulRegistry))
+        when(deletionService.reapplyDeletionIfNeeded(successfulRegistry))
                 .thenReturn(true);
 
         int reappliedCount = service.reconcile();
 
         assertEquals(1, reappliedCount);
-        verify(anonymizationService).reapplyAnonymizationIfNeeded(failedRegistry);
-        verify(anonymizationService).reapplyAnonymizationIfNeeded(successfulRegistry);
+        verify(deletionService).reapplyDeletionIfNeeded(failedRegistry);
+        verify(deletionService).reapplyDeletionIfNeeded(successfulRegistry);
         verify(logService).log(
                 eq("system"),
                 eq(failedRegistry.getEntityId().toString()),

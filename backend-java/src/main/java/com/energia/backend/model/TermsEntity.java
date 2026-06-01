@@ -11,10 +11,7 @@ import java.util.UUID;
 
 @Entity
 @Table(
-    name = "terms",
-    uniqueConstraints = {
-        @UniqueConstraint(name = "uq_terms_type_version", columnNames = {"term_type_id", "version"})
-    }
+    name = "terms"
 )
 @Getter @Setter
 @NoArgsConstructor @AllArgsConstructor

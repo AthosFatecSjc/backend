@@ -12,7 +12,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.energia.backend.model.AnonymizationStatus;
+import com.energia.backend.model.DeletionStatus;
 import com.energia.backend.model.AppUserEntity;
 import com.energia.backend.model.RoleEntity;
 import com.energia.backend.model.StatusEntity;
@@ -39,19 +39,22 @@ public class AdminInitializationService implements CommandLineRunner {
     private final StatusJpaRepository statusRepository;
     private final UserStatusJpaRepository userStatusRepository;
     private final PasswordEncoder passwordEncoder;
+    private final ExternalUserPrivacyRegistryService externalUserPrivacyRegistryService;
 
     public AdminInitializationService(
             AppUserJpaRepository appUserRepository,
             RoleJpaRepository roleRepository,
             StatusJpaRepository statusRepository,
             UserStatusJpaRepository userStatusRepository,
-            PasswordEncoder passwordEncoder
+            PasswordEncoder passwordEncoder,
+            ExternalUserPrivacyRegistryService externalUserPrivacyRegistryService
     ) {
         this.appUserRepository = appUserRepository;
         this.roleRepository = roleRepository;
         this.statusRepository = statusRepository;
         this.userStatusRepository = userStatusRepository;
         this.passwordEncoder = passwordEncoder;
+        this.externalUserPrivacyRegistryService = externalUserPrivacyRegistryService;
     }
 
     @Override
@@ -89,7 +92,7 @@ public class AdminInitializationService implements CommandLineRunner {
             AppUserEntity adminUser = AppUserEntity.builder()
                     .id(UUID.randomUUID())
                     .password(encodedPassword)
-                    .anonymizationStatus(AnonymizationStatus.ACTIVE)
+                    .deletionStatus(DeletionStatus.ACTIVE)
                     .roles(List.of(adminRole))
                     .build();
 
@@ -110,6 +113,7 @@ public class AdminInitializationService implements CommandLineRunner {
                     .build();
 
             userStatusRepository.saveAndFlush(adminStatus);
+            externalUserPrivacyRegistryService.upsertActiveUser(savedAdmin.getId(), savedAdmin.getEmail());
 
             logger.info("Admin user created successfully with email: {}", normalizedEmail);
         } catch (Exception ex) {
