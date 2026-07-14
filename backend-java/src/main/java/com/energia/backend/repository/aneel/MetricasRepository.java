@@ -28,7 +28,7 @@ public interface MetricasRepository extends JpaRepository<Metricas, Long> {
                     AVG(CASE WHEN si.indicador_type = 'DEC' THEN m.vlr_indice_enviado END) +
                     AVG(CASE WHEN si.indicador_type = 'FEC' THEN m.vlr_indice_enviado END)
                 ) / 2.0
-            ) / NULLIF(((l.dec_lim + l.fec_lim) / 2.0), 0) * 100.0 AS \"indiceCriticidadePercentual\"
+            ) / NULLIF(((l.dec_lim + l.fec_lim) / 2.0) / 12.0, 0) * 100.0 AS \"indiceCriticidadePercentual\"
         FROM aneel.metricas m
         JOIN aneel.conjunto c
             ON c.id = m.id_conjunto
