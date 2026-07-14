@@ -8,7 +8,6 @@ env*/
 
 # Environment files
 .env
-.env.*
 
 # IDE files
 .idea/

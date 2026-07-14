@@ -54,11 +54,11 @@ public class LimitesCsvParser {
                 }
               
 
-                Long ideConj = Utils.toLong(cols[3].trim());
-                String sigIndicador = Utils.cleanNullable(cols[5].trim());
-                Long ano = Utils.toLong(cols[6].trim());
-                Double valor = Utils.toDoubleBrNullable(cols[7].trim());
-                LocalDate dataGeracao = Utils.toDateNullable(cols[0].trim());
+                Long ideConj = Utils.toLong(stripQuotes(cols[3]));
+                String sigIndicador = Utils.cleanNullable(stripQuotes(cols[5]));
+                Long ano = Utils.toLong(stripQuotes(cols[6]));
+                Double valor = Utils.toDoubleBrNullable(stripQuotes(cols[7]));
+                LocalDate dataGeracao = Utils.toDateNullable(stripQuotes(cols[0]));
 
                 if (sigIndicador == null || ano == null) {
                     log.warn("Linha de limites ignorada por campos obrigatórios inválidos: {}", line);
@@ -86,5 +86,13 @@ public class LimitesCsvParser {
 
         log.info("Limites válidos processados: {}", linhas.size());
         return linhas;
+    }
+
+    private String stripQuotes(String value) {
+        String v = value.trim();
+        if (v.length() >= 2 && v.startsWith("\"") && v.endsWith("\"")) {
+            v = v.substring(1, v.length() - 1).trim();
+        }
+        return v;
     }
 }

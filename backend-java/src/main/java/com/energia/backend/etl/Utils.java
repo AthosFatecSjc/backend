@@ -112,7 +112,8 @@ public class Utils {
         for (String fmt : formats) {
             try {
                 if ("yyyy-MM-dd".equals(fmt)) {
-                    return LocalDate.parse(value);
+                    String datePart = value.length() >= 10 ? value.substring(0, 10) : value;
+                    return LocalDate.parse(datePart);
                 }
                 if ("dd/MM/yyyy".equals(fmt)) {
                     String[] p = value.split("/");
